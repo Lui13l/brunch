@@ -115,6 +115,18 @@ describe("Productos y categorías", () => {
     expect((await api().get(`/api/productos/${d.cafe.id}`)).status).toBe(404);
   });
 
+  test("las categorías se listan por su orden y los productos lo incluyen", async () => {
+    await api().post("/api/categorias").set(bearer(d.tokenAdmin)).send({ nombre: "Bebidas", orden: 2 });
+    await api().post("/api/categorias").set(bearer(d.tokenAdmin)).send({ nombre: "Abrebocas", orden: 5 });
+    await api().put(`/api/categorias/${d.categoria.id}`).set(bearer(d.tokenAdmin)).send({ orden: 1 });
+
+    const categorias = await api().get("/api/categorias");
+    expect(categorias.body.map((c) => c.nombre)).toEqual(["Platos", "Bebidas", "Abrebocas"]);
+
+    const productos = await api().get("/api/productos");
+    expect(productos.body[0].categoria_id.orden).toBe(1);
+  });
+
   test("no se puede eliminar una categoría con productos", async () => {
     const res = await api().delete(`/api/categorias/${d.categoria.id}`).set(bearer(d.tokenAdmin));
     expect(res.status).toBe(409);

@@ -54,24 +54,27 @@ const VARIABLES = {
 
   menu: async () => {
     const productos = await MenuItem.find({ activo: true })
-      .populate("categoria_id", "nombre")
-      .sort({ nombre: 1 });
+      .populate("categoria_id", "nombre orden")
+      .sort({ orden: 1, nombre: 1 });
     if (productos.length === 0) return "Por ahora no hay productos disponibles.";
 
     const porCategoria = new Map();
     for (const p of productos) {
       const categoria = p.categoria_id?.nombre || "Otros";
-      if (!porCategoria.has(categoria)) porCategoria.set(categoria, []);
-      porCategoria.get(categoria).push(`- ${p.nombre}: ${formatearPrecio(p.precio)}`);
+      if (!porCategoria.has(categoria)) {
+        porCategoria.set(categoria, { orden: p.categoria_id?.orden ?? Infinity, lineas: [] });
+      }
+      porCategoria.get(categoria).lineas.push(`- ${p.nombre}: ${formatearPrecio(p.precio)}`);
     }
 
-    const secciones = [...porCategoria].map(
-      ([categoria, lineas]) => `${categoria}:\n${lineas.join("\n")}`
-    );
+    const secciones = [...porCategoria]
+      .sort(([, a], [, b]) => a.orden - b.orden)
+      .map(([categoria, { lineas }]) => `${categoria}:\n${lineas.join("\n")}`);
     return `Este es nuestro menú:\n\n${secciones.join("\n\n")}`;
   },
 
   ultimo_pedido: async (usuario) => {
+    if (!usuario) return "Inicia sesión para que pueda consultar tus pedidos.";
     const pedido = await Order.findOne({ usuario_id: usuario._id }).sort({ createdAt: -1 });
     if (!pedido) return "Todavía no tienes pedidos.";
 
@@ -80,6 +83,7 @@ const VARIABLES = {
   },
 
   mis_reservas: async (usuario) => {
+    if (!usuario) return "Inicia sesión para que pueda consultar tus reservas.";
     const hoy = new Date();
     hoy.setUTCHours(0, 0, 0, 0);
     const reservas = await Reservation.find({
@@ -97,9 +101,10 @@ const VARIABLES = {
 };
 
 // Reemplaza solo las variables que aparecen en el texto, para no consultar
-// la base de datos de más.
+// la base de datos de más. "usuario" es null cuando escribe un visitante.
 const rellenarVariables = async (plantilla, usuario) => {
-  let texto = plantilla;
+  // Sin sesión no hay nombre: "¡Hola {nombre}!" -> "¡Hola!", "Adiós, {nombre}." -> "Adiós."
+  let texto = usuario ? plantilla : plantilla.replace(/,?\s*\{nombre\}/g, "");
   for (const [nombre, obtener] of Object.entries(VARIABLES)) {
     const marcador = `{${nombre}}`;
     if (texto.includes(marcador)) texto = texto.split(marcador).join(await obtener(usuario));

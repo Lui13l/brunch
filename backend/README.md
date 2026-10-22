@@ -16,7 +16,7 @@ npm run dev            # http://localhost:3000
 |---|---|
 | `npm run dev` | Servidor con recarga automática (`node --watch`) |
 | `npm start` | Servidor normal |
-| `npm run seed` | Carga datos iniciales e intenciones del chatbot. Se puede repetir sin duplicar nada |
+| `npm run seed` | Carga roles, admin, el menú de Brunch & Co. e intenciones del chatbot. Se puede repetir sin duplicar nada |
 | `npm test` | Tests de la API sobre una MongoDB en memoria (no toca Atlas) |
 
 La primera vez que se ejecuta `npm test` se descarga el binario de MongoDB (~700 MB). Si ya tienes MongoDB instalado puedes evitarlo así:
@@ -47,7 +47,7 @@ src/
   routes/          definición de endpoints
   controllers/     lógica de cada endpoint
   services/        lógica del chatbot (detección de intenciones y respuestas)
-  data/            intenciones iniciales del chatbot
+  data/            menú inicial (menu.js) e intenciones del chatbot (intenciones.js)
   middleware/      autenticación, roles y manejo de errores
   utils/           HttpError y pick()
 tests/             tests de integración (node:test + supertest)
@@ -81,13 +81,13 @@ Todas las rutas empiezan por `/api`. Las respuestas incluyen `id` además de `_i
 ### Menú
 | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|
-| GET | `/productos` | Público | Productos activos (`?categoria=`, `?tipo=`). Admin: `?incluir_inactivos=true` |
+| GET | `/productos` | Público | Productos activos ordenados por `orden` (`?categoria=`, `?tipo=`). Admin: `?incluir_inactivos=true` |
 | GET | `/productos/:id` | Público | Detalle |
-| POST | `/productos` | Admin | `{tipo, nombre, precio, categoria_id, descripcion?, img_url?}` |
+| POST | `/productos` | Admin | `{tipo, nombre, precio, categoria_id, descripcion?, img_url?, orden?}`. `img_url` puede ser una ruta del frontend, como `/menu/pancakes.jpg` |
 | PUT | `/productos/:id` | Admin | Actualiza campos |
 | DELETE | `/productos/:id` | Admin | Lo desactiva (`activo: false`) |
 | GET | `/categorias` | Público | Lista |
-| POST / PUT / DELETE | `/categorias[/:id]` | Admin | `{nombre}`. No se borra si tiene productos |
+| POST / PUT / DELETE | `/categorias[/:id]` | Admin | `{nombre, orden?}`. Se listan por `orden`. No se borra si tiene productos |
 
 ### Pedidos
 | Método | Ruta | Acceso | Descripción |
@@ -133,7 +133,7 @@ Flujo de estados: `pendiente → confirmado → preparando → en_camino → ent
 ### Chatbot
 | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|
-| POST | `/chat/mensaje` | Usuario | `{mensaje, conversacion_id?}` → `{conversacion_id, intencion, respuesta}` |
+| POST | `/chat/mensaje` | Público | `{mensaje, conversacion_id?}` → `{conversacion_id, intencion, respuesta}`. Sin sesión responde pero no guarda la conversación (`conversacion_id: null`) |
 | GET | `/chat/conversaciones` | Usuario | Conversaciones propias, sin mensajes (`?estado=`). Admin: `?todas=true` |
 | GET | `/chat/conversaciones/:id` | Dueño / admin | Conversación con todos sus mensajes |
 | PATCH | `/chat/conversaciones/:id/finalizar` | Dueño / admin | Cierra la conversación |
@@ -144,6 +144,7 @@ Flujo de estados: `pendiente → confirmado → preparando → en_camino → ent
 
 **Cómo funciona:**
 - **Conversación:** si no se envía `conversacion_id`, el mensaje sigue la última conversación activa del usuario, o abre una nueva.
+- **Visitantes:** sin sesión el bot responde igual (menú, horario, pagos…). `{nombre}` se omite y `{ultimo_pedido}` / `{mis_reservas}` piden iniciar sesión.
 - **Detección:** el texto se compara con las `palabras_clave` de cada intención activa, sin tener en cuenta mayúsculas ni tildes. Gana la que más palabras coinciden, así que "hacer un pedido" gana a "pedido". Si ninguna coincide se usa la intención `desconocida`.
 - **Respuesta:** si la intención tiene varias respuestas, se elige una al azar.
 - **Variables:** una respuesta puede incluir variables que se rellenan con datos reales:

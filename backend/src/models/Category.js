@@ -8,6 +8,12 @@ const categorySchema = new mongoose.Schema(
       unique: true,
       trim: true,
     },
+
+    // Posición en el menú (menor = primero).
+    orden: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     collection: "categories",

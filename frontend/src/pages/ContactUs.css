@@ -1,0 +1,202 @@
+.contact-main {
+  background: #faf5ef;
+  padding: 4rem 2rem;
+}
+
+.contact-wrapper {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+  max-width: 1060px;
+  margin: 0 auto;
+  align-items: stretch;
+}
+
+/* ── Card base ── */
+.contact-card {
+  flex: 1;
+  background: #ffffff;
+  border-radius: 24px;
+  padding: 40px 36px;
+  box-shadow: 0 8px 40px rgba(46, 38, 34, 0.07);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Typography ── */
+.contact-eyebrow {
+  display: inline-block;
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #c4845a;
+  margin-bottom: 0.7rem;
+}
+
+.contact-heading {
+  font-family: 'DM Serif Display', serif;
+  font-size: clamp(1.6rem, 2.4vw, 2.2rem);
+  font-weight: 700;
+  color: #2f2b26;
+  margin-bottom: 1.2rem;
+}
+
+.contact-body {
+  font-family: 'DM Serif Display', serif;
+  color: #6b5f57;
+  line-height: 1.75;
+  font-size: 0.95rem;
+}
+
+/* ── Info list ── */
+.contact-list {
+  margin: 1.8rem 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 14px;
+}
+
+.contact-list li {
+  display: flex;
+  gap: 14px;
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.92rem;
+  color: #5a504a;
+}
+
+.contact-list strong {
+  min-width: 100px;
+  color: #2f2b26;
+  font-weight: 700;
+}
+
+/* ── Social icons (light background variant) ── */
+.contact-social-label {
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: #c4845a;
+  margin-top: 2rem;
+  margin-bottom: 0.8rem;
+}
+
+.contact-social .social-icon-link {
+  border-color: rgba(46, 38, 34, 0.18);
+}
+
+.contact-social .social-icon-link:hover {
+  border-color: rgba(46, 38, 34, 0.5);
+  background: rgba(46, 38, 34, 0.05);
+}
+
+/* ── Form ── */
+.contact-form form {
+  display: grid;
+  gap: 20px;
+}
+
+.contact-form label {
+  display: grid;
+  gap: 8px;
+  font-family: 'DM Serif Display', serif;
+  font-weight: 700;
+  color: #2f2b26;
+  font-size: 0.9rem;
+}
+
+.contact-form input,
+.contact-form textarea {
+  width: 100%;
+  border: 1px solid #e0d8d0;
+  border-radius: 14px;
+  padding: 14px 16px;
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.95rem;
+  color: #34302b;
+  background: #faf7f4;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.contact-form input:focus,
+.contact-form textarea:focus {
+  border-color: #c4845a;
+}
+
+.contact-form textarea {
+  min-height: 150px;
+  resize: vertical;
+}
+
+.contact-form button {
+  width: fit-content;
+  border: none;
+  border-radius: 999px;
+  background: #2e2622;
+  color: #fff;
+  padding: 14px 34px;
+  font-family: 'DM Serif Display', serif;
+  font-weight: 700;
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.contact-form button:hover {
+  background: #4a3c35;
+  transform: translateY(-2px);
+}
+
+/* ── Hero title override ── */
+.contact-hero-title {
+  font-family: 'Fraunces', serif !important;
+  font-size: 3.5rem !important;
+  font-weight: 700 !important;
+  color: #ffffff !important;
+  margin-bottom: 0.75rem !important;
+}
+
+.contact-image {
+  width: 100%;
+  height: 240px;
+  object-fit: cover;
+  border-radius: 22px;
+  margin-top: 2rem;
+}
+
+.contact-image {
+  transition: transform 0.4s ease;
+}
+
+.contact-image:hover {
+  transform: scale(1.02);
+}
+
+.button {
+  width: fit-content;
+  padding: 0.9rem 2rem;
+  background-color: #391903;
+}
+
+@media (max-width: 960px) {
+  .contact-wrapper {
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 640px) {
+  .contact-main {
+    padding: 2.5rem 1.2rem;
+  }
+
+  .contact-card {
+    padding: 28px 22px;
+  }
+}

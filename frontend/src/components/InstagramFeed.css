@@ -1,0 +1,35 @@
+.instagram-section{
+  padding: 5rem 0;
+  background: #f7f4f1;
+  text-align: center;
+}
+
+.instagram-subtitle{
+  font-size: .78rem;
+  letter-spacing: .3em;
+  color: #c4845a;
+  margin-bottom: .7rem;
+  font-family: 'DM Serif Display', serif;
+}
+
+.instagram-title{
+  font-family: 'DM Serif Display', serif;
+  font-size: 2.6rem;
+  color: #1f1a17;
+  margin-bottom: 2.5rem;
+}
+
+.instagram-wrapper{
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  border-radius: 28px;
+  overflow: hidden;
+}
+
+.instagram-widget{
+  width: 100%;
+  height: 800px;
+  border: 25px;
+  overflow: hidden;
+}

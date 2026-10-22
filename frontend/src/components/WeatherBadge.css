@@ -1,0 +1,20 @@
+.weather-badge {
+  position: absolute;
+  top: 50px;
+  right: 40px;
+
+  backdrop-filter: blur(14px);
+  background: rgba(255,255,255,0.12);
+
+  border: 1px solid rgba(255,255,255,0.18);
+
+  padding: 12px 18px;
+  border-radius: 999px;
+
+  color: white;
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.9rem;
+  z-index: 10;
+
+  box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+}

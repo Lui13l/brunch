@@ -2,7 +2,7 @@ const { MenuItem, Category } = require("../models");
 const { HttpError, pick } = require("../utils/http");
 const { esAdmin } = require("../middleware/auth");
 
-const CAMPOS = ["tipo", "nombre", "descripcion", "precio", "categoria_id", "img_url", "activo"];
+const CAMPOS = ["tipo", "nombre", "descripcion", "precio", "categoria_id", "img_url", "activo", "orden"];
 
 const validarCategoria = async (categoriaId) => {
   if (categoriaId !== undefined && !(await Category.exists({ _id: categoriaId }))) {
@@ -18,13 +18,13 @@ const listar = async (req, res) => {
   if (!(esAdmin(req) && req.query.incluir_inactivos === "true")) filtro.activo = true;
 
   const productos = await MenuItem.find(filtro)
-    .populate("categoria_id", "nombre")
-    .sort({ nombre: 1 });
+    .populate("categoria_id", "nombre orden")
+    .sort({ orden: 1, nombre: 1 });
   res.json(productos);
 };
 
 const obtener = async (req, res) => {
-  const producto = await MenuItem.findById(req.params.id).populate("categoria_id", "nombre");
+  const producto = await MenuItem.findById(req.params.id).populate("categoria_id", "nombre orden");
   if (!producto || (!producto.activo && !esAdmin(req))) {
     throw new HttpError(404, "Producto no encontrado");
   }

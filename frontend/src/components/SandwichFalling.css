@@ -1,0 +1,26 @@
+.sw-wrapper {
+  position: fixed;
+  top: 60px;
+  right: 24px;
+  width: 110px;
+  z-index: 999;
+  pointer-events: none;
+  filter: drop-shadow(0 6px 16px rgba(0,0,0,0.15));
+}
+
+.sw-img {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+.sw-img-caido {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+}
+
+@media (max-width: 600px) {
+  .sw-wrapper { width: 75px; right: 12px; }
+}

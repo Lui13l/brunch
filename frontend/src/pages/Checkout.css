@@ -1,0 +1,282 @@
+.checkout-main {
+  background-color: #faf8f5;
+  min-height: calc(100vh - 130px);
+  padding: 3rem 1.5rem;
+}
+
+.checkout-grid {
+  max-width: 900px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr 1.4fr;
+  gap: 2rem;
+  align-items: start;
+}
+
+.checkout-summary,
+.checkout-form-section {
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.07);
+  padding: 2rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.checkout-eyebrow {
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: #999;
+  margin-bottom: 0.4rem;
+}
+
+.checkout-section-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin-bottom: 0.75rem;
+}
+
+.checkout-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.checkout-divider-line {
+  flex: 1;
+  height: 1px;
+  background-color: #e8e2da;
+}
+
+.checkout-divider-gem {
+  font-size: 0.65rem;
+  color: #bbb;
+}
+
+.checkout-items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.checkout-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.checkout-item-qty {
+  font-weight: 700;
+  color: #999;
+  min-width: 24px;
+}
+
+.checkout-item-name {
+  flex: 1;
+}
+
+.checkout-item-price {
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+.checkout-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid #f0ede8;
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.checkout-total-price {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: #1a1a1a;
+}
+
+/* Form */
+.checkout-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.checkout-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.checkout-field label {
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #444;
+}
+
+.checkout-field input,
+.checkout-field select,
+.checkout-field textarea {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border: 1.5px solid #ddd;
+  border-radius: 10px;
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.9rem;
+  color: #1a1a1a;
+  background-color: #faf8f5;
+  outline: none;
+  transition: border-color 0.2s ease;
+  resize: none;
+}
+
+.checkout-field input:focus,
+.checkout-field select:focus,
+.checkout-field textarea:focus {
+  border-color: #1a1a1a;
+}
+
+.checkout-submit-btn {
+  width: 100%;
+  padding: 0.9rem;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  border: none;
+  border-radius: 50px;
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  margin-top: 0.5rem;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.checkout-submit-btn:hover {
+  background-color: #333;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 700px) {
+  .checkout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Modal */
+.checkout-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.checkout-modal {
+  background-color: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 10px 50px rgba(0, 0, 0, 0.2);
+  padding: 2.5rem;
+  max-width: 400px;
+  width: 90%;
+  animation: slideUp 0.4s ease;
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.checkout-modal-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+}
+
+.checkout-modal-icon {
+  font-size: 3rem;
+  color: #4caf50;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.checkout-modal-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #1a1a1a;
+  margin: 0;
+}
+
+.checkout-modal-text {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1rem;
+  color: #666;
+  margin: 0;
+}
+
+.checkout-modal-btn {
+  margin-top: 1rem;
+  padding: 0.9rem 2rem;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  border: none;
+  border-radius: 50px;
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.checkout-modal-btn:hover {
+  background-color: #333;
+  transform: translateY(-1px);
+}
+
+.checkout-error,
+.reservas-error {
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.85rem;
+  color: #c0392b;
+  text-align: center;
+  margin: 0;
+}

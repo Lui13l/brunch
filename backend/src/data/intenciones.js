@@ -9,7 +9,7 @@ module.exports = [
     descripcion: "El usuario saluda",
     palabras_clave: ["hola", "buenas", "buenos dias", "buenas tardes", "buenas noches", "hey"],
     respuestas: [
-      texto("¡Hola {nombre}! Soy el asistente de Brunch. Puedo mostrarte el menú, contarte cómo va tu pedido o revisar tus reservas."),
+      texto("¡Hola {nombre}! Soy el asistente de Brunch & Co. Puedo mostrarte el menú, contarte cómo va tu pedido o revisar tus reservas."),
       texto("¡Hola {nombre}! ¿En qué te ayudo? Pregúntame por el menú, tus pedidos o tus reservas."),
     ],
   },
@@ -52,6 +52,22 @@ module.exports = [
     descripcion: "Pregunta cómo puede pagar",
     palabras_clave: ["pagar", "pago", "metodos de pago", "formas de pago", "tarjeta", "efectivo", "transferencia"],
     respuestas: [texto("Aceptamos pagos en efectivo, con tarjeta y por transferencia.")],
+  },
+  {
+    nombre: "horario",
+    descripcion: "Pregunta por el horario de atención",
+    palabras_clave: ["horario", "hora abren", "a que hora", "abierto", "abren", "cierran", "atienden"],
+    respuestas: [
+      texto("Nuestro horario es de lunes a viernes de 8:00 a 18:00, y sábados y domingos de 9:00 a 17:00. ¡Te esperamos!"),
+    ],
+  },
+  {
+    nombre: "ubicacion",
+    descripcion: "Pregunta dónde queda el local",
+    palabras_clave: ["direccion", "ubicacion", "donde quedan", "donde estan", "como llegar", "donde queda"],
+    respuestas: [
+      texto("Nos encontramos en Calle del Sabor 123, Ciudad del Brunch. En la página de inicio tienes el mapa para llegar."),
+    ],
   },
   {
     nombre: "agradecimiento",

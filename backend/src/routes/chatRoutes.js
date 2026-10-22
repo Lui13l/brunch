@@ -1,13 +1,14 @@
 const { Router } = require("express");
 const c = require("../controllers/chatController");
-const { auth, requireRole } = require("../middleware/auth");
+const { auth, authOpcional, requireRole } = require("../middleware/auth");
 const { limiteChat } = require("../middleware/limites");
 
 const router = Router();
 
-router.use(auth);
+// Abierto a visitantes: con sesión se guarda la conversación, sin sesión solo se responde.
+router.post("/mensaje", authOpcional, limiteChat, c.enviarMensaje);
 
-router.post("/mensaje", limiteChat, c.enviarMensaje);
+router.use(auth);
 
 router.get("/conversaciones", c.listarConversaciones);
 router.get("/conversaciones/:id", c.obtenerConversacionPorId);

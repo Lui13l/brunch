@@ -1,0 +1,136 @@
+.favorites-section {
+  background: linear-gradient(
+    180deg,
+    #f8f4ef 0%,
+    #eee5da 100%
+  );
+
+  overflow: hidden;
+}
+
+.fav-title {
+  font-family: 'DM Serif Display', serif !important;
+}
+
+.custom-card {
+  border-radius: 20px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.custom-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.card-image img {
+  object-fit: cover;
+  height: 100%;
+}
+
+.carousel-container {
+  width: 100%;
+  max-width: 900px;
+  height: 420px;
+  margin: 0 auto;
+  perspective: 1400px;
+}
+
+.carousel {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d; /* 👈 activa 3D */
+}
+
+.fav-card {
+  width: 180px;
+  height: 250px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-style: preserve-3d;
+  transform: translate(-50%, -50%);
+}
+
+/* mejora visual */
+.fav-card img {
+  border-radius: 12px;
+}
+
+/* CARD 3D */
+.fav-card {
+  width: 160px;
+  height: 220px;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform-style: preserve-3d;
+  transform: translate(-50%, -50%);
+  cursor: pointer;
+  transition: transform 0.5s ease;
+}
+
+.fav-card.flipped {
+  z-index: 1000;
+}
+.fav-card-inner {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  transform-style: preserve-3d;
+  transition: transform 0.8s;
+}
+
+.fav-card.flipped .fav-card-inner {
+  transform: rotateY(180deg) scale(1.15);
+}
+
+.fav-card-front,
+.fav-card-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+/* frente */
+.fav-card-front {
+  background: rgb(249, 230, 213);
+}
+
+/* atrás */
+.fav-card-back {
+  background: #391903;
+  color: rgb(255, 255, 255);
+
+  transform: rotateY(180deg);
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+
+  padding: 1rem;
+  text-align: center;
+}
+
+.fav-card-back h3 {
+  font-family: 'DM Serif Display', serif;
+  margin-bottom: 0.7rem;
+  font-size: 1rem;
+}
+
+.fav-card-back p {
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: rgba(255,255,255,0.8);
+}
+
+.button{
+  background-color: #391903;
+  border-color:black;
+}

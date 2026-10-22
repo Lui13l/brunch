@@ -1,0 +1,214 @@
+/* ── Features Section ── */
+.features-section {
+  background: linear-gradient(160deg, #faf5ef 0%, #f5ede3 100%);
+  padding: 5.5rem 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Corner decorative glyphs */
+.features-deco {
+  position: absolute;
+  font-size: 5rem;
+  color: rgba(196, 132, 90, 0.08);
+  pointer-events: none;
+  user-select: none;
+  line-height: 1;
+}
+.features-deco--tl {
+  top: -1rem;
+  left: 1.5rem;
+  transform: rotate(-20deg);
+}
+.features-deco--br {
+  bottom: -1rem;
+  right: 1.5rem;
+  transform: rotate(160deg);
+}
+
+/* ── Header ── */
+.features-header {
+  text-align: center;
+  margin-bottom: 4rem;
+}
+
+.features-eyebrow {
+  display: block;
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.75rem;
+  font-weight: 800;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: #c4845a;
+  margin-bottom: 0.6rem;
+}
+
+.features-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #3d2b1f;
+  margin: 0 0 1.4rem;
+}
+
+.features-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+}
+
+.divider-line {
+  width: 70px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #c4845a);
+}
+.divider-line--right {
+  background: linear-gradient(to left, transparent, #c4845a);
+}
+
+.divider-gem {
+  color: #c4845a;
+  font-size: 0.65rem;
+}
+
+/* ── Grid ── */
+.features-grid {
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Vertical separator between cards */
+.feature-card + .feature-card::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 12%;
+  height: 76%;
+  width: 1px;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    rgba(196, 132, 90, 0.35) 30%,
+    rgba(196, 132, 90, 0.35) 70%,
+    transparent
+  );
+}
+
+/* ── Card ── */
+.feature-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 2.8rem 2.5rem;
+  position: relative;
+  transition: transform 0.35s ease;
+  border-radius: 0;
+}
+
+.feature-card:hover {
+  transform: translateY(-8px);
+}
+
+/* Icon circle */
+.feature-icon-wrap {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ece8e4;
+  border: 1.5px solid rgba(46, 38, 34, 0.14);
+  margin-bottom: 1.5rem;
+  box-shadow:
+    0 4px 18px rgba(46, 38, 34, 0.08),
+    inset 0 1px 3px rgba(255, 255, 255, 0.7);
+  transition: box-shadow 0.35s ease, transform 0.35s ease, background 0.35s ease;
+}
+
+.feature-card:hover .feature-icon-wrap {
+  background: #2e2622;
+  box-shadow: 0 10px 32px rgba(46, 38, 34, 0.18);
+  transform: scale(1.08);
+}
+
+.feature-card:hover .feature-icon-wrap svg {
+  color: #f5f0eb !important;
+  stroke: #f5f0eb !important;
+}
+
+.feature-card-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #3d2b1f;
+  margin: 0 0 0.4rem;
+}
+
+.feature-accent-line {
+  display: block;
+  width: 32px;
+  height: 1.5px;
+  background: #2e2622;
+  border-radius: 2px;
+  margin: 0 auto 1rem;
+  opacity: 0.35;
+  transition: width 0.35s ease, opacity 0.35s ease;
+}
+
+.feature-card:hover .feature-accent-line {
+  width: 52px;
+  opacity: 0.7;
+}
+
+.feature-card-desc {
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.93rem;
+  color: #7a6558;
+  line-height: 1.65;
+  max-width: 210px;
+}
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  .features-section {
+    padding: 4rem 1.5rem;
+  }
+
+  .features-title {
+    font-size: 1.65rem;
+  }
+
+  .features-grid {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .feature-card + .feature-card::before {
+    top: 0;
+    left: 15%;
+    width: 70%;
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      rgba(196, 132, 90, 0.35) 30%,
+      rgba(196, 132, 90, 0.35) 70%,
+      transparent
+    );
+  }
+
+  .feature-card {
+    padding: 2.2rem 1.5rem;
+  }
+
+  .feature-card:hover {
+    transform: none;
+  }
+}

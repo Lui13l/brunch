@@ -85,10 +85,33 @@ describe("Chatbot: detección de intenciones", () => {
 });
 
 describe("Chatbot: conversaciones", () => {
-  test("valida el mensaje y exige sesión", async () => {
+  test("valida el mensaje", async () => {
     expect((await enviar(d.tokenCliente, "   ")).status).toBe(400);
     expect((await enviar(d.tokenCliente, "a".repeat(501))).status).toBe(400);
-    expect((await api().post("/api/chat/mensaje").send({ mensaje: "hola" })).status).toBe(401);
+  });
+
+  test("un visitante sin sesión recibe respuesta, pero no se guarda la conversación", async () => {
+    const visitante = (mensaje) => api().post("/api/chat/mensaje").send({ mensaje });
+
+    const saludo = await visitante("hola");
+    expect(saludo.status).toBe(200);
+    expect(saludo.body.conversacion_id).toBe(null);
+    expect(saludo.body.respuesta.startsWith("¡Hola!")).toBe(true);
+
+    const menu = await visitante("que hay en el menu");
+    incluye(menu.body.respuesta, "Huevos: $20.000");
+
+    const pedido = await visitante("como va mi pedido");
+    incluye(pedido.body.respuesta, "Inicia sesión");
+
+    const horario = await visitante("a que hora abren");
+    expect(horario.body.intencion).toBe("horario");
+
+    const despedida = await visitante("chao");
+    expect(despedida.body.respuesta).toBe("¡Hasta pronto! Que disfrutes tu brunch.");
+
+    const { ChatConversation } = require("../src/models");
+    expect(await ChatConversation.countDocuments()).toBe(0);
   });
 
   test("los mensajes se guardan en la misma conversación activa", async () => {
@@ -152,22 +175,22 @@ describe("Chatbot: administración de intenciones", () => {
       .post("/api/chat/intenciones")
       .set(bearer(d.tokenAdmin))
       .send({
-        nombre: "horario",
-        palabras_clave: ["horario", "a que hora abren"],
-        respuestas: [{ respuesta: "Abrimos de 8:00 a 15:00." }],
+        nombre: "zonas_entrega",
+        palabras_clave: ["zonas de entrega", "cobertura"],
+        respuestas: [{ respuesta: "Entregamos en todo el centro de la ciudad." }],
       });
     expect(creada.status).toBe(201);
     expect(creada.body.respuestas[0].tipo).toBe("texto");
 
-    const res = await enviar(d.tokenCliente, "¿A qué hora abren?");
-    expect(res.body.intencion).toBe("horario");
-    expect(res.body.respuesta).toBe("Abrimos de 8:00 a 15:00.");
+    const res = await enviar(d.tokenCliente, "¿Cuáles son las zonas de entrega?");
+    expect(res.body.intencion).toBe("zonas_entrega");
+    expect(res.body.respuesta).toBe("Entregamos en todo el centro de la ciudad.");
 
     await api()
       .put(`/api/chat/intenciones/${creada.body.id}`)
       .set(bearer(d.tokenAdmin))
       .send({ activa: false });
-    expect((await enviar(d.tokenCliente, "horario")).body.intencion).toBe("desconocida");
+    expect((await enviar(d.tokenCliente, "cobertura")).body.intencion).toBe("desconocida");
   });
 
   test("nombre duplicado devuelve 409 y borrar devuelve 204", async () => {

@@ -40,6 +40,12 @@ const menuItemSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+
+    // Posición dentro de su categoría (menor = primero).
+    orden: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     collection: "menu_items",

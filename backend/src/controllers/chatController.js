@@ -33,6 +33,13 @@ const enviarMensaje = async (req, res) => {
     throw new HttpError(400, `El mensaje no puede superar ${MAX_LARGO_MENSAJE} caracteres`);
   }
 
+  // Visitante sin sesión: se responde, pero no se guarda la conversación
+  // (cada conversación pertenece a un usuario).
+  if (!req.usuario) {
+    const { intencion, respuesta } = await chatbot.responder(mensaje, null);
+    return res.json({ conversacion_id: null, intencion, respuesta });
+  }
+
   const conversacion = await obtenerConversacion(req, req.body.conversacion_id);
   const { intencion, respuesta } = await chatbot.responder(mensaje, req.usuario);
   const ahora = new Date();

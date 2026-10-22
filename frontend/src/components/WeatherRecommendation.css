@@ -1,0 +1,97 @@
+.weather-section { padding: 0; width: 100%; }
+
+.weather-card {
+  max-width: 860px;
+  margin: 0 auto;
+  background: rgba(0, 0, 0, 0.38);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 16px;
+  padding: .85rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+
+.weather-hot  { background: rgba(180, 100, 20, 0.30); }
+.weather-rain { background: rgba(40,  80, 140, 0.30); }
+.weather-cold { background: rgba(60,  60,  80, 0.35); }
+
+.weather-left {
+  display: flex;
+  align-items: center;
+  gap: .85rem;
+  min-width: 0;
+}
+
+.weather-emoji {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 1.4rem;
+  flex-shrink: 0;
+}
+
+.weather-content { text-align: left; min-width: 0; }
+
+.weather-badge {
+  display: block;
+  font-family: 'DM Serif Display', serif;
+  font-size: .7rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: rgba(255, 220, 160, 0.9);
+  margin-bottom: .2rem;
+}
+
+.weather-title {
+  font-family: 'DM Serif Display', serif;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 .15rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.weather-text {
+  font-family: 'DM Serif Display', serif;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: .82rem;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.weather-btn {
+  flex-shrink: 0;
+  border: 1.5px solid rgba(255, 255, 255, 0.45);
+  background: transparent;
+  color: #fff;
+  padding: .55rem 1.1rem;
+  border-radius: 999px;
+  font-family: 'DM Serif Display', serif;
+  font-weight: 700;
+  font-size: .82rem;
+  cursor: pointer;
+  transition: background .2s ease, border-color .2s ease;
+  white-space: nowrap;
+}
+
+.weather-btn:hover {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.8);
+}
+
+@media (max-width: 640px) {
+  .weather-card { flex-direction: column; align-items: flex-start; gap: .75rem; }
+  .weather-title { white-space: normal; }
+  .weather-btn { width: 100%; text-align: center; }
+}

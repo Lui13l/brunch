@@ -1,5 +1,5 @@
-// Carga datos iniciales: roles, usuario admin, categorías, productos de ejemplo
-// e intenciones del chatbot.
+// Carga datos iniciales: roles, usuario admin, el menú (src/data/menu.js)
+// e intenciones del chatbot (src/data/intenciones.js).
 // Se puede ejecutar varias veces sin duplicar nada: npm run seed
 const dotenv = require("dotenv");
 
@@ -9,32 +9,12 @@ const mongoose = require("mongoose");
 const connectDB = require("./config/database");
 const { Role, User, Category, MenuItem, ChatIntent } = require("./models");
 const INTENCIONES = require("./data/intenciones");
+const MENU = require("./data/menu");
 
 const ROLES = [
     { _id: "admin", nombre: "Administrador" },
     { _id: "cliente", nombre: "Cliente" },
 ];
-
-const MENU = {
-    "Bebidas calientes": [
-        { tipo: "bebida", nombre: "Café americano", precio: 6000, descripcion: "Café de origen recién molido" },
-        { tipo: "bebida", nombre: "Capuchino", precio: 8500, descripcion: "Espresso con leche espumada" },
-        { tipo: "bebida", nombre: "Chocolate caliente", precio: 7500, descripcion: "Con queso opcional" },
-    ],
-    "Bebidas frías": [
-        { tipo: "bebida", nombre: "Jugo de naranja", precio: 7000, descripcion: "Natural, recién exprimido" },
-        { tipo: "bebida", nombre: "Limonada de coco", precio: 9000 },
-    ],
-    "Platos fuertes": [
-        { tipo: "plato", nombre: "Huevos benedictinos", precio: 24000, descripcion: "Pan inglés, jamón, huevo pochado y salsa holandesa" },
-        { tipo: "plato", nombre: "Pancakes con frutos rojos", precio: 19000, descripcion: "Con miel de maple y crema" },
-        { tipo: "plato", nombre: "Tostada de aguacate", precio: 18000, descripcion: "Pan de masa madre, aguacate y huevo" },
-    ],
-    Postres: [
-        { tipo: "postre", nombre: "Waffle con helado", precio: 15000 },
-        { tipo: "postre", nombre: "Croissant de almendras", precio: 9500 },
-    ],
-};
 
 const seed = async () => {
     await connectDB();
@@ -58,23 +38,23 @@ const seed = async () => {
     }
 
     let totalProductos = 0;
-    for (const [nombreCategoria, productos] of Object.entries(MENU)) {
+    for (const [orden, { categoria: nombreCategoria, tipo, productos }] of MENU.entries()) {
         const categoria = await Category.findOneAndUpdate(
             { nombre: nombreCategoria },
-            { nombre: nombreCategoria },
+            { nombre: nombreCategoria, orden },
             { upsert: true, returnDocument: "after" }
         );
 
-        for (const producto of productos) {
+        for (const [posicion, producto] of productos.entries()) {
             await MenuItem.updateOne(
                 { nombre: producto.nombre },
-                { ...producto, categoria_id: categoria._id },
+                { ...producto, tipo, orden: posicion, categoria_id: categoria._id },
                 { upsert: true }
             );
             totalProductos++;
         }
     }
-    console.log(`Categorías: ${Object.keys(MENU).length}, productos: ${totalProductos}`);
+    console.log(`Categorías: ${MENU.length}, productos: ${totalProductos}`);
 
     // $setOnInsert: solo crea las que faltan, sin pisar las que el admin ya editó.
     let nuevas = 0;

@@ -1,0 +1,129 @@
+.navbar-custom {
+  padding: 0.5rem 2rem;
+  border-bottom: 1px solid #f0ede8;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+  background-color: #ffffff;
+}
+
+.brand-name {
+  font-family: 'Fraunces', serif !important;
+  font-size: 1.3rem !important;
+  font-weight: 700 !important;
+  color: #1a1a1a !important;
+  letter-spacing: 0.5px;
+}
+
+.nav-link {
+  font-family: 'DM Serif Display', serif !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  color: #391903 !important;
+  letter-spacing: 0.3px;
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 8px;
+  left: 1rem;
+  right: 1rem;
+  height: 2px;
+  background-color: #1a1a1a;
+  transform: scaleX(0);
+  transition: transform 0.25s ease;
+}
+
+.nav-link:hover {
+  color: #1a1a1a !important;
+  background: transparent !important;
+}
+
+.nav-link:hover::after {
+  transform: scaleX(1);
+}
+
+.reservar-btn {
+  font-family: 'DM Serif Display', serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  background-color: #391903;
+  color: #ffffff;
+  border: none;
+  border-radius: 50px;
+  padding: 0.5rem 1.4rem;
+  height: auto;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.15s ease;
+}
+
+.reservar-btn:hover {
+  background-color: #333;
+  transform: translateY(-1px);
+}
+
+.cart-icon-btn {
+  position: relative;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #444;
+  display: flex;
+  align-items: center;
+  padding: 0.25rem;
+  transition: color 0.2s ease;
+  background-color: transparent;
+}
+
+.cart-icon-btn:hover {
+  color: #FFFFFF;
+  background-color: #743308;
+  border-radius: 50%;
+  width: 50px;
+  height: 50px;
+  justify-content: center;
+}
+
+.cart-badge {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nav-user {
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.9rem;
+  color: #6b5a50;
+}
+
+.nav-logout {
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+/* Botón del menú en pantallas pequeñas, con los colores de la marca */
+.navbar-custom .navbar-burger {
+  color: #391903;
+  background-color: transparent;
+  border: none;
+}
+
+.navbar-custom .navbar-burger:hover,
+.navbar-custom .navbar-burger.is-active {
+  color: #391903;
+  background-color: #f2eeeb;
+}
