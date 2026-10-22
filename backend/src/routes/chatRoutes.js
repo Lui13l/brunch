@@ -1,12 +1,13 @@
 const { Router } = require("express");
 const c = require("../controllers/chatController");
 const { auth, requireRole } = require("../middleware/auth");
+const { limiteChat } = require("../middleware/limites");
 
 const router = Router();
 
 router.use(auth);
 
-router.post("/mensaje", c.enviarMensaje);
+router.post("/mensaje", limiteChat, c.enviarMensaje);
 
 router.get("/conversaciones", c.listarConversaciones);
 router.get("/conversaciones/:id", c.obtenerConversacionPorId);

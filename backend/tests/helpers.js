@@ -4,6 +4,9 @@ const request = require("supertest");
 const { MongoMemoryServer } = require("mongodb-memory-server");
 
 process.env.JWT_SECRET = "secreto-de-pruebas";
+// Límites altos para que no interfieran; seguridad.test.js los baja para probarlos.
+process.env.RATE_LIMIT_AUTH_MAX ??= "1000";
+process.env.RATE_LIMIT_CHAT_MAX ??= "1000";
 
 const app = require("../src/app");
 const { Role, User, Category, MenuItem } = require("../src/models");

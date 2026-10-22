@@ -14,7 +14,7 @@ npm run dev            # http://localhost:3000
 
 | Script | Qué hace |
 |---|---|
-| `npm run dev` | Servidor con recarga automática (nodemon) |
+| `npm run dev` | Servidor con recarga automática (`node --watch`) |
 | `npm start` | Servidor normal |
 | `npm run seed` | Carga datos iniciales e intenciones del chatbot. Se puede repetir sin duplicar nada |
 | `npm test` | Tests de la API sobre una MongoDB en memoria (no toca Atlas) |
@@ -25,6 +25,15 @@ La primera vez que se ejecuta `npm test` se descarga el binario de MongoDB (~700
 ## Variables de entorno
 
 Ver [.env.example](.env.example). Las obligatorias son `MONGO_URI` y `JWT_SECRET`.
+
+## Seguridad
+
+- **Cabeceras:** `helmet` añade las cabeceras de seguridad HTTP habituales y oculta `X-Powered-By`.
+- **CORS:** solo acepta peticiones de los orígenes de `CORS_ORIGIN`. Si no se define, acepta todos (útil en desarrollo).
+- **Login y registro:** como máximo `RATE_LIMIT_AUTH_MAX` intentos **fallidos** por IP cada 15 minutos (10 por defecto). Pasado el límite se responde 429.
+- **Chatbot:** como máximo `RATE_LIMIT_CHAT_MAX` mensajes por usuario y minuto (20 por defecto).
+- **Detrás de un proxy:** en producción con proxy, define `TRUST_PROXY=1`. Si no, todos los clientes parecerán tener la misma IP y compartirán el límite.
+- **Contraseñas:** se guardan cifradas con bcrypt y nunca se devuelven en las respuestas.
 
 ## Estructura
 
@@ -159,3 +168,4 @@ Todas las respuestas de error tienen la forma `{ "mensaje": "..." }`. Los errore
 | 403 | El rol no tiene permiso o el recurso es de otro usuario |
 | 404 | Recurso o ruta inexistente |
 | 409 | Duplicado (correo, categoría) o conflicto (domiciliario ocupado, pago repetido) |
+| 429 | Demasiados intentos (login, registro o mensajes al chatbot) |
