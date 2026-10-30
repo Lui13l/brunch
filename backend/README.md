@@ -73,6 +73,7 @@ Todas las rutas empiezan por `/api`. Las respuestas incluyen `id` además de `_i
 | POST | `/auth/registro` | Público | `{nombre, correo, password, direccion?, celular?}` |
 | POST | `/auth/login` | Público | `{correo, password}` → `{token, usuario}` |
 | GET | `/auth/perfil` | Usuario | Datos del usuario del token |
+| POST | `/auth/logout` | Usuario | Revoca el token de la sesión actual |
 | PUT | `/usuarios/perfil` | Usuario | Actualiza `nombre, direccion, celular, password` |
 | GET | `/usuarios` | Admin | Lista usuarios (`?rol_id=`) |
 | GET | `/usuarios/:id` | Admin | Detalle |

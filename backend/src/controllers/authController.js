@@ -1,9 +1,11 @@
+const { randomUUID } = require("node:crypto");
 const jwt = require("jsonwebtoken");
-const { User } = require("../models");
+const { User, RevokedToken } = require("../models");
 const { HttpError, pick } = require("../utils/http");
+const { hashToken } = require("../utils/authToken");
 
 const generarToken = (usuario) =>
-  jwt.sign({ id: usuario._id, rol: usuario.rol_id }, process.env.JWT_SECRET, {
+  jwt.sign({ id: usuario._id, rol: usuario.rol_id, jti: randomUUID() }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   });
 
@@ -32,4 +34,13 @@ const perfil = async (req, res) => {
   res.json(req.usuario);
 };
 
-module.exports = { registro, login, perfil };
+const logout = async (req, res) => {
+  await RevokedToken.create({
+    tokenHash: hashToken(req.authToken.value),
+    expiresAt: req.authToken.expiresAt,
+  });
+
+  res.json({ mensaje: "Sesión cerrada correctamente" });
+};
+
+module.exports = { registro, login, perfil, logout };

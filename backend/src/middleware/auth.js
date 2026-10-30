@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
-const { User } = require("../models");
+const { User, RevokedToken } = require("../models");
 const { HttpError } = require("../utils/http");
+const { hashToken } = require("../utils/authToken");
 
 const leerToken = (req) => {
   const header = req.headers.authorization || "";
@@ -16,23 +17,35 @@ const cargarUsuario = async (token) => {
     throw new HttpError(401, "Token inválido o expirado");
   }
 
+  if (await RevokedToken.exists({ tokenHash: hashToken(token) })) {
+    throw new HttpError(401, "Token inválido o expirado");
+  }
+
   const usuario = await User.findById(payload.id);
   if (!usuario) throw new HttpError(401, "El usuario del token ya no existe");
-  return usuario;
+  return { usuario, payload };
 };
 
 // Exige un token válido y deja el usuario en req.usuario.
 const auth = async (req, res, next) => {
   const token = leerToken(req);
   if (!token) throw new HttpError(401, "Se requiere autenticación");
-  req.usuario = await cargarUsuario(token);
+  const { usuario, payload } = await cargarUsuario(token);
+  req.usuario = usuario;
+  req.authToken = {
+    value: token,
+    expiresAt: new Date(payload.exp * 1000),
+  };
   next();
 };
 
 // Si hay token lo valida, si no hay sigue como visitante.
 const authOpcional = async (req, res, next) => {
   const token = leerToken(req);
-  if (token) req.usuario = await cargarUsuario(token);
+  if (token) {
+    const { usuario } = await cargarUsuario(token);
+    req.usuario = usuario;
+  }
   next();
 };
 

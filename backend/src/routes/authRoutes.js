@@ -8,5 +8,6 @@ const router = Router();
 router.post("/registro", limiteAuth, c.registro);
 router.post("/login", limiteAuth, c.login);
 router.get("/perfil", auth, c.perfil);
+router.post("/logout", auth, c.logout);
 
 module.exports = router;

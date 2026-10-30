@@ -1,5 +1,5 @@
 const { describe, test, before, after, beforeEach } = require("node:test");
-const { conectar, desconectar, limpiar, api, datosBase, bearer, expect } = require("./helpers");
+const { conectar, desconectar, limpiar, api, login, datosBase, bearer, expect } = require("./helpers");
 
 let d;
 
@@ -64,6 +64,15 @@ describe("Auth", () => {
     const res = await api().get("/api/auth/perfil").set(bearer(d.tokenCliente));
     expect(res.status).toBe(200);
     expect(res.body.correo).toBe("ana@test.com");
+  });
+
+  test("logout revoca el token actual sin cerrar otras sesiones", async () => {
+    const segundoToken = await login("ana@test.com", "secreta1");
+    const logout = await api().post("/api/auth/logout").set(bearer(d.tokenCliente));
+
+    expect(logout.status).toBe(200);
+    expect((await api().get("/api/auth/perfil").set(bearer(d.tokenCliente))).status).toBe(401);
+    expect((await api().get("/api/auth/perfil").set(bearer(segundoToken))).status).toBe(200);
   });
 
   test("actualizar la contraseña del perfil permite iniciar sesión con la nueva", async () => {
