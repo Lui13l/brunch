@@ -24,7 +24,7 @@ La primera vez que se ejecuta `npm test` se descarga el binario de MongoDB (~700
 
 ## Variables de entorno
 
-Ver [.env.example](.env.example). Las obligatorias son `MONGO_URI` y `JWT_SECRET`.
+Ver [.env.example](.env.example). Las obligatorias son `MONGO_URI` y `JWT_SECRET`. Para activar el login con Google, define `GOOGLE_CLIENT_ID` con el ID de cliente OAuth 2.0 de tipo aplicación web.
 
 ## Seguridad
 
@@ -72,6 +72,7 @@ Todas las rutas empiezan por `/api`. Las respuestas incluyen `id` además de `_i
 |---|---|---|---|
 | POST | `/auth/registro` | Público | `{nombre, correo, password, direccion?, celular?}` |
 | POST | `/auth/login` | Público | `{correo, password}` → `{token, usuario}` |
+| POST | `/auth/google` | Público | `{credential}` (ID token verificado por Google) → `{token, usuario}` |
 | GET | `/auth/perfil` | Usuario | Datos del usuario del token |
 | POST | `/auth/logout` | Usuario | Revoca el token de la sesión actual |
 | PUT | `/usuarios/perfil` | Usuario | Actualiza `nombre, direccion, celular, password` |

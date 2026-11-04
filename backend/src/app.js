@@ -12,7 +12,19 @@ const app = express();
 if (process.env.TRUST_PROXY) app.set("trust proxy", Number(process.env.TRUST_PROXY));
 
 // Cabeceras de seguridad (y oculta "X-Powered-By: Express").
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "script-src": ["'self'", "https://accounts.google.com/gsi/client"],
+        "frame-src": ["'self'", "https://accounts.google.com/gsi/"],
+        "connect-src": ["'self'", "https://accounts.google.com/gsi/"],
+        "style-src": ["'self'", "https://accounts.google.com/gsi/style"],
+      },
+    },
+  })
+);
 
 // CORS_ORIGIN admite varios orígenes separados por coma. Sin definir, permite todos.
 const origenes = process.env.CORS_ORIGIN?.split(",").map((o) => o.trim());

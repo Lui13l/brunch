@@ -1,4 +1,5 @@
 const { describe, test, before, after, beforeEach } = require("node:test");
+const { OAuth2Client } = require("google-auth-library");
 const { conectar, desconectar, limpiar, api, login, datosBase, bearer, expect } = require("./helpers");
 
 let d;
@@ -55,6 +56,61 @@ describe("Auth", () => {
   test("login con contraseña incorrecta devuelve 401", async () => {
     const res = await api().post("/api/auth/login").send({ correo: "ana@test.com", password: "mala" });
     expect(res.status).toBe(401);
+  });
+
+  test("login con Google verifica el correo y crea o reutiliza un cliente", async () => {
+    const verifyIdTokenOriginal = OAuth2Client.prototype.verifyIdToken;
+    const googleClientIdOriginal = process.env.GOOGLE_CLIENT_ID;
+    process.env.GOOGLE_CLIENT_ID = "google-client-id";
+    OAuth2Client.prototype.verifyIdToken = async ({ idToken, audience }) => {
+      expect(idToken).toBe("google-credential");
+      expect(audience).toBe("google-client-id");
+      return {
+        getPayload: () => ({
+          email: "GOOGLE@test.com",
+          email_verified: true,
+          name: "Google User",
+        }),
+      };
+    };
+
+    try {
+      const primeraRespuesta = await api()
+        .post("/api/auth/google")
+        .send({ credential: "google-credential" });
+      expect(primeraRespuesta.status).toBe(200);
+      expect(primeraRespuesta.body.token).toBeDefined();
+      expect(primeraRespuesta.body.usuario.correo).toBe("google@test.com");
+      expect(primeraRespuesta.body.usuario.nombre).toBe("Google User");
+      expect(primeraRespuesta.body.usuario.rol_id).toBe("cliente");
+      expect(primeraRespuesta.body.usuario.password).toBeUndefined();
+
+      const segundoLogin = await api()
+        .post("/api/auth/google")
+        .send({ credential: "google-credential" });
+      expect(segundoLogin.body.usuario.id).toBe(primeraRespuesta.body.usuario.id);
+
+      OAuth2Client.prototype.verifyIdToken = async () => ({
+        getPayload: () => ({ email: "unverified@test.com", email_verified: false }),
+      });
+      const correoNoVerificado = await api()
+        .post("/api/auth/google")
+        .send({ credential: "google-credential" });
+      expect(correoNoVerificado.status).toBe(401);
+
+      const credencialAusente = await api().post("/api/auth/google").send({});
+      expect(credencialAusente.status).toBe(400);
+
+      delete process.env.GOOGLE_CLIENT_ID;
+      const googleNoConfigurado = await api()
+        .post("/api/auth/google")
+        .send({ credential: "google-credential" });
+      expect(googleNoConfigurado.status).toBe(503);
+    } finally {
+      OAuth2Client.prototype.verifyIdToken = verifyIdTokenOriginal;
+      if (googleClientIdOriginal === undefined) delete process.env.GOOGLE_CLIENT_ID;
+      else process.env.GOOGLE_CLIENT_ID = googleClientIdOriginal;
+    }
   });
 
   test("perfil requiere token válido", async () => {

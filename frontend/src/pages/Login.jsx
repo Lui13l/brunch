@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
@@ -6,6 +6,34 @@ import { useAuth } from "../context/AuthContext";
 import "./Login.css";
 
 const REGISTRO_VACIO = { nombre: "", correo: "", celular: "", password: "", confirmar: "" };
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+let googleScriptPromise;
+
+const cargarGoogleIdentity = () => {
+  if (window.google?.accounts?.id) return Promise.resolve();
+  if (googleScriptPromise) return googleScriptPromise;
+
+  googleScriptPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (window.google?.accounts?.id) resolve();
+      else {
+        googleScriptPromise = null;
+        reject(new Error("No se pudo inicializar Google Identity Services"));
+      }
+    };
+    script.onerror = () => {
+      googleScriptPromise = null;
+      reject(new Error("No se pudo cargar Google Identity Services"));
+    };
+    document.head.appendChild(script);
+  });
+
+  return googleScriptPromise;
+};
 
 const Login = () => {
   const [mode, setMode] = useState("login");
@@ -14,12 +42,71 @@ const Login = () => {
   const [registro, setRegistro] = useState(REGISTRO_VACIO);
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
-  const { user, login, register } = useAuth();
+  const [googleEstado, setGoogleEstado] = useState(GOOGLE_CLIENT_ID ? "cargando" : "no-config");
+  const [googleError, setGoogleError] = useState("");
+  const googleButtonRef = useRef(null);
+  const { user, login, loginWithGoogle, register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   // Vuelve a la página que pidió el login (por ejemplo /reservas o /checkout).
   const destino = location.state?.from || "/";
+
+  useEffect(() => {
+    const googleButton = googleButtonRef.current;
+    if (mode !== "login" || !GOOGLE_CLIENT_ID) return undefined;
+
+    let activo = true;
+    setGoogleEstado("cargando");
+    setGoogleError("");
+    cargarGoogleIdentity()
+      .then(() => {
+        if (!activo || !googleButton) return;
+
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_CLIENT_ID,
+          callback: async ({ credential }) => {
+            if (!credential) {
+              setGoogleError("Google no devolvió una credencial válida.");
+              return;
+            }
+
+            setError("");
+            setEnviando(true);
+            try {
+              await loginWithGoogle(credential);
+              navigate(destino, { replace: true });
+            } catch (err) {
+              setError(err.message);
+            } finally {
+              setEnviando(false);
+            }
+          },
+          auto_select: false,
+        });
+        window.google.accounts.id.renderButton(googleButton, {
+          type: "standard",
+          theme: "outline",
+          size: "large",
+          text: "continue_with",
+          shape: "pill",
+          width: Math.round(googleButton.clientWidth),
+          locale: "es",
+        });
+        setGoogleEstado("listo");
+      })
+      .catch(() => {
+        if (activo) {
+          setGoogleEstado("error");
+          setGoogleError("No se pudo cargar el inicio de sesión con Google. Inténtalo de nuevo.");
+        }
+      });
+
+    return () => {
+      activo = false;
+      googleButton?.replaceChildren();
+    };
+  }, [mode, loginWithGoogle, navigate, destino]);
 
   if (user && !enviando) return <Navigate to={destino} replace />;
 
@@ -135,6 +222,33 @@ const Login = () => {
                 {enviando ? "Ingresando..." : "Iniciar sesión"}
               </button>
             </form>
+          )}
+
+          {mode === "login" && (
+            <>
+              <div className="login-or">
+                <span className="login-or-line" />
+                <span className="login-or-text">o</span>
+                <span className="login-or-line" />
+              </div>
+              {GOOGLE_CLIENT_ID ? (
+                <>
+                  <div
+                    className="google-login-container"
+                    ref={googleButtonRef}
+                    aria-label="Iniciar sesión con Google"
+                  />
+                  {googleEstado === "cargando" && (
+                    <p className="login-google-status" role="status">Cargando Google...</p>
+                  )}
+                  {googleError && <p className="login-error" role="alert">{googleError}</p>}
+                </>
+              ) : (
+                <p className="login-google-status" role="status">
+                  El inicio de sesión con Google no está configurado.
+                </p>
+              )}
+            </>
           )}
 
           {/* Formulario de registro */}
