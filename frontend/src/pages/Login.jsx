@@ -6,7 +6,10 @@ import { useAuth } from "../context/AuthContext";
 import "./Login.css";
 
 const REGISTRO_VACIO = { nombre: "", correo: "", celular: "", password: "", confirmar: "" };
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+console.log(
+  "Google Client ID:", GOOGLE_CLIENT_ID ? "CARGADO CORRECTAMENTE" : "NO ENCONTRADO"
+);
 let googleScriptPromise;
 
 const cargarGoogleIdentity = () => {

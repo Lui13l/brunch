@@ -51,10 +51,10 @@ const loginGoogle = async (req, res) => {
       audience: clientId,
     });
     payload = ticket.getPayload();
-  } catch (error) {
-    if (error.name === "GaxiosError") throw error;
-    throw new HttpError(401, "La credencial de Google no es válida");
-  }
+  }catch (error) {
+  console.error("Error verificando Google:", error.message);
+  throw new HttpError(401, "No se pudo verificar la credencial de Google");
+}
 
   if (!payload?.email || payload.email_verified !== true) {
     throw new HttpError(401, "La cuenta de Google debe tener un correo verificado");
