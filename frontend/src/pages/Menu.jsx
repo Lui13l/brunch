@@ -5,7 +5,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
-import { api, formatearPrecio } from "../api";
+import { api, formatearPrecio } from "../api/api";
 import "./Menu.css";
 import WeatherRecommendation from "../components/WeatherRecommendation";
 

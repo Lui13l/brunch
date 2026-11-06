@@ -4,7 +4,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
-import { api, formatearPrecio } from "../api";
+import { api, formatearPrecio } from "../api/api";
 import "./Checkout.css";
 
 const METODOS = {

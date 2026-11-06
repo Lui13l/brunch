@@ -3,9 +3,11 @@ import { ArrowLeft, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import { api } from "../api";
+import { api } from "../api/api";
 import { useAuth } from "../context/AuthContext";
 import "./PerfilUsuario.css";
+import { actualizarPerfil } from "../api/usuarioService";
+import { cerrarSesion as cerrarSesionAPI } from "../api/authService";
 
 const PerfilUsuario = () => {
   const { user, setUser, logout } = useAuth();
@@ -28,19 +30,8 @@ const PerfilUsuario = () => {
   };
 
   const guardarPerfil = async (e) => {
-    e.preventDefault();
-    setError("");
-    setMensaje("");
-
-    if (form.password && form.password.length < 6) {
-      setError("La nueva contraseña debe tener al menos 6 caracteres.");
-      return;
-    }
-    if (form.password !== form.confirmarPassword) {
-      setError("Las contraseñas no coinciden.");
-      return;
-    }
-
+const usuarioActualizado = await actualizarPerfil(datos);
+setUser(usuarioActualizado);
     setGuardando(true);
     try {
       const datos = {
@@ -61,16 +52,9 @@ const PerfilUsuario = () => {
   };
 
   const cerrarSesion = async () => {
-    setError("");
-    setCerrandoSesion(true);
-    try {
-      await api.post("/auth/logout");
-      logout();
-      navigate("/login", { replace: true });
-    } catch (err) {
-      setError(err.message);
-      setCerrandoSesion(false);
-    }
+await cerrarSesionAPI();
+logout();
+navigate("/login", { replace: true });
   };
 
   return (

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { api } from "../api";
+import { api } from "../api/api";
 import "./ChatBox.css";
 
 const WELCOME = {

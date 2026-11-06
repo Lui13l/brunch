@@ -1,18 +1,17 @@
 import { createContext, useContext, useEffect, useState } from "react";
-import { api, getToken, setToken } from "../api";
+import { getToken, setToken } from "../api/api";
+import * as authService from "../api/authService";
 
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  // Mientras se valida el token guardado no se sabe si hay sesión;
-  // ProtectedRoute espera a que termine para no mandar al login por error.
   const [cargando, setCargando] = useState(() => Boolean(getToken()));
 
   useEffect(() => {
     if (!getToken()) return;
-    api
-      .get("/auth/perfil")
+
+    authService.obtenerPerfil()
       .then(setUser)
       .catch(() => setToken(null))
       .finally(() => setCargando(false));
@@ -25,13 +24,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (correo, password) =>
-    iniciarSesion(await api.post("/auth/login", { correo, password }));
+    iniciarSesion(await authService.login(correo, password));
 
   const loginWithGoogle = async (credential) =>
-    iniciarSesion(await api.post("/auth/google", { credential }));
+    iniciarSesion(await authService.loginGoogle(credential));
 
   const register = async (datos) =>
-    iniciarSesion(await api.post("/auth/registro", datos));
+    iniciarSesion(await authService.registro(datos));
 
   const logout = () => {
     setToken(null);
@@ -39,12 +38,20 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, setUser, cargando, login, loginWithGoogle, register, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        setUser,
+        cargando,
+        login,
+        loginWithGoogle,
+        register,
+        logout,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Exportar el hook junto al provider es el patrón habitual; solo afecta a la recarga en caliente.
-// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);
