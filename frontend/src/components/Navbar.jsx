@@ -68,7 +68,9 @@ const Navbar = () => {
           </div>
           {user ? (
             <>
-              <span className="navbar-item nav-user nav-animate">Hola, {user.nombre.split(" ")[0]}</span>
+              <Link to="/perfil" className="navbar-item nav-user nav-animate">
+                Hola, {user.nombre.split(" ")[0]}
+              </Link>
               <button type="button" className="navbar-item nav-link nav-logout nav-animate" onClick={handleLogout}>
                 Salir
               </button>

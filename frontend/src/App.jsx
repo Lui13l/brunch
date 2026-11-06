@@ -14,6 +14,7 @@ import Reservas from './pages/Reservas';
 import ReservaExitosa from './pages/ReservaExitosa';
 import Checkout from './pages/Checkout';
 import PedidoExitoso from './pages/PedidoExitoso';
+import PerfilUsuario from './pages/PerfilUsuario';
 
 function App() {
   return (
@@ -28,6 +29,14 @@ function App() {
             <Route path="/about" element={<AboutUs />} />
             <Route path="/contact" element={<ContactUs />} />
             <Route path="/login" element={<Login />} />
+            <Route
+              path="/perfil"
+              element={
+                <ProtectedRoute>
+                  <PerfilUsuario />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="/checkout"
               element={
