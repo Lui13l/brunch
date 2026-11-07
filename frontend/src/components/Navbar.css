@@ -1,8 +1,4 @@
-/* Navbar transparente y fijo, con tres tonos según lo que tenga debajo:
-   - nav-sobre-foto:  arriba de Inicio, Menú y Contacto (foto/video oscuro) → blanco.
-   - nav-sobre-crema: arriba del resto de páginas (fondo crema) → café.
-   - nav-con-fondo:   al bajar o con el menú del celular abierto → crema translúcida.
-   Paleta de la marca: café espresso #391903, crema #faf8f5, blanco. */
+/* Paleta de la marca: café espresso #391903, crema #faf8f5, blanco. */
 
 :root {
   --nav-alto: 84px;
@@ -46,22 +42,15 @@
 /* --- Tipografía y piezas (heredan el color del tono) --- */
 
 .brand-name {
+  position: relative;
   font-family: 'Fraunces', serif !important;
   font-size: 1.3rem !important;
   font-weight: 700 !important;
   letter-spacing: 0.5px;
 }
 
-.nav-link {
-  font-family: 'DM Serif Display', serif !important;
-  font-size: 0.95rem !important;
-  font-weight: 600 !important;
-  letter-spacing: 0.3px;
-  position: relative;
-  /* Sin transición de opacidad: GSAP la anima al entrar y chocarían. */
-  transition: color 0.2s ease;
-}
-
+.brand-name::after,
+.nav-user::after,
 .nav-link::after {
   content: '';
   position: absolute;
@@ -74,14 +63,35 @@
   transition: transform 0.25s ease;
 }
 
+.brand-name:hover::after,
+.brand-name:focus-visible::after,
+.nav-user:hover::after,
+.nav-user:focus-visible::after,
 .nav-link:hover::after,
 .nav-link:focus-visible::after {
   transform: scaleX(1);
 }
 
+.nav-link {
+  font-family: 'DM Serif Display', serif !important;
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.3px;
+  position: relative;
+  /* Sin transición de opacidad: GSAP la anima al entrar y chocarían. */
+  transition: color 0.2s ease;
+}
+
 .nav-user {
+  position: relative;
   font-family: 'DM Serif Display', serif;
   font-size: 0.9rem;
+  transition: color 0.2s ease;
+}
+
+.navbar-custom .nav-user:hover,
+.navbar-custom .nav-user:focus-visible {
+  color: #fff !important;
 }
 
 .nav-logout {
@@ -104,38 +114,15 @@
 }
 
 .reservar-btn:hover {
-  transform: translateY(-1px);
-}
-
-.cart-icon-btn {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  padding: 0;
-  color: inherit;
-  background-color: transparent;
-  border: none;
-  border-radius: 50%;
-  cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.cart-badge {
+  content: '';
   position: absolute;
-  top: 0;
-  right: -2px;
-  width: 17px;
-  height: 17px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  font-family: 'DM Serif Display', serif;
-  font-size: 0.65rem;
-  font-weight: 700;
+  bottom: 8px;
+  left: 1rem;
+  right: 1rem;
+  height: 2px;
+  background-color: currentColor;
+  transform: scaleX(0);
+  transition: transform 0.25s ease;
 }
 
 .navbar-custom .navbar-burger {
@@ -173,6 +160,15 @@
   color: #7a6656 !important;
 }
 
+.nav-sobre-crema .nav-logout:hover,
+.nav-sobre-crema .nav-logout:focus-visible,
+.nav-con-fondo .nav-logout:hover,
+.nav-con-fondo .nav-logout:focus-visible,
+.nav-sobre-foto .nav-logout:hover,
+.nav-sobre-foto .nav-logout:focus-visible {
+  color: #c0392b !important;
+}
+
 .nav-sobre-crema .reservar-btn,
 .nav-con-fondo .reservar-btn {
   color: #fff;
@@ -185,18 +181,10 @@
   background-color: var(--nav-cafe-hover);
 }
 
-.nav-sobre-crema .cart-icon-btn:hover,
-.nav-con-fondo .cart-icon-btn:hover,
 .nav-sobre-crema .navbar-burger:hover,
 .nav-con-fondo .navbar-burger:hover,
 .nav-con-fondo .navbar-burger.is-active {
   background-color: rgba(57, 25, 3, 0.08);
-}
-
-.nav-sobre-crema .cart-badge,
-.nav-con-fondo .cart-badge {
-  color: #fff;
-  background-color: var(--nav-cafe);
 }
 
 .navbar.nav-con-fondo {
@@ -237,14 +225,8 @@
   background-color: #fff;
 }
 
-.nav-sobre-foto .cart-icon-btn:hover,
 .nav-sobre-foto .navbar-burger:hover {
   background-color: rgba(255, 255, 255, 0.16);
-}
-
-.nav-sobre-foto .cart-badge {
-  color: var(--nav-cafe);
-  background-color: var(--nav-crema);
 }
 
 /* --- Celular: el menú desplegable siempre sobre crema --- */
@@ -267,6 +249,10 @@
 
 @media (prefers-reduced-motion: reduce) {
   .navbar.navbar-custom,
+  .brand-name,
+  .brand-name::after,
+  .nav-user,
+  .nav-user::after,
   .nav-link,
   .nav-link::after,
   .reservar-btn {

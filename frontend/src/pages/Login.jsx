@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import Hero from "../components/Hero";
 import { useAuth } from "../context/AuthContext";
 import "./Login.css";
 
@@ -154,9 +155,13 @@ const Login = () => {
   return (
     <>
       <Navbar />
-
       <main className="login-main">
-        <div className="login-card">
+        <section className="login-form-panel">
+          <button
+            type="button" className="login-back-btn" onClick={() => navigate(-1)}>
+            
+            Volver
+          </button>
           <span className="login-eyebrow">Bienvenido</span>
           <h1 className="login-title">
             {mode === "login" ? "Iniciar sesión" : "Crear cuenta"}
@@ -280,7 +285,10 @@ const Login = () => {
               </button>
             </form>
           )}
-        </div>
+        </section>
+        <aside className="login-hero" aria-label="Brunch & Co.">
+          <Hero />
+        </aside>
       </main>
 
       <Footer />

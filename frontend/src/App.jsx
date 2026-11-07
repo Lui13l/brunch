@@ -4,6 +4,7 @@ import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import CartDrawer from './components/CartDrawer';
+import CartFloatingButton from './components/CartFloatingButton';
 import ScrollToTop from './components/ScrollToTop';
 import Home from './pages/Home';
 import Menu from './pages/Menu';
@@ -34,6 +35,7 @@ function App() {
         <BrowserRouter>
           <ScrollToTop />
           <CartDrawer />
+          <CartFloatingButton />
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/menu" element={<Menu />} />

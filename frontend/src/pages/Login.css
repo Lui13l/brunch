@@ -1,23 +1,70 @@
 .login-main {
-  min-height: calc(100vh - 130px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  min-height: calc(100vh - var(--nav-alto, 84px) - 200px);
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
   background-color: #faf8f5;
-  padding: 2rem 1rem;
 }
 
-.login-card {
-  background: #ffffff;
-  border-radius: 16px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.08);
-  padding: 3rem 2.5rem;
-  width: 100%;
-  max-width: 440px;
+.login-form-panel {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
+  padding: 2rem clamp(1.25rem, 5vw, 4rem);
   text-align: center;
+}
+
+.login-back-btn {
+  width: 100%;
+  max-width: 460px;
+  margin-bottom: 1.5rem;
+  padding: 0;
+  color: #391903;
+  background: none;
+  border: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.login-back-btn:hover {
+  color: #694733;
+}
+
+.login-back-btn:focus-visible {
+  outline: 2px solid #391903;
+  outline-offset: 4px;
+}
+
+.login-hero {
+  min-width: 0;
+  overflow: hidden;
+}
+
+.login-hero .hero-bg {
+  height: 100%;
+  min-height: 100%;
+}
+
+.login-hero .overlay {
+  display: flex;
+  align-items: center;
+}
+
+.login-hero .hero-body {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  padding: 2rem clamp(2rem, 7vw, 7rem);
+  text-align: left !important;
+}
+
+.login-tabs,
+.login-form,
+.login-or,
+.google-login-container {
+  max-width: 460px;
 }
 
 .login-eyebrow {
@@ -229,4 +276,24 @@
   color: #c0392b;
   text-align: center;
   margin: 0;
+}
+
+@media (max-width: 768px) {
+  .login-main {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .login-form-panel {
+    padding: 2rem 1rem;
+  }
+
+  .login-hero .hero-bg .hero-body {
+    padding: 2rem;
+    text-align: left !important;
+  }
+
+  .login-hero .hero-bg {
+    height: 360px;
+    min-height: 360px;
+  }
 }

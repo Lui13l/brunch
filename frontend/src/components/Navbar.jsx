@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { ShoppingBag } from "lucide-react";
 import gsap from "gsap";
-import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import "./Navbar.css";
 
@@ -15,7 +13,6 @@ const UMBRAL_SCROLL = 24;
 
 const Navbar = ({ sobreFoto = false, alRas = false }) => {
   const navRef = useRef(null);
-  const { count, setIsOpen } = useCart();
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   // Menú desplegable en pantallas pequeñas (Bulma oculta el menú por debajo de 1024px).
@@ -81,12 +78,6 @@ const Navbar = ({ sobreFoto = false, alRas = false }) => {
           <Link to="/menu" className="navbar-item nav-link nav-animate">Menú</Link>
           <Link to="/about" className="navbar-item nav-link nav-animate">Nosotros</Link>
           <Link to="/contact" className="navbar-item nav-link nav-animate">Contacto</Link>
-          <div className="navbar-item nav-animate">
-            <button className="cart-icon-btn" onClick={() => setIsOpen(true)} aria-label="Abrir carrito">
-              <ShoppingBag size={20} strokeWidth={1.8} />
-              {count > 0 && <span className="cart-badge">{count}</span>}
-            </button>
-          </div>
           {user ? (
             <>
               {user.rol_id === "admin" && (
@@ -102,9 +93,7 @@ const Navbar = ({ sobreFoto = false, alRas = false }) => {
           ) : (
             <Link to="/login" className="navbar-item nav-link nav-animate">Ingresar</Link>
           )}
-          <div className="navbar-item nav-animate">
-            <Link to="/reservas" className="button reservar-btn">Reservar</Link>
-          </div>
+            <Link to="/reservas" className="navbar-item nav-link nav-animate">Reservar</Link>
         </div>
       </div>
     </nav>

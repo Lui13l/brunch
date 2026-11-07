@@ -1,0 +1,63 @@
+.cart-floating-btn {
+  position: fixed;
+  right: 1.5rem;
+  bottom: 1.5rem;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 59px;
+  height: 59px;
+  padding: 0;
+  color: #391903;
+  background-color: rgba(245, 245, 242, 0.82);
+  border: 1px solid rgba(57, 25, 3, 0.12);
+  border-radius: 50%;
+  box-shadow: 0 4px 16px rgba(57, 25, 3, 0.28);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  cursor: pointer;
+  transition: background-color 0.2s ease, transform 0.2s ease;
+}
+
+.cart-floating-btn:hover {
+  background-color: rgba(245, 245, 242, 0.96);
+  transform: translateY(-2px);
+}
+
+.cart-floating-btn:focus-visible {
+  outline: 2px solid #391903;
+  outline-offset: 4px;
+}
+
+.cart-floating-badge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  color: #391903;
+  background-color: #faf8f5;
+  border: 1px solid #391903;
+  border-radius: 50%;
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+@media (max-width: 600px) {
+  .cart-floating-btn {
+    right: 1rem;
+    bottom: 1rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cart-floating-btn {
+    transition: none;
+  }
+}
