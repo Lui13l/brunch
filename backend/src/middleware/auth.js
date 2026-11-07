@@ -23,6 +23,11 @@ const cargarUsuario = async (token) => {
 
   const usuario = await User.findById(payload.id);
   if (!usuario) throw new HttpError(401, "El usuario del token ya no existe");
+  if (usuario.activo === false) throw new HttpError(401, "La cuenta está desactivada");
+  const cambio = usuario.credenciales_cambiadas_en;
+  if (cambio && payload.iat < Math.floor(cambio.getTime() / 1000)) {
+    throw new HttpError(401, "Tu sesión ya no es válida. Vuelve a iniciar sesión.");
+  }
   return { usuario, payload };
 };
 
@@ -67,4 +72,4 @@ const verificarDueno = (req, usuarioId) => {
   }
 };
 
-module.exports = { auth, authOpcional, requireRole, esAdmin, verificarDueno };
+module.exports = { auth, authOpcional, requireRole, esAdmin, verificarDueno, cargarUsuario, leerToken };

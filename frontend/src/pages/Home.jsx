@@ -10,7 +10,7 @@ const Home = () => {
   return (
     <>
       <SandwichFalling />
-      <Navbar />
+      <Navbar sobreFoto />
       <Hero />
       <Features />
       <Favorites />

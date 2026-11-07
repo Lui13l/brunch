@@ -1,6 +1,7 @@
 .weather-badge {
   position: absolute;
-  top: 50px;
+  /* Bajo el navbar fijo, que va sobre el video. */
+  top: calc(var(--nav-alto, 84px) + 1.25rem);
   right: 40px;
 
   backdrop-filter: blur(14px);

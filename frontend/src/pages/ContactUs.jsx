@@ -9,7 +9,7 @@ import brunchShop from "../assets/brunchshop.jpg"
 const ContactUs = () => {
   return (
     <>
-      <Navbar />
+      <Navbar sobreFoto />
 
       <section className="menu-hero">
         <video

@@ -53,7 +53,7 @@ const VARIABLES = {
   nombre: async (usuario) => usuario.nombre,
 
   menu: async () => {
-    const productos = await MenuItem.find({ activo: true })
+    const productos = await MenuItem.find({ activo: true, visible_web: { $ne: false } })
       .populate("categoria_id", "nombre orden")
       .sort({ orden: 1, nombre: 1 });
     if (productos.length === 0) return "Por ahora no hay productos disponibles.";

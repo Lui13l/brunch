@@ -1,2 +1,17 @@
 .env
 node_modules/
+
+# Resultado de compilación
+dist/
+
+# Volcado de Redis de la API anterior
+dump.rdb
+
+# Capturas de Playwright MCP
+.playwright-mcp/
+
+# Claude Code: contexto y subagentes locales de cada desarrollador (no se suben)
+.claude/
+
+# Ledger de ejecución de planes (superpowers)
+.superpowers/

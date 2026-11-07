@@ -26,7 +26,7 @@ const values = [
 const AboutUs = () => {
   return (
     <>
-      <Navbar />
+      <Navbar alRas />
 
       {/* ── Hero ── */}
       <section className="about-hero">

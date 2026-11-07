@@ -41,4 +41,8 @@
   .hero-bg {
     background-color: #1a1a1a;
   }
+  /* El navbar transparente y el clima van encima: el título empieza debajo de ambos. */
+  .hero-bg .hero-body {
+    padding-top: calc(var(--nav-alto, 68px) + 5rem);
+  }
 }

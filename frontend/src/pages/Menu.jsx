@@ -198,7 +198,7 @@ const Menu = () => {
   return (
     <div ref={pageRef}>
       <SandwichFalling heroSelector=".menu-hero" rightOffset={4} />
-      <Navbar />
+      <Navbar sobreFoto />
 
       <section className="menu-hero">
         <video className="menu-hero-video" autoPlay muted loop playsInline preload="metadata">

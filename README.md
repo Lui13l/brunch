@@ -6,10 +6,11 @@ Web de un restaurante de brunch: menú, carrito y pedidos a domicilio, reservas 
 |---|---|
 | [backend/](backend/) | API REST con Express + MongoDB. Ver [backend/README.md](backend/README.md) para los endpoints |
 | [frontend/](frontend/) | Web con React + Vite + Bulma + GSAP |
+| [personal/](personal/) | App del personal (mesero, cocina y administración): comandas, caja, inventario. React + Vite + Tailwind |
 
 ## Cómo ejecutarlo
 
-Necesitas Node.js 20 o superior y una base de datos MongoDB (local o Atlas).
+Necesitas **Node.js 20.19 o superior** (el archivo `.nvmrc` indica la versión 22; con nvm basta `nvm use`). La base de datos es la de **MongoDB Atlas** compartida por el equipo: pide la `MONGO_URI` y no instales nada más.
 
 **1. Backend** (terminal 1)
 
@@ -29,9 +30,28 @@ npm install
 npm run dev            # http://localhost:5173
 ```
 
+**3. App del personal** (terminal 3, opcional): mesero, cocina y administración
+
+```bash
+cd personal
+npm install
+npm run dev            # http://localhost:5174 (también desde el celular en la misma red)
+```
+
+Entra con una cuenta de admin, mesero o cocina. El admin crea las cuentas del personal desde **Administración → Personal**, y también puede crearlas `npm run seed` con `MESERO_*` y `COCINA_*` en `backend/.env`. Para usarla desde el celular, agrega `http://<IP-de-tu-PC>:5174` a `WS_ORIGINS` en `backend/.env`. Todo usa la misma base de Atlas: no hace falta instalar nada más.
+
 El frontend usa `http://localhost:3000/api` por defecto. Para otra dirección, crea `frontend/.env` a partir de [frontend/.env.example](frontend/.env.example).
 
 Para habilitar el login con Google, crea un cliente OAuth 2.0 de tipo aplicación web en Google Cloud, agrega el origen del frontend como origen autorizado y configura el mismo `GOOGLE_CLIENT_ID` en `backend/.env` y `VITE_GOOGLE_CLIENT_ID` en `frontend/.env`.
+
+## Pruebas del backend
+
+```bash
+cd backend
+npm test
+```
+
+Las pruebas **no tocan la base compartida**: levantan un MongoDB temporal en memoria. La primera vez que se ejecutan en un PC, `mongodb-memory-server` descarga el binario de MongoDB (unos 1,3 GB, una sola vez; queda en la caché del usuario), así que esa primera corrida tarda varios minutos. Las siguientes son rápidas.
 
 ## Qué hace cada página
 

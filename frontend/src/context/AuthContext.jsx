@@ -54,4 +54,6 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+// Exportar el hook junto al provider es el patrón habitual; solo afecta a la recarga en caliente.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

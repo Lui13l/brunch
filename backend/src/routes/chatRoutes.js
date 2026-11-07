@@ -3,6 +3,8 @@ const c = require("../controllers/chatController");
 const { auth, authOpcional, requireRole } = require("../middleware/auth");
 const { limiteChat } = require("../middleware/limites");
 
+const { auditar, codigo } = require("../middleware/auditar");
+
 const router = Router();
 
 // Abierto a visitantes: con sesión se guarda la conversación, sin sesión solo se responde.
@@ -15,8 +17,8 @@ router.get("/conversaciones/:id", c.obtenerConversacionPorId);
 router.patch("/conversaciones/:id/finalizar", c.finalizarConversacion);
 
 router.get("/intenciones", requireRole("admin"), c.listarIntenciones);
-router.post("/intenciones", requireRole("admin"), c.crearIntencion);
-router.put("/intenciones/:id", requireRole("admin"), c.actualizarIntencion);
-router.delete("/intenciones/:id", requireRole("admin"), c.eliminarIntencion);
+router.post("/intenciones", requireRole("admin"), auditar("chatbot", "CREAR_INTENCION", (req, b) => `Creó la intención "${b.nombre}"`), c.crearIntencion);
+router.put("/intenciones/:id", requireRole("admin"), auditar("chatbot", "EDITAR_INTENCION", (req, b) => `Editó la intención "${b.nombre}"`), c.actualizarIntencion);
+router.delete("/intenciones/:id", requireRole("admin"), auditar("chatbot", "ELIMINAR_INTENCION", (req) => `Eliminó la intención ${codigo(req.params.id)}`), c.eliminarIntencion);
 
 module.exports = router;

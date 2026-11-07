@@ -25,7 +25,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: space-between;
-  padding: 3.5rem 1.5rem 1.5rem;
+  /* El navbar transparente va encima del video: el texto empieza debajo de él. */
+  padding: calc(var(--nav-alto, 84px) + 2rem) 1.5rem 1.5rem;
 }
 
 .menu-hero-texts {

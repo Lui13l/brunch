@@ -4,6 +4,13 @@ const mongoose = require("mongoose");
 mongoose.set("toJSON", { virtuals: true, versionKey: false });
 
 module.exports = {
+  Arqueo: require("./Arqueo"),
+  AuditLog: require("./AuditLog"),
+  Comanda: require("./Comanda"),
+  Insumo: require("./Insumo"),
+  Mesa: require("./Mesa"),
+  MovimientoInventario: require("./MovimientoInventario"),
+  RecetaItem: require("./RecetaItem"),
   Category: require("./Category"),
   ChatConversation: require("./ChatConversation"),
   ChatIntent: require("./ChatIntent"),

@@ -1,0 +1,394 @@
+/* Panel de administración: misma paleta que el resto de la web
+   (crema, café y blanco) con densidad de herramienta de trabajo. */
+
+.adm-main {
+  min-height: calc(100vh - 130px);
+  background-color: #faf8f5;
+  padding: 1.5rem 1rem 3rem;
+}
+
+.adm-shell {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.adm-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.adm-eyebrow {
+  color: #8a6f5a;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.adm-h1 {
+  margin: 0;
+  color: #391903;
+  font-family: "DM Serif Display", serif;
+  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  line-height: 1.1;
+}
+
+.adm-boton-comandas.button {
+  gap: 0.5rem;
+  height: auto;
+  padding: 0.7rem 1.2rem;
+  color: #fff;
+  background-color: #391903;
+  border: none;
+  border-radius: 999px;
+  font-weight: 700;
+}
+
+.adm-boton-comandas.button:hover {
+  color: #fff;
+  background-color: #5a2a08;
+}
+
+.adm-cuerpo {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+.adm-nav {
+  position: sticky;
+  top: calc(var(--nav-alto, 84px) + 1rem);
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  background: #fff;
+  border: 1px solid #e8e2da;
+  border-radius: 14px;
+}
+
+.adm-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-height: 44px;
+  padding: 0.5rem 0.8rem;
+  color: #5b4636;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.adm-nav-item:hover {
+  color: #391903;
+  background: #f4efe9;
+}
+
+.adm-nav-item.is-active {
+  color: #fff;
+  background: #391903;
+}
+
+.adm-contenido {
+  min-width: 0;
+  padding: 1.5rem;
+  background: #fff;
+  border: 1px solid #e8e2da;
+  border-radius: 18px;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+}
+
+.adm-encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.adm-titulo {
+  margin: 0;
+  color: #391903;
+  font-family: "DM Serif Display", serif;
+  font-size: 1.6rem;
+}
+
+.adm-descripcion {
+  margin-top: 0.25rem;
+  color: #7a6656;
+}
+
+.adm-encabezado-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.adm-filtros {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.adm-label {
+  color: #5b4636;
+  font-size: 0.85rem;
+}
+
+.adm-rango {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  grid-column: span 2;
+}
+
+.adm-atajos {
+  display: flex;
+  gap: 1rem;
+  grid-column: 1 / -1;
+  margin-top: -0.5rem;
+}
+
+.adm-atajos button {
+  min-height: 36px;
+  padding: 0;
+  color: #7a6656;
+  background: none;
+  border: none;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.adm-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.adm-tabs .button.is-selected {
+  color: #fff;
+  background: #391903;
+  border-color: #391903;
+}
+
+.adm-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.adm-tarjeta {
+  padding: 1rem 1.1rem;
+  border: 1px solid #e8e2da;
+  border-radius: 14px;
+  background: #fffdfb;
+}
+
+.adm-tarjeta.is-apagada {
+  opacity: 0.6;
+}
+
+.adm-tarjeta-cabeza {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.adm-tarjeta-titulo {
+  color: #391903;
+  font-weight: 800;
+}
+
+.adm-tarjeta-meta {
+  color: #7a6656;
+  font-size: 0.9rem;
+}
+
+.adm-tarjeta-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.adm-items {
+  margin: 0.5rem 0;
+  padding-top: 0.5rem;
+  border-top: 1px dashed #e8e2da;
+  font-size: 0.95rem;
+}
+
+.adm-items li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.adm-chip {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.adm-chip-neutro { color: #5b4636; background: #f0ebe4; }
+.adm-chip-alerta { color: #fff; background: #c2410c; }
+.adm-chip-info { color: #fff; background: #391903; }
+.adm-chip-proceso { color: #3d2b00; background: #f6c453; }
+.adm-chip-ok { color: #fff; background: #2f7d4f; }
+.adm-chip-apagado { color: #7a6656; background: #f0ebe4; text-decoration: line-through; }
+
+.adm-aviso {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+  padding: 0.7rem 0.9rem;
+  border-left: 4px solid;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.adm-aviso-error { color: #9a3412; background: #fff1eb; border-color: #c2410c; }
+.adm-aviso-ok { color: #1f5c3a; background: #edf7f0; border-color: #2f7d4f; }
+
+.adm-aviso-cerrar {
+  padding: 0;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.adm-vacio {
+  padding: 2.5rem 1rem;
+  color: #7a6656;
+  text-align: center;
+}
+
+.adm-modal {
+  width: min(560px, calc(100vw - 2rem));
+}
+
+.adm-tabla-wrap {
+  overflow-x: auto;
+}
+
+.adm-tabla.table {
+  width: 100%;
+  background: transparent;
+}
+
+.adm-tabla td,
+.adm-tabla th {
+  vertical-align: middle;
+}
+
+.adm-boton-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  color: #5b4636;
+  background: none;
+  border: 1px solid #e8e2da;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.adm-boton-icono:hover {
+  background: #f4efe9;
+}
+
+.adm-cafe.button {
+  color: #fff;
+  background: #391903;
+  border-color: #391903;
+}
+
+.adm-cafe.button:hover {
+  color: #fff;
+  background: #5a2a08;
+}
+
+@media (max-width: 900px) {
+  .adm-cuerpo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .adm-nav {
+    position: static;
+    flex-direction: row;
+    overflow-x: auto;
+  }
+
+  .adm-nav-item {
+    flex-shrink: 0;
+  }
+
+  .adm-contenido {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .adm-rango {
+    grid-column: auto;
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Favorites.css y ContactUs.css definen un `.button` global (fondo café, ancho
+   y relleno fijos). Dentro del panel se restablece el botón de Bulma. */
+.adm-main .button {
+  width: auto;
+  height: auto;
+  padding: 0.55em 1.1em;
+  color: #391903;
+  background-color: #fff;
+  border-color: #e8e2da;
+}
+
+.adm-main .button:hover {
+  color: #391903;
+  background-color: #f4efe9;
+  border-color: #d9cfc4;
+}
+
+.adm-main .button.is-small {
+  padding: 0.35em 0.8em;
+}
+
+.adm-main .button.is-fullwidth {
+  width: 100%;
+}
+
+.adm-main .button[disabled] {
+  opacity: 0.55;
+}
+
+.adm-tabs .button.is-selected,
+.adm-main .adm-cafe.button,
+.adm-main .adm-boton-comandas.button {
+  color: #fff;
+  background-color: #391903;
+  border-color: #391903;
+}
+
+.adm-main .adm-cafe.button:hover,
+.adm-main .adm-boton-comandas.button:hover {
+  color: #fff;
+  background-color: #5a2a08;
+}

@@ -6,7 +6,14 @@ import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
 import "./Navbar.css";
 
-const Navbar = () => {
+// Navbar transparente y fijo. `sobreFoto`: la página empieza con una foto o
+// video oscuro (Inicio, Menú, Contacto), así que arriba va en blanco sobre la
+// imagen. En el resto va en café sobre la crema. Al bajar, o con el menú del
+// celular abierto, toma un fondo crema translúcido para no chocar con nada.
+// `alRas`: la página dibuja su propio fondo bajo el navbar (sin espaciador).
+const UMBRAL_SCROLL = 24;
+
+const Navbar = ({ sobreFoto = false, alRas = false }) => {
   const navRef = useRef(null);
   const { count, setIsOpen } = useCart();
   const { user, logout } = useAuth();
@@ -14,6 +21,19 @@ const Navbar = () => {
   // Menú desplegable en pantallas pequeñas (Bulma oculta el menú por debajo de 1024px).
   // Cada página monta su propio Navbar, así que al navegar el menú vuelve a cerrarse.
   const [menuAbierto, setMenuAbierto] = useState(false);
+  const [conScroll, setConScroll] = useState(() => window.scrollY > UMBRAL_SCROLL);
+
+  useEffect(() => {
+    const alDesplazar = () => setConScroll(window.scrollY > UMBRAL_SCROLL);
+    alDesplazar();
+    window.addEventListener("scroll", alDesplazar, { passive: true });
+    return () => window.removeEventListener("scroll", alDesplazar);
+  }, []);
+
+  const conFondo = conScroll || menuAbierto;
+  let tono = "nav-sobre-crema";
+  if (conFondo) tono = "nav-con-fondo";
+  else if (sobreFoto) tono = "nav-sobre-foto";
 
   const handleLogout = () => {
     logout();
@@ -35,7 +55,8 @@ const Navbar = () => {
   }, []);
 
   return (
-    <nav ref={navRef} className="navbar navbar-custom" role="navigation">
+    <>
+    <nav ref={navRef} className={`navbar navbar-custom ${tono}`} role="navigation" aria-label="Navegación principal">
       <div className="navbar-brand">
         <Link to="/" className="navbar-item nav-animate brand-name">
           Brunch & Co.
@@ -68,6 +89,9 @@ const Navbar = () => {
           </div>
           {user ? (
             <>
+              {user.rol_id === "admin" && (
+                <Link to="/admin" className="navbar-item nav-link nav-animate">Administración</Link>
+              )}
               <Link to="/perfil" className="navbar-item nav-user nav-animate">
                 Hola, {user.nombre.split(" ")[0]}
               </Link>
@@ -84,6 +108,9 @@ const Navbar = () => {
         </div>
       </div>
     </nav>
+    {/* Las páginas sin foto arriba necesitan que el contenido empiece bajo el navbar fijo. */}
+    {!sobreFoto && !alRas && <div className="nav-espaciador" aria-hidden="true" />}
+    </>
   );
 };
 

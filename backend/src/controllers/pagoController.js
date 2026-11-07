@@ -1,4 +1,6 @@
 const { Payment, Order } = require("../models");
+const { TRANSICIONES } = require("../services/pedidos");
+const eventosPedido = require("../services/eventosPedido");
 const { HttpError, pick } = require("../utils/http");
 const { verificarDueno } = require("../middleware/auth");
 
@@ -58,7 +60,11 @@ const cambiarEstado = async (req, res) => {
   await pago.save();
 
   if (estado === "aprobado") {
-    await Order.updateOne({ _id: pago.pedido_id, estado: "pendiente" }, { estado: "confirmado" });
+    const r = await Order.updateOne({ _id: pago.pedido_id, estado: "pendiente" }, { estado: "confirmado" });
+    if (r.modifiedCount > 0) {
+      const pedido = await Order.findById(pago.pedido_id).lean();
+      if (pedido) eventosPedido.estado(pedido, TRANSICIONES);
+    }
   }
 
   res.json(pago);

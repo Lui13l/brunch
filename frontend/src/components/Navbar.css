@@ -1,15 +1,54 @@
-.navbar-custom {
-  padding: 0.5rem 2rem;
-  border-bottom: 1px solid #f0ede8;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
-  background-color: #ffffff;
+/* Navbar transparente y fijo, con tres tonos según lo que tenga debajo:
+   - nav-sobre-foto:  arriba de Inicio, Menú y Contacto (foto/video oscuro) → blanco.
+   - nav-sobre-crema: arriba del resto de páginas (fondo crema) → café.
+   - nav-con-fondo:   al bajar o con el menú del celular abierto → crema translúcida.
+   Paleta de la marca: café espresso #391903, crema #faf8f5, blanco. */
+
+:root {
+  --nav-alto: 84px;
+  --nav-cafe: #391903;
+  --nav-cafe-hover: #5a2a08;
+  --nav-crema: #faf8f5;
+  --nav-crema-vidrio: rgba(250, 248, 245, 0.9);
+  --nav-borde: rgba(57, 25, 3, 0.1);
 }
+
+.navbar.navbar-custom {
+  position: fixed;
+  top: 0;
+  right: 0;
+  left: 0;
+  z-index: 30;
+  min-height: var(--nav-alto);
+  padding: 0.5rem 2rem;
+  background-color: transparent;
+  border: 0;
+  box-shadow: none;
+  transition: background-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+/* Bulma pinta el fondo de los ítems; aquí el fondo lo decide el tono. */
+.navbar-custom .navbar-brand,
+.navbar-custom .navbar-menu,
+.navbar-custom .navbar-item,
+.navbar-custom .navbar-item:hover,
+.navbar-custom .navbar-item:focus-within {
+  background-color: transparent;
+}
+
+/* Las páginas sin foto empiezan bajo el navbar. */
+.nav-espaciador {
+  height: var(--nav-alto);
+  /* Mismo crema que el fondo de Login, Perfil, Reservas, Checkout y Admin. */
+  background-color: var(--nav-crema);
+}
+
+/* --- Tipografía y piezas (heredan el color del tono) --- */
 
 .brand-name {
   font-family: 'Fraunces', serif !important;
   font-size: 1.3rem !important;
   font-weight: 700 !important;
-  color: #1a1a1a !important;
   letter-spacing: 0.5px;
 }
 
@@ -17,9 +56,9 @@
   font-family: 'DM Serif Display', serif !important;
   font-size: 0.95rem !important;
   font-weight: 600 !important;
-  color: #391903 !important;
   letter-spacing: 0.3px;
   position: relative;
+  /* Sin transición de opacidad: GSAP la anima al entrar y chocarían. */
   transition: color 0.2s ease;
 }
 
@@ -30,83 +69,19 @@
   left: 1rem;
   right: 1rem;
   height: 2px;
-  background-color: #1a1a1a;
+  background-color: currentColor;
   transform: scaleX(0);
   transition: transform 0.25s ease;
 }
 
-.nav-link:hover {
-  color: #1a1a1a !important;
-  background: transparent !important;
-}
-
-.nav-link:hover::after {
+.nav-link:hover::after,
+.nav-link:focus-visible::after {
   transform: scaleX(1);
-}
-
-.reservar-btn {
-  font-family: 'DM Serif Display', serif;
-  font-weight: 700;
-  font-size: 0.9rem;
-  background-color: #391903;
-  color: #ffffff;
-  border: none;
-  border-radius: 50px;
-  padding: 0.5rem 1.4rem;
-  height: auto;
-  letter-spacing: 0.5px;
-  cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.15s ease;
-}
-
-.reservar-btn:hover {
-  background-color: #333;
-  transform: translateY(-1px);
-}
-
-.cart-icon-btn {
-  position: relative;
-  background: none;
-  border: none;
-  cursor: pointer;
-  color: #444;
-  display: flex;
-  align-items: center;
-  padding: 0.25rem;
-  transition: color 0.2s ease;
-  background-color: transparent;
-}
-
-.cart-icon-btn:hover {
-  color: #FFFFFF;
-  background-color: #743308;
-  border-radius: 50%;
-  width: 50px;
-  height: 50px;
-  justify-content: center;
-}
-
-.cart-badge {
-  position: absolute;
-  top: -4px;
-  right: -6px;
-  background-color: #1a1a1a;
-  color: #ffffff;
-  font-family: 'DM Serif Display', serif;
-  font-size: 0.65rem;
-  font-weight: 700;
-  width: 17px;
-  height: 17px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .nav-user {
   font-family: 'DM Serif Display', serif;
   font-size: 0.9rem;
-  color: #6b5a50;
 }
 
 .nav-logout {
@@ -115,15 +90,186 @@
   cursor: pointer;
 }
 
-/* Botón del menú en pantallas pequeñas, con los colores de la marca */
+.reservar-btn {
+  font-family: 'DM Serif Display', serif;
+  font-weight: 700;
+  font-size: 0.9rem;
+  border: 1px solid transparent;
+  border-radius: 50px;
+  padding: 0.5rem 1.4rem;
+  height: auto;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+}
+
+.reservar-btn:hover {
+  transform: translateY(-1px);
+}
+
+.cart-icon-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  color: inherit;
+  background-color: transparent;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.cart-badge {
+  position: absolute;
+  top: 0;
+  right: -2px;
+  width: 17px;
+  height: 17px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-family: 'DM Serif Display', serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
 .navbar-custom .navbar-burger {
-  color: #391903;
+  color: inherit;
   background-color: transparent;
   border: none;
 }
 
-.navbar-custom .navbar-burger:hover,
-.navbar-custom .navbar-burger.is-active {
-  color: #391903;
-  background-color: #f2eeeb;
+/* Foco visible con teclado en cualquier tono. */
+.navbar-custom a:focus-visible,
+.navbar-custom button:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+/* --- Tono sobre crema (café) y con fondo (crema translúcida) --- */
+
+.nav-sobre-crema,
+.nav-con-fondo {
+  color: var(--nav-cafe);
+}
+
+.nav-sobre-crema .brand-name,
+.nav-con-fondo .brand-name,
+.nav-sobre-crema .nav-link,
+.nav-con-fondo .nav-link,
+.nav-sobre-crema .navbar-item,
+.nav-con-fondo .navbar-item {
+  color: var(--nav-cafe) !important;
+}
+
+.nav-sobre-crema .nav-user,
+.nav-con-fondo .nav-user {
+  color: #7a6656 !important;
+}
+
+.nav-sobre-crema .reservar-btn,
+.nav-con-fondo .reservar-btn {
+  color: #fff;
+  background-color: var(--nav-cafe);
+}
+
+.nav-sobre-crema .reservar-btn:hover,
+.nav-con-fondo .reservar-btn:hover {
+  color: #fff;
+  background-color: var(--nav-cafe-hover);
+}
+
+.nav-sobre-crema .cart-icon-btn:hover,
+.nav-con-fondo .cart-icon-btn:hover,
+.nav-sobre-crema .navbar-burger:hover,
+.nav-con-fondo .navbar-burger:hover,
+.nav-con-fondo .navbar-burger.is-active {
+  background-color: rgba(57, 25, 3, 0.08);
+}
+
+.nav-sobre-crema .cart-badge,
+.nav-con-fondo .cart-badge {
+  color: #fff;
+  background-color: var(--nav-cafe);
+}
+
+.navbar.nav-con-fondo {
+  background-color: var(--nav-crema-vidrio);
+  /* Línea inferior como sombra: un borde haría saltar 1px el contenido. */
+  box-shadow: 0 1px 0 var(--nav-borde), 0 6px 24px rgba(57, 25, 3, 0.08);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* --- Tono sobre foto (blanco) --- */
+
+/* Velo suave arriba: mantiene legibles los enlaces aunque la foto tenga zonas claras. */
+.navbar.nav-sobre-foto {
+  color: #fff;
+  background-image: linear-gradient(to bottom, rgba(26, 12, 3, 0.55), rgba(26, 12, 3, 0));
+}
+
+.nav-sobre-foto .brand-name,
+.nav-sobre-foto .nav-link,
+.nav-sobre-foto .navbar-item {
+  color: #fff !important;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
+}
+
+.nav-sobre-foto .nav-user {
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
+/* Invertido: un botón café se perdería sobre la foto oscura. */
+.nav-sobre-foto .reservar-btn {
+  color: var(--nav-cafe);
+  background-color: var(--nav-crema);
+}
+
+.nav-sobre-foto .reservar-btn:hover {
+  color: var(--nav-cafe);
+  background-color: #fff;
+}
+
+.nav-sobre-foto .cart-icon-btn:hover,
+.nav-sobre-foto .navbar-burger:hover {
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+.nav-sobre-foto .cart-badge {
+  color: var(--nav-cafe);
+  background-color: var(--nav-crema);
+}
+
+/* --- Celular: el menú desplegable siempre sobre crema --- */
+
+@media (max-width: 1023px) {
+  :root {
+    --nav-alto: 68px;
+  }
+
+  .navbar.navbar-custom {
+    padding: 0.4rem 1rem;
+  }
+
+  .navbar-custom .navbar-menu.is-active {
+    background-color: var(--nav-crema);
+    border-radius: 0 0 14px 14px;
+    box-shadow: 0 12px 24px rgba(57, 25, 3, 0.1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navbar.navbar-custom,
+  .nav-link,
+  .nav-link::after,
+  .reservar-btn {
+    transition: none;
+  }
 }

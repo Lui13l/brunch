@@ -48,7 +48,8 @@
 ───────────────────────────────────── */
 .about-hero {
   background: linear-gradient(160deg, #faf5ef 0%, #f2e9df 100%);
-  padding: 7rem 2rem 5.5rem;
+  /* El degradado sube bajo el navbar transparente. */
+  padding: calc(var(--nav-alto, 84px) + 7rem) 2rem 5.5rem;
   text-align: center;
   position: relative;
   overflow: hidden;

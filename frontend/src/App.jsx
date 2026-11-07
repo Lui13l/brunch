@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import 'bulma/css/bulma.min.css';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
@@ -15,6 +15,17 @@ import ReservaExitosa from './pages/ReservaExitosa';
 import Checkout from './pages/Checkout';
 import PedidoExitoso from './pages/PedidoExitoso';
 import PerfilUsuario from './pages/PerfilUsuario';
+import AdminRoute from './components/AdminRoute';
+import AdminLayout from './pages/admin/AdminLayout';
+import AdminPedidos from './pages/admin/AdminPedidos';
+import AdminMenu from './pages/admin/AdminMenu';
+import AdminCategorias from './pages/admin/AdminCategorias';
+import AdminReservas from './pages/admin/AdminReservas';
+import AdminPagos from './pages/admin/AdminPagos';
+import AdminDomiciliarios from './pages/admin/AdminDomiciliarios';
+import AdminUsuarios from './pages/admin/AdminUsuarios';
+import AdminChatbot from './pages/admin/AdminChatbot';
+import AdminAuditoria from './pages/admin/AdminAuditoria';
 
 function App() {
   return (
@@ -62,6 +73,25 @@ function App() {
                 </ProtectedRoute>
               }
             />
+            <Route
+              path="/admin"
+              element={
+                <AdminRoute>
+                  <AdminLayout />
+                </AdminRoute>
+              }
+            >
+              <Route index element={<Navigate to="/admin/pedidos" replace />} />
+              <Route path="pedidos" element={<AdminPedidos />} />
+              <Route path="menu" element={<AdminMenu />} />
+              <Route path="categorias" element={<AdminCategorias />} />
+              <Route path="reservas" element={<AdminReservas />} />
+              <Route path="pagos" element={<AdminPagos />} />
+              <Route path="domiciliarios" element={<AdminDomiciliarios />} />
+              <Route path="usuarios" element={<AdminUsuarios />} />
+              <Route path="chatbot" element={<AdminChatbot />} />
+              <Route path="auditoria" element={<AdminAuditoria />} />
+            </Route>
           </Routes>
         </BrowserRouter>
       </CartProvider>

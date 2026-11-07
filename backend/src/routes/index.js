@@ -12,4 +12,8 @@ router.use("/pagos", require("./pagoRoutes"));
 router.use("/domiciliarios", require("./domiciliarioRoutes"));
 router.use("/chat", require("./chatRoutes"));
 
+// App de comandas (personal del restaurante).
+router.use("/", require("./salon"));
+router.use("/admin", require("./admin"));
+
 module.exports = router;
