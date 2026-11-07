@@ -1,4 +1,4 @@
-import { api, getToken } from "./api";
+import { api, getToken } from "../api/api";
 
 // Llamadas del panel de administración de la web. Las rutas /admin/* son las
 // mismas que usa la app de comandas (camelCase, errores en texto plano).

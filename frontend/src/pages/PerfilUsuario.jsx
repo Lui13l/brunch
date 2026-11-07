@@ -5,8 +5,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useAuth } from "../context/AuthContext";
 import "./PerfilUsuario.css";
-import { actualizarPerfil } from "../api/usuarioService";
-import { cerrarSesion as cerrarSesionAPI } from "../api/authService";
+import { actualizarPerfil } from "../services/usuarioService";
 
 const PerfilUsuario = () => {
   const { user, setUser, logout } = useAuth();
@@ -32,7 +31,6 @@ const PerfilUsuario = () => {
     e.preventDefault();
     setError("");
     setMensaje("");
-
     if (form.password && form.password.length < 6) {
       setError("La nueva contraseña debe tener al menos 6 caracteres.");
       return;
@@ -65,8 +63,7 @@ const PerfilUsuario = () => {
     setError("");
     setCerrandoSesion(true);
     try {
-      await cerrarSesionAPI();
-      logout();
+      await logout();
       navigate("/login", { replace: true });
     } catch (err) {
       setError(err.message);

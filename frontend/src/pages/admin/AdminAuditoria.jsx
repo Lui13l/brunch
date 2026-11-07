@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { RefreshCw } from "lucide-react";
-import * as svc from "../../api/adminService";
+import * as svc from "../../services/adminService";
 import { Aviso, Cargando, Chip, Encabezado, RangoFechas, Selector, Vacio } from "./comun";
 import { hoy, useCarga } from "./util";
 

@@ -1,5 +1,5 @@
 import { useCallback, useState } from "react";
-import * as svc from "../../api/adminService";
+import * as svc from "../../services/adminService";
 import { Aviso, Cargando, Chip, Encabezado, Selector, Vacio } from "./comun";
 import { codigo, fechaCorta, pesos, useCarga } from "./util";
 

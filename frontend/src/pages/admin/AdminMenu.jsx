@@ -1,6 +1,6 @@
 import { useCallback, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
-import * as svc from "../../api/adminService";
+import * as svc from "../../services/adminService";
 import { Aviso, Campo, Cargando, Chip, Encabezado, Modal, Selector, Vacio } from "./comun";
 import { pesos, useCarga } from "./util";
 
