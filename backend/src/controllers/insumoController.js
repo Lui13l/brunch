@@ -1,20 +1,12 @@
 const { z } = require("zod");
 const { Insumo, RecetaItem, MovimientoInventario } = require("../models");
 const { HttpError } = require("../utils/http");
-const { texto, textoOpcional } = require("../utils/validar");
+const { texto, textoOpcional, cantidad } = require("../utils/validar");
 const { toInsumo, toMovimiento } = require("../utils/serializar");
 const { conTransaccion } = require("../utils/transaccion");
 const { redondear3 } = require("../utils/dinero");
 const { aplicarMovimiento } = require("../services/inventario");
 const { registrar, SERVICIO } = require("../services/auditoria");
-
-// Las cantidades del inventario llevan 3 decimales.
-const cantidad = (campo, { minimo = 0 } = {}) =>
-  z.coerce
-    .number({ error: `${campo} es obligatorio` })
-    .min(minimo, `${campo} no puede ser menor que ${minimo}`)
-    .max(9_999_999, `${campo} es demasiado alto`)
-    .transform(redondear3);
 
 const crearInsumoSchema = z.object({
   nombre: texto("El nombre"),
@@ -131,7 +123,6 @@ module.exports = {
   crearInsumoSchema,
   editarInsumoSchema,
   ajusteSchema,
-  cantidad,
   listar,
   crear,
   editar,

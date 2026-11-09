@@ -2,6 +2,7 @@ const jwt = require("jsonwebtoken");
 const { User, RevokedToken } = require("../models");
 const { HttpError } = require("../utils/http");
 const { hashToken } = require("../utils/authToken");
+const { ROL } = require("../utils/roles");
 
 const leerToken = (req) => {
   const header = req.headers.authorization || "";
@@ -63,7 +64,7 @@ const requireRole =
     next();
   };
 
-const esAdmin = (req) => req.usuario?.rol_id === "admin";
+const esAdmin = (req) => req.usuario?.rol_id === ROL.ADMIN;
 
 // Lanza 403 si el recurso no pertenece al usuario (los admin pueden todo).
 const verificarDueno = (req, usuarioId) => {
@@ -72,4 +73,4 @@ const verificarDueno = (req, usuarioId) => {
   }
 };
 
-module.exports = { auth, authOpcional, requireRole, esAdmin, verificarDueno, cargarUsuario, leerToken };
+module.exports = { auth, authOpcional, requireRole, esAdmin, verificarDueno, cargarUsuario };

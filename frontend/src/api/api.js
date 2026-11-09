@@ -73,4 +73,3 @@ export const api = {
   delete: (path) => request("DELETE", path),
 };
 
-export const formatearPrecio = (valor) => `$${Number(valor).toLocaleString("es-CO")}`;

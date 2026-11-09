@@ -75,6 +75,8 @@ export const AuthProvider = ({ children }) => {
       // Solo un 401 son credenciales malas; lo demás es un problema del
       // servidor y decirlo así ahorra buscar donde no es.
       if (res.status === 401) return { ok: false, error: "Correo o contraseña incorrectos." };
+      // Demasiados intentos: el servidor explica cuánto esperar.
+      if (res.status === 429) return { ok: false, error: (await res.text()) || "Demasiados intentos. Espera unos minutos." };
       if (!res.ok) return { ok: false, error: "No se pudo conectar con el servidor. ¿Está abierta la aplicación del salón?" };
 
       const data = await res.json();

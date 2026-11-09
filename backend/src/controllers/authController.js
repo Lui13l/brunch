@@ -4,6 +4,7 @@ const { User, RevokedToken } = require("../models");
 const { HttpError, pick } = require("../utils/http");
 const { hashToken, generarToken } = require("../utils/authToken");
 const { desconectarToken } = require("../ws/hub");
+const { ROL } = require("../utils/roles");
 
 const googleClient = new OAuth2Client();
 
@@ -15,7 +16,7 @@ const rechazarInactivo = (usuario) => {
 
 const registro = async (req, res) => {
   const datos = pick(req.body, ["nombre", "correo", "password", "direccion", "celular"]);
-  const usuario = await User.create({ ...datos, rol_id: "cliente" });
+  const usuario = await User.create({ ...datos, rol_id: ROL.CLIENTE });
 
   res.status(201).json({ token: generarToken(usuario), usuario });
 };
@@ -69,7 +70,7 @@ const loginGoogle = async (req, res) => {
       nombre: payload.name?.trim() || correo.split("@")[0],
       correo,
       password: randomBytes(32).toString("hex"),
-      rol_id: "cliente",
+      rol_id: ROL.CLIENTE,
     });
   }
 

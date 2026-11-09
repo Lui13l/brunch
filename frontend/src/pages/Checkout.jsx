@@ -4,7 +4,9 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
-import { api, formatearPrecio } from "../api/api";
+import { formatearPrecio } from "../utils/formato";
+import { crearPedido, crearPago } from "../services/pedidosService";
+import { actualizarPerfil } from "../services/usuarioService";
 import "./Checkout.css";
 
 const METODOS = {
@@ -37,20 +39,19 @@ const Checkout = () => {
     try {
       const pedido =
         pedidoCreado ||
-        (await api.post("/pedidos", {
+        (await crearPedido({
           items: items.map((i) => ({ menu_item_id: i.id, cantidad: i.qty })),
           direccion_pedido: direccion,
           observaciones: notas || undefined,
         }));
       setPedidoCreado(pedido);
 
-      const pago = await api.post("/pagos", { pedido_id: pedido.id, metodo });
+      const pago = await crearPago(pedido.id, metodo);
 
       // El pedido no guarda teléfono: se guarda en el perfil para que el
       // restaurante pueda contactar al cliente y para rellenarlo la próxima vez.
       if (telefono !== user.celular || !user.direccion) {
-        const perfil = await api
-          .put("/usuarios/perfil", { celular: telefono, direccion: user.direccion || direccion })
+        const perfil = await actualizarPerfil({ celular: telefono, direccion: user.direccion || direccion })
           .catch(() => null);
         if (perfil) setUser(perfil);
       }

@@ -1,19 +1,11 @@
 const { z } = require("zod");
 const { Arqueo } = require("../models");
 const { HttpError } = require("../utils/http");
-const { texto, textoOpcional } = require("../utils/validar");
+const { texto, textoOpcional, dinero } = require("../utils/validar");
 const { pesos, redondear2 } = require("../utils/dinero");
 const { registrar, SERVICIO } = require("../services/auditoria");
+const { codigoCorto } = require("../utils/codigo");
 const { calcularCuadre, conUsuarios, estadoDe, estadoActual, publicarCaja } = require("../services/caja");
-
-// El dinero lleva 2 decimales y un tope alto pero finito: un cero de más al
-// teclear no debe poder descuadrar el arqueo en silencio.
-const dinero = (campo, { minimo = 0 } = {}) =>
-  z.coerce
-    .number({ error: `${campo} es obligatorio` })
-    .min(minimo, minimo === 0 ? `${campo} no puede ser negativo` : `${campo} debe ser mayor que ${minimo}`)
-    .max(999_999_999, `${campo} es demasiado alto`)
-    .transform(redondear2);
 
 const abrirSchema = z.object({ baseInicial: dinero("La base inicial"), notas: textoOpcional("Las notas") });
 
@@ -32,7 +24,6 @@ const cerrarSchema = z.object({
 });
 
 const SIN_CAJA = "No hay ninguna caja abierta. Ábrela antes de registrar movimientos.";
-const codigo = (id) => String(id).slice(-6).toUpperCase();
 
 const enviar = async (res, arqueoId) => {
   const arqueo = await conUsuarios(Arqueo.findById(arqueoId)).lean();
@@ -94,7 +85,7 @@ const cerrar = async (req, res) => {
   await registrar(
     req.usuario,
     "CERRAR_CAJA",
-    `Cerró la caja #${codigo(cerrado._id)} ${resumen} (contado ${pesos(contadoEfectivo)}, esperado ${pesos(cuadre.esperado.EFECTIVO)})`,
+    `Cerró la caja ${codigoCorto(cerrado._id)} ${resumen} (contado ${pesos(contadoEfectivo)}, esperado ${pesos(cuadre.esperado.EFECTIVO)})`,
     SERVICIO.CAJA
   );
   await enviar(res, cerrado._id);

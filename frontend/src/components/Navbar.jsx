@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { LayoutDashboard } from "lucide-react";
 import gsap from "gsap";
 import { useAuth } from "../context/AuthContext";
 import "./Navbar.css";
@@ -81,7 +82,12 @@ const Navbar = ({ sobreFoto = false, alRas = false }) => {
           {user ? (
             <>
               {user.rol_id === "admin" && (
-                <Link to="/admin" className="navbar-item nav-link nav-animate">Administración</Link>
+                <div className="navbar-item nav-animate">
+                  <Link to="/admin" className="nav-icono-btn" aria-label="Administración" title="Administración">
+                    <LayoutDashboard size={20} strokeWidth={1.8} aria-hidden="true" />
+                    <span className="nav-icono-texto">Administración</span>
+                  </Link>
+                </div>
               )}
               <Link to="/perfil" className="navbar-item nav-user nav-animate">
                 Hola, {user.nombre.split(" ")[0]}

@@ -3,7 +3,10 @@ const c = require("../controllers/chatController");
 const { auth, authOpcional, requireRole } = require("../middleware/auth");
 const { limiteChat } = require("../middleware/limites");
 
-const { auditar, codigo } = require("../middleware/auditar");
+const { auditar } = require("../middleware/auditar");
+const { SERVICIO } = require("../services/auditoria");
+const { codigoCorto } = require("../utils/codigo");
+const { ROL } = require("../utils/roles");
 
 const router = Router();
 
@@ -16,9 +19,9 @@ router.get("/conversaciones", c.listarConversaciones);
 router.get("/conversaciones/:id", c.obtenerConversacionPorId);
 router.patch("/conversaciones/:id/finalizar", c.finalizarConversacion);
 
-router.get("/intenciones", requireRole("admin"), c.listarIntenciones);
-router.post("/intenciones", requireRole("admin"), auditar("chatbot", "CREAR_INTENCION", (req, b) => `Creó la intención "${b.nombre}"`), c.crearIntencion);
-router.put("/intenciones/:id", requireRole("admin"), auditar("chatbot", "EDITAR_INTENCION", (req, b) => `Editó la intención "${b.nombre}"`), c.actualizarIntencion);
-router.delete("/intenciones/:id", requireRole("admin"), auditar("chatbot", "ELIMINAR_INTENCION", (req) => `Eliminó la intención ${codigo(req.params.id)}`), c.eliminarIntencion);
+router.get("/intenciones", requireRole(ROL.ADMIN), c.listarIntenciones);
+router.post("/intenciones", requireRole(ROL.ADMIN), auditar(SERVICIO.CHATBOT, "CREAR_INTENCION", (req, b) => `Creó la intención "${b.nombre}"`), c.crearIntencion);
+router.put("/intenciones/:id", requireRole(ROL.ADMIN), auditar(SERVICIO.CHATBOT, "EDITAR_INTENCION", (req, b) => `Editó la intención "${b.nombre}"`), c.actualizarIntencion);
+router.delete("/intenciones/:id", requireRole(ROL.ADMIN), auditar(SERVICIO.CHATBOT, "ELIMINAR_INTENCION", (req) => `Eliminó la intención ${codigoCorto(req.params.id)}`), c.eliminarIntencion);
 
 module.exports = router;

@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { api } from "../api/api";
+import { enviarMensaje } from "../services/chatService";
 import "./ChatBox.css";
 
 const WELCOME = {
@@ -29,7 +29,7 @@ const ChatBox = () => {
     setLoading(true);
 
     try {
-      const { respuesta } = await api.post("/chat/mensaje", { mensaje: text });
+      const { respuesta } = await enviarMensaje(text);
       setMessages((prev) => [...prev, { from: "bot", text: respuesta }]);
     } catch (err) {
       setMessages((prev) => [

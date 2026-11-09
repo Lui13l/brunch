@@ -1,5 +1,16 @@
 const mongoose = require("mongoose");
 
+// Estados a los que puede pasar un pedido web desde cada estado.
+const TRANSICIONES = Object.freeze({
+  pendiente: ["confirmado", "cancelado"],
+  confirmado: ["preparando", "cancelado"],
+  preparando: ["en_camino", "cancelado"],
+  en_camino: ["entregado"],
+  entregado: [],
+  cancelado: [],
+});
+const ACTIVOS = ["pendiente", "confirmado", "preparando", "en_camino"];
+
 const orderItemSchema = new mongoose.Schema(
   {
     menu_item_id: {
@@ -79,14 +90,7 @@ const orderSchema = new mongoose.Schema(
 
     estado: {
       type: String,
-      enum: [
-        "pendiente",
-        "confirmado",
-        "preparando",
-        "en_camino",
-        "entregado",
-        "cancelado",
-      ],
+      enum: Object.keys(TRANSICIONES),
       default: "pendiente",
     },
 
@@ -111,5 +115,7 @@ const orderSchema = new mongoose.Schema(
 );
 
 const Order = mongoose.model("Order", orderSchema);
+Order.TRANSICIONES = TRANSICIONES;
+Order.ACTIVOS = ACTIVOS;
 
 module.exports = Order;

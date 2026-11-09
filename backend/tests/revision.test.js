@@ -80,3 +80,67 @@ describe("Seed", () => {
     expect(p.descripcion).toBe("editada");
   });
 });
+
+describe("Reservas: el día de hoy es el de Bogotá, no el de UTC", () => {
+  test("a las 8:30 p. m. en Bogotá se puede reservar para ese mismo día", async (t) => {
+    // 01:30 UTC del 10 de marzo = 20:30 del 9 de marzo en Bogotá.
+    t.mock.timers.enable({ apis: ["Date"], now: new Date("2026-03-10T01:30:00Z") });
+    const hoyBogota = await api().post("/api/reservas").set(bearer(d.tokenCliente))
+      .send({ dia: "2026-03-09", hora: "21:00", cupo: 2 });
+    expect(hoyBogota.status).toBe(201);
+
+    const ayer = await api().post("/api/reservas").set(bearer(d.tokenCliente))
+      .send({ dia: "2026-03-08", hora: "10:00", cupo: 2 });
+    expect(ayer.status).toBe(400);
+  });
+
+  test("diaCalendarioHoy da la medianoche UTC del día de Bogotá", (t) => {
+    const { diaCalendarioHoy } = require("../src/utils/tiempo");
+    t.mock.timers.enable({ apis: ["Date"], now: new Date("2026-03-10T01:30:00Z") });
+    expect(diaCalendarioHoy().toISOString()).toBe("2026-03-09T00:00:00.000Z");
+  });
+});
+
+describe("Escrituras web atómicas (peticiones simultáneas)", () => {
+  const { Payment, DeliveryPerson, Reservation } = require("../src/models");
+  const pedir = () =>
+    api().post("/api/pedidos").set(bearer(d.tokenCliente))
+      .send({ items: [{ menu_item_id: String(d.cafe._id), cantidad: 1 }] });
+
+  test("dos pagos a la vez para el mismo pedido: solo uno se crea", async () => {
+    const { body: pedido } = await pedir();
+    const pagar = () => api().post("/api/pagos").set(bearer(d.tokenCliente)).send({ pedido_id: pedido._id, metodo: "efectivo" });
+    const estados = (await Promise.all([pagar(), pagar()])).map((r) => r.status).sort();
+    expect(estados).toEqual([201, 409]);
+    expect(await Payment.countDocuments({ pedido_id: pedido._id })).toBe(1);
+  });
+
+  test("aprobar y rechazar el mismo pago a la vez: solo uno gana", async () => {
+    const { body: pedido } = await pedir();
+    const { body: pago } = await api().post("/api/pagos").set(bearer(d.tokenCliente)).send({ pedido_id: pedido._id, metodo: "efectivo" });
+    const cambiar = (estado) => api().patch(`/api/pagos/${pago._id}/estado`).set(admin()).send({ estado });
+    const [a, r] = await Promise.all([cambiar("aprobado"), cambiar("rechazado")]);
+    expect([a.status, r.status].filter((s) => s === 200)).toHaveLength(1);
+    const ganador = a.status === 200 ? "aprobado" : "rechazado";
+    expect((await Payment.findById(pago._id)).estado).toBe(ganador);
+  });
+
+  test("un domiciliario no queda asignado a dos pedidos a la vez", async () => {
+    const [{ body: p1 }, { body: p2 }] = [await pedir(), await pedir()];
+    const dom = await DeliveryPerson.create({ nombre: "Pedro", apellido: "Gómez" });
+    const asignar = (p) => api().patch(`/api/pedidos/${p._id}/domiciliario`).set(admin()).send({ domiciliario_id: String(dom._id) });
+    const estados = (await Promise.all([asignar(p1), asignar(p2)])).map((r) => r.status).sort();
+    expect(estados).toEqual([200, 409]);
+    expect(await Order.countDocuments({ domiciliario_id: dom._id })).toBe(1);
+  });
+
+  test("confirmar y cancelar la misma reserva a la vez: no se pisan", async () => {
+    const manana = new Date(Date.now() + 2 * 86_400_000).toISOString().slice(0, 10);
+    const { body: reserva } = await api().post("/api/reservas").set(bearer(d.tokenCliente)).send({ dia: manana, hora: "10:00", cupo: 2 });
+    const cambiar = (estado) => api().patch(`/api/reservas/${reserva._id}/estado`).set(admin()).send({ estado });
+    const [c, x] = await Promise.all([cambiar("confirmada"), cambiar("cancelada")]);
+    const ok = [c, x].filter((r) => r.status === 200);
+    expect(ok).toHaveLength(1);
+    expect((await Reservation.findById(reserva._id)).estado_reserva).toBe(ok[0].body.estado_reserva);
+  });
+});

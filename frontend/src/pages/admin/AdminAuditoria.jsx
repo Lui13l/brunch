@@ -1,7 +1,7 @@
 import { useCallback, useState } from "react";
 import { RefreshCw } from "lucide-react";
 import * as svc from "../../services/adminService";
-import { Aviso, Cargando, Chip, Encabezado, RangoFechas, Selector, Vacio } from "./comun";
+import { Aviso, Cargando, Encabezado, RangoFechas, Selector, Vacio } from "./comun";
 import { hoy, useCarga } from "./util";
 
 const SERVICIOS = {
@@ -15,6 +15,14 @@ const SERVICIOS = {
   inventario: "Inventario",
 };
 const ROL = { ADMIN: "Administración", MESERO: "Mesero", COCINA: "Cocina", USUARIO: "Cliente" };
+// "2026-11-06" -> "Viernes 6 de noviembre"
+const diaLegible = (dia) => {
+  const d = new Date(`${dia}T12:00:00`);
+  if (Number.isNaN(d.getTime())) return dia;
+  const t = d.toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" });
+  return t.charAt(0).toUpperCase() + t.slice(1);
+};
+
 const LIMITES = [100, 200, 500].map((n) => ({ valor: String(n), texto: `${n} más recientes` }));
 
 // Quién hizo qué, tanto en la web como en la app de comandas.
@@ -68,20 +76,22 @@ export default function AdminAuditoria() {
 
       {dias.map(({ dia, filas }) => (
         <section key={dia} style={{ marginBottom: "1.25rem" }}>
-          <h3 className="adm-eyebrow" style={{ display: "block", marginBottom: "0.5rem" }}>{dia}</h3>
+          <h3 className="adm-dia">{diaLegible(dia)}</h3>
           <div className="adm-tabla-wrap">
             <table className="table adm-tabla is-narrow is-fullwidth">
               <tbody>
                 {filas.map((r) => (
                   <tr key={r.id}>
-                    <td style={{ width: "4.5rem" }}><strong>{r.fecha?.slice(11, 16)}</strong></td>
+                    <td className="adm-hora">{r.fecha?.slice(11, 16)}</td>
                     <td>
-                      <strong>{r.accion}</strong> <Chip>{SERVICIOS[r.servicio] ?? r.servicio}</Chip>
+                      <span className="adm-accion">{r.detalle}</span>
                       <br />
-                      {r.detalle}
+                      <span className="adm-tarjeta-meta">
+                        {r.usuario ? `${r.usuario.nombre}, ${(ROL[r.usuario.rol] ?? r.usuario.rol).toLowerCase()}` : "Sistema"}
+                      </span>
                     </td>
-                    <td className="adm-tarjeta-meta" style={{ whiteSpace: "nowrap" }}>
-                      {r.usuario ? `${r.usuario.nombre} · ${ROL[r.usuario.rol] ?? r.usuario.rol}` : "Sistema"}
+                    <td className="has-text-right">
+                      <span className="adm-etiqueta">{SERVICIOS[r.servicio] ?? r.servicio}</span>
                     </td>
                   </tr>
                 ))}

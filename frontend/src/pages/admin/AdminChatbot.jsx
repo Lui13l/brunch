@@ -93,7 +93,11 @@ export default function AdminChatbot() {
               <span className="adm-tarjeta-meta">{(i.respuestas ?? []).length} respuesta(s)</span>
             </div>
             {i.descripcion && <p className="adm-tarjeta-meta">{i.descripcion}</p>}
-            <p>{(i.palabras_clave ?? []).map((p) => <Chip key={p}>{p}</Chip>).reduce((acc, el) => [...acc, el, " "], [])}</p>
+            <p style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
+              {(i.palabras_clave ?? []).map((p) => (
+                <span key={p} className="adm-etiqueta">{p}</span>
+              ))}
+            </p>
             <div className="adm-tarjeta-acciones">
               <button type="button" className="button is-small" onClick={() => abrir(i)}>
                 <Pencil size={14} />

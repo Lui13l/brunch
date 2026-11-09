@@ -1,15 +1,5 @@
 import { X } from "lucide-react";
-import { formatearPrecio } from "../../api/api";
-
-const codigoPedido = (id) => `#${String(id || "").slice(-6).toUpperCase()}`;
-
-const formatearFecha = (fecha) => {
-  if (!fecha) return "Sin fecha";
-  const valor = new Date(fecha);
-  return Number.isNaN(valor.getTime())
-    ? "Sin fecha"
-    : valor.toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" });
-};
+import { codigoCorto as codigoPedido, formatearFecha, formatearPrecio } from "../../utils/formato";
 
 export default function DetallePedidoModal({ pedido, cargando, error, onCerrar }) {
   if (!pedido) return null;

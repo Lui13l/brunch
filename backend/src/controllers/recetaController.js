@@ -1,11 +1,10 @@
 const { z } = require("zod");
 const { MenuItem, Insumo, RecetaItem } = require("../models");
 const { HttpError } = require("../utils/http");
-const { objectId } = require("../utils/validar");
+const { objectId, cantidad } = require("../utils/validar");
 const { toPlato, toRecetaItem } = require("../utils/serializar");
 const { conTransaccion } = require("../utils/transaccion");
 const { registrar, SERVICIO } = require("../services/auditoria");
-const { cantidad } = require("./insumoController");
 
 const recetaSchema = z.object({
   items: z

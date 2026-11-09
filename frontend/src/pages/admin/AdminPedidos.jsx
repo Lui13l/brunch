@@ -105,33 +105,39 @@ export default function AdminPedidos() {
           return (
             <li key={p.id} className="adm-tarjeta">
               <div className="adm-tarjeta-cabeza">
-                <span className="adm-tarjeta-titulo">{codigo(p.id)}</span>
+                <span className="adm-tarjeta-titulo">Pedido {codigo(p.id)}</span>
                 <Chip tono={e.tono}>{e.texto}</Chip>
-                <span className="adm-tarjeta-meta">{fechaHora(p.fechaInicio)}</span>
               </div>
-              <p>
+              <p className="adm-tarjeta-meta">Llegó el {fechaHora(p.fechaInicio)}</p>
+              <p style={{ marginTop: "0.6rem" }}>
                 <strong>{p.cliente?.nombre ?? "Cliente"}</strong>
-                {p.cliente?.celular && <> · <a href={`tel:${p.cliente.celular}`}>{p.cliente.celular}</a></>}
-                {p.cliente?.correo && <span className="adm-tarjeta-meta"> · {p.cliente.correo}</span>}
+                {p.cliente?.celular && (
+                  <>
+                    {" "}
+                    <a href={`tel:${p.cliente.celular}`}>{p.cliente.celular}</a>
+                  </>
+                )}
               </p>
-              {p.direccion && <p className="adm-tarjeta-meta">{p.direccion}</p>}
-              {p.fechaProgramada && <p className="adm-tarjeta-meta">Programado: {fechaHora(p.fechaProgramada)}</p>}
-              {p.observaciones && <p><em>{p.observaciones}</em></p>}
+              {p.direccion && <p>{p.direccion}</p>}
+              {p.fechaProgramada && <p className="adm-tarjeta-meta">Para el {fechaHora(p.fechaProgramada)}</p>}
+              {p.observaciones && <p className="adm-nota">{p.observaciones}</p>}
               <ul className="adm-items">
                 {p.items.map((i, n) => (
                   <li key={`${i.menuItemId}-${n}`}>
-                    <span>{i.cantidad}× {i.nombre}</span>
+                    <span>{i.cantidad} {i.nombre}</span>
+                    <span className="adm-guia" aria-hidden="true" />
                     <span>{pesos(i.subtotal)}</span>
                   </li>
                 ))}
-                <li>
-                  <strong>Total</strong>
-                  <strong>{pesos(p.total)}</strong>
+                <li className="adm-total">
+                  <span>Total</span>
+                  <span className="adm-guia" aria-hidden="true" />
+                  <span>{pesos(p.total)}</span>
                 </li>
               </ul>
               <p className="adm-tarjeta-meta">
-                {p.domiciliario ? `Domiciliario: ${p.domiciliario.nombre}` : "Sin domiciliario"} ·{" "}
-                {p.pagoId ? "Pago registrado" : "Sin pago"}
+                {p.domiciliario ? `Lo lleva ${p.domiciliario.nombre}.` : "Aún sin domiciliario."}{" "}
+                {p.pagoId ? "Pago registrado." : "Sin pago registrado."}
               </p>
 
               <div className="adm-tarjeta-acciones">

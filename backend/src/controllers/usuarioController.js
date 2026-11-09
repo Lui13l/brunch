@@ -1,6 +1,6 @@
 const { User, Role } = require("../models");
 const { HttpError, pick } = require("../utils/http");
-const { cambiarCuenta } = require("./personalController");
+const { cambiarCuenta } = require("../services/cuentas");
 const { desconectarUsuario } = require("../ws/hub");
 
 const listar = async (req, res) => {

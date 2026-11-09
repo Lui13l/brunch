@@ -1,6 +1,7 @@
 const { z } = require("zod");
 const { HttpError } = require("./http");
 const { parseFecha } = require("./tiempo");
+const { redondear2, redondear3 } = require("./dinero");
 
 // Valida req[fuente] con un esquema zod y deja el resultado en req.valid[fuente].
 // (En Express 5 req.query es de solo lectura, por eso no se reescribe.)
@@ -45,9 +46,26 @@ const fecha = z.string({ error: "La fecha es obligatoria" }).transform((v, ctx) 
   return dia;
 });
 
+// Las cantidades del inventario llevan 3 decimales.
+const cantidad = (campo, { minimo = 0 } = {}) =>
+  z.coerce
+    .number({ error: `${campo} es obligatorio` })
+    .min(minimo, `${campo} no puede ser menor que ${minimo}`)
+    .max(9_999_999, `${campo} es demasiado alto`)
+    .transform(redondear3);
+
+// El dinero lleva 2 decimales y un tope alto pero finito: un cero de más al
+// teclear no debe poder descuadrar el arqueo en silencio.
+const dinero = (campo, { minimo = 0 } = {}) =>
+  z.coerce
+    .number({ error: `${campo} es obligatorio` })
+    .min(minimo, minimo === 0 ? `${campo} no puede ser negativo` : `${campo} debe ser mayor que ${minimo}`)
+    .max(999_999_999, `${campo} es demasiado alto`)
+    .transform(redondear2);
+
 const booleanoQuery = (campo) =>
   z
     .enum(["true", "false"], { error: `El parámetro '${campo}' debe ser true o false` })
     .transform((v) => v === "true");
 
-module.exports = { validar, objectId, idParams, texto, textoOpcional, email, fecha, booleanoQuery };
+module.exports = { validar, objectId, idParams, texto, textoOpcional, email, fecha, cantidad, dinero, booleanoQuery };

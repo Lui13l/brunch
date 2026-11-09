@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
-import { formatearPrecio } from "../api/api";
+import { formatearPrecio } from "../utils/formato";
 import "./CartDrawer.css";
 
 const CartDrawer = () => {

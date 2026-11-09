@@ -179,7 +179,8 @@
   transform: scale(1.02);
 }
 
-.button {
+/* Solo el botón de la tarjeta de contacto (antes .button global). */
+.contact-info .button {
   width: fit-content;
   padding: 0.9rem 2rem;
   background-color: #391903;

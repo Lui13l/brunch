@@ -1,6 +1,6 @@
 const { registrar } = require("../services/auditoria");
 
-const codigo = (id) => `#${String(id ?? "").slice(-6).toUpperCase()}`;
+const { codigoCorto } = require("../utils/codigo");
 
 // Audita una acción de admin de la web sin tocar su controlador: si la
 // respuesta es exitosa (2xx), registra quién hizo qué justo antes de enviarla.
@@ -20,7 +20,7 @@ const auditar = (servicio, accion, describir) => (req, res, next) => {
     try {
       detalle = describir(req, cuerpo);
     } catch {
-      detalle = `${accion} ${codigo(req.params.id)}`;
+      detalle = `${accion} ${codigoCorto(req.params.id)}`;
     }
     // registrar nunca lanza (es de mejor esfuerzo).
     void registrar(req.usuario, accion, detalle, servicio).finally(() => end(...args));
@@ -29,4 +29,4 @@ const auditar = (servicio, accion, describir) => (req, res, next) => {
   next();
 };
 
-module.exports = { auditar, codigo };
+module.exports = { auditar };

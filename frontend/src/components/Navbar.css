@@ -89,9 +89,18 @@
   transition: color 0.2s ease;
 }
 
-.navbar-custom .nav-user:hover,
-.navbar-custom .nav-user:focus-visible {
+/* Al pasar el mouse el saludo toma el color pleno del tono: blanco sobre
+   foto y café sobre crema (en blanco desaparecía sobre el fondo crema). */
+.nav-sobre-foto .nav-user:hover,
+.nav-sobre-foto .nav-user:focus-visible {
   color: #fff !important;
+}
+
+.nav-sobre-crema .nav-user:hover,
+.nav-sobre-crema .nav-user:focus-visible,
+.nav-con-fondo .nav-user:hover,
+.nav-con-fondo .nav-user:focus-visible {
+  color: var(--nav-cafe) !important;
 }
 
 .nav-logout {
@@ -125,6 +134,29 @@
   transition: transform 0.25s ease;
 }
 
+/* Acceso al panel de administración: ícono redondo de 40px. */
+.nav-icono-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-width: 40px;
+  height: 40px;
+  color: inherit;
+  border-radius: 50%;
+  transition: background-color 0.2s ease;
+}
+
+/* En escritorio solo el ícono; el nombre sale al pasar el mouse (title) y para lectores de pantalla. */
+.nav-icono-texto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
 .navbar-custom .navbar-burger {
   color: inherit;
   background-color: transparent;
@@ -151,7 +183,9 @@
 .nav-sobre-crema .nav-link,
 .nav-con-fondo .nav-link,
 .nav-sobre-crema .navbar-item,
-.nav-con-fondo .navbar-item {
+.nav-con-fondo .navbar-item,
+.nav-sobre-crema .nav-icono-btn,
+.nav-con-fondo .nav-icono-btn {
   color: var(--nav-cafe) !important;
 }
 
@@ -181,6 +215,8 @@
   background-color: var(--nav-cafe-hover);
 }
 
+.nav-sobre-crema .nav-icono-btn:hover,
+.nav-con-fondo .nav-icono-btn:hover,
 .nav-sobre-crema .navbar-burger:hover,
 .nav-con-fondo .navbar-burger:hover,
 .nav-con-fondo .navbar-burger.is-active {
@@ -205,7 +241,8 @@
 
 .nav-sobre-foto .brand-name,
 .nav-sobre-foto .nav-link,
-.nav-sobre-foto .navbar-item {
+.nav-sobre-foto .navbar-item,
+.nav-sobre-foto .nav-icono-btn {
   color: #fff !important;
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.35);
 }
@@ -225,6 +262,7 @@
   background-color: #fff;
 }
 
+.nav-sobre-foto .nav-icono-btn:hover,
 .nav-sobre-foto .navbar-burger:hover {
   background-color: rgba(255, 255, 255, 0.16);
 }
@@ -238,6 +276,22 @@
 
   .navbar.navbar-custom {
     padding: 0.4rem 1rem;
+  }
+
+  /* En el menú del celular el ícono va con su nombre. */
+  .nav-icono-btn {
+    justify-content: flex-start;
+    border-radius: 10px;
+    font-family: "DM Serif Display", serif;
+    font-weight: 600;
+  }
+
+  .nav-icono-texto {
+    position: static;
+    width: auto;
+    height: auto;
+    overflow: visible;
+    clip: auto;
   }
 
   .navbar-custom .navbar-menu.is-active {

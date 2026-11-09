@@ -58,10 +58,21 @@ const inicioDiaLocal = (dia) => {
 
 const hoyLocal = () => diaLocal(new Date());
 
+// Fechas de calendario guardadas como medianoche UTC (p. ej. Reservation.dia):
+// el "hoy" que les corresponde es el día del restaurante, no el de UTC.
+const diaCalendarioHoy = () => new Date(`${hoyLocal()}T00:00:00.000Z`);
+
 const sumarDias = (dia, n) => {
   const [y, m, d] = dia.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10);
 };
+
+// Rango [inicio, fin) en instantes UTC para filtrar por días del restaurante,
+// incluyendo el día "hasta" completo. Un extremo sin indicar queda undefined.
+const rangoLocal = (desde, hasta) => ({
+  inicio: desde ? inicioDiaLocal(desde) : undefined,
+  fin: hasta ? inicioDiaLocal(sumarDias(hasta, 1)) : undefined,
+});
 
 // Devuelve el mismo "AAAA-MM-DD" si es una fecha real; si no, null.
 const parseFecha = (valor) => {
@@ -70,4 +81,4 @@ const parseFecha = (valor) => {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === valor ? valor : null;
 };
 
-module.exports = { fechaLocal, diaLocal, inicioDiaLocal, hoyLocal, sumarDias, parseFecha };
+module.exports = { fechaLocal, diaLocal, inicioDiaLocal, hoyLocal, diaCalendarioHoy, rangoLocal, parseFecha };

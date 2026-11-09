@@ -32,11 +32,12 @@ const clasificar = (err) => {
   return { status, mensaje: status === 500 ? "Error interno del servidor" : err.message };
 };
 
-// eslint-disable-next-line no-unused-vars
+
+// Express reconoce el manejador de errores por sus 4 parámetros (next incluido).
 const manejarErrores = (err, req, res, next) => {
   const { status, mensaje, errores } = clasificar(err);
   if (status === 500) console.error(err);
   responder(req, res, status, mensaje, errores);
 };
 
-module.exports = { enTexto, noEncontrado, manejarErrores, clasificar };
+module.exports = { enTexto, noEncontrado, manejarErrores };

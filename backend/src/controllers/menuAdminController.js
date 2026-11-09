@@ -1,11 +1,11 @@
 const mongoose = require("mongoose");
 const { z } = require("zod");
-const { MenuItem, Category, RecetaItem } = require("../models");
+const { MenuItem, Category } = require("../models");
 const { HttpError } = require("../utils/http");
 const { objectId, texto, textoOpcional } = require("../utils/validar");
 const { toPlato, toCategoriaSalon, toAuditLog } = require("../utils/serializar");
-const { conTransaccion } = require("../utils/transaccion");
 const { registrar, listar: listarAuditoria, SERVICIO } = require("../services/auditoria");
+const { desactivarProducto } = require("../services/menu");
 
 const platoSchema = z.object({
   nombre: texto("El nombre"),
@@ -85,15 +85,9 @@ const editar = async (req, res) => {
   res.json(toPlato(item));
 };
 
-// Borrado real (como en la API anterior) junto con su receta. Los pedidos y
-// comandas guardan copia del nombre y precio, así que no quedan huérfanos.
 const eliminar = async (req, res) => {
-  const item = await buscar(req.valid.params.id);
-  await conTransaccion(async (session) => {
-    await RecetaItem.deleteMany({ menu_item_id: item._id }, { session });
-    await MenuItem.deleteOne({ _id: item._id }, { session });
-  });
-  await registrar(req.usuario, "ELIMINAR_PRODUCTO", `Eliminó el producto "${item.nombre}"`, SERVICIO.MENU);
+  const item = await desactivarProducto(req.valid.params.id);
+  await registrar(req.usuario, "DESACTIVAR_PRODUCTO", `Desactivó el producto "${item.nombre}"`, SERVICIO.MENU);
   res.status(204).end();
 };
 

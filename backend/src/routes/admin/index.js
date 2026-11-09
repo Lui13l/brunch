@@ -1,10 +1,11 @@
 const { Router } = require("express");
 const { auth, requireRole } = require("../../middleware/auth");
 const { enTexto } = require("../../middleware/errores");
+const { ROL } = require("../../utils/roles");
 
 // Administración del restaurante (app de comandas): solo admin, errores en texto.
 const router = Router();
-router.use(enTexto, auth, requireRole("admin"));
+router.use(enTexto, auth, requireRole(ROL.ADMIN));
 
 router.use("/mesas", require("./mesas"));
 router.use("/menu", require("./menu"));

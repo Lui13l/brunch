@@ -3,7 +3,7 @@ const { Comanda, MovimientoInventario } = require("../models");
 const { fecha } = require("../utils/validar");
 const { id } = require("../utils/serializar");
 const { redondear2, redondear3 } = require("../utils/dinero");
-const { diaLocal, hoyLocal, inicioDiaLocal, sumarDias } = require("../utils/tiempo");
+const { diaLocal, hoyLocal, inicioDiaLocal, rangoLocal } = require("../utils/tiempo");
 
 const MAX_DIAS = 366;
 
@@ -23,7 +23,7 @@ const rangoSchema = z
 const resolverRango = (query) => {
   const desde = query.desde ?? hoyLocal();
   const hasta = query.hasta ?? desde;
-  return { desde, hasta, inicio: inicioDiaLocal(desde), fin: inicioDiaLocal(sumarDias(hasta, 1)) };
+  return { desde, hasta, ...rangoLocal(desde, hasta) };
 };
 
 const acumular = (mapa, clave, inicial) => {

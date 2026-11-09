@@ -4,6 +4,7 @@
 const { rolPublico } = require("./roles");
 const { fechaLocal } = require("./tiempo");
 const { redondear2 } = require("./dinero");
+const { TRANSICIONES } = require("../models/Order");
 
 const id = (v) => (v == null ? null : String(v._id ?? v));
 const num = (v) => (v == null ? null : Number(v));
@@ -161,15 +162,17 @@ const toArqueo = (a) => ({
   movimientos: [...(a.movimientos ?? [])].reverse().map((m) => toMovimientoCaja(m, a._id)),
 });
 
+const siguientesEstados = (estado) => TRANSICIONES[estado] ?? [];
+
 // Pedido web para la pantalla del admin. p.usuario_id puede venir poblado;
 // si no, se usa el cliente que se pasa aparte.
-const toPedidoAdmin = (p, transiciones, cliente) => {
+const toPedidoAdmin = (p, cliente) => {
   const c = p.usuario_id?.nombre !== undefined ? p.usuario_id : cliente;
   const dom = p.domiciliario_id?.nombre !== undefined ? p.domiciliario_id : null;
   return {
     id: id(p),
     estado: p.estado,
-    siguientes: transiciones[p.estado] ?? [],
+    siguientes: siguientesEstados(p.estado),
     total: num(p.total),
     items: (p.items ?? []).map((i) => ({
       menuItemId: id(i.menu_item_id),
@@ -190,15 +193,11 @@ const toPedidoAdmin = (p, transiciones, cliente) => {
 
 module.exports = {
   toPedidoAdmin,
+  siguientesEstados,
   toArqueo,
-  toMovimientoCaja,
   toComandaItem,
-  totalDeItems,
   toComanda,
   id,
-  num,
-  o,
-  redondear2,
   toUsuarioPersonal,
   toPlato,
   toCategoriaSalon,

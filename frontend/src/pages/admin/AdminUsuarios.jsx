@@ -87,7 +87,7 @@ export default function AdminUsuarios() {
             {usuarios.map((u) => (
               <tr key={u._id} style={u.activo === false ? { opacity: 0.55 } : undefined}>
                 <td>
-                  <strong>{u.nombre}</strong> {yo(u) && <Chip>Tú</Chip>}
+                  <strong>{u.nombre}</strong> {yo(u) && <span className="adm-etiqueta">Tú</span>}
                   <br />
                   <span className="adm-tarjeta-meta">{u.correo}</span>
                   <br />

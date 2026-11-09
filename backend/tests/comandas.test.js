@@ -265,3 +265,26 @@ describe("Cerrar la cuenta", () => {
     expect((await abrir()).status).toBe(200);
   });
 });
+
+describe("Cierre forzado con platos en cocina", () => {
+  test("los platos pendientes se cancelan, devuelven inventario y salen de la cocina", async () => {
+    const { body: c } = await abrir();
+    await agregar(c.id, HUEVOS());
+    await enviar(c.id);
+    expect(await stock()).toBe(20);
+
+    const res = await api().post(`/api/comandas/${c.id}/cerrar`).set(admin())
+      .send({ metodoPago: "EFECTIVO", forzar: true });
+    expect(res.status).toBe(200);
+    expect(res.body.items[0].estado).toBe("CANCELADO");
+    expect(res.body.total).toBe(0);
+    expect(await stock()).toBe(100);
+
+    const cola = await api().get("/api/cocina/pendientes").set(k());
+    expect(cola.body).toHaveLength(0);
+
+    const itemId = res.body.items[0].id;
+    const tarde = await api().patch(`/api/cocina/items/${itemId}`).set(k()).send({ estado: "LISTO" });
+    expect(tarde.status).toBe(409);
+  });
+});

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useAuth } from "../context/AuthContext";
-import { api } from "../api/api";
+import { crearReserva } from "../services/reservasService";
 import "./Reservas.css";
 
 const OCASIONES = ["Cumpleaños", "Aniversario", "Reunión de negocios", "Otro"];
@@ -32,7 +32,7 @@ const Reservas = () => {
     setError("");
     setEnviando(true);
     try {
-      const reserva = await api.post("/reservas", {
+      const reserva = await crearReserva({
         dia: form.dia,
         hora: form.hora,
         cupo: Number(form.cupo),

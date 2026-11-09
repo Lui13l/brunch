@@ -1,104 +1,30 @@
-const mongoose = require("mongoose");
-const { z } = require("zod");
-const { Comanda, Mesa, MenuItem, RecetaItem, MovimientoInventario } = require("../models");
+const { Comanda, Mesa, MenuItem } = require("../models");
 const { HttpError } = require("../utils/http");
-const { objectId, textoOpcional } = require("../utils/validar");
-const { toComanda, toComandaItem, totalDeItems } = require("../utils/serializar");
+const { toComanda } = require("../utils/serializar");
 const { conTransaccion } = require("../utils/transaccion");
-const { redondear2, redondear3 } = require("../utils/dinero");
-const { aplicarMovimiento, ordenarPorInsumo } = require("../services/inventario");
+const { codigoCorto } = require("../utils/codigo");
+const { ROL } = require("../utils/roles");
 const { arqueoAbierto, publicarCaja } = require("../services/caja");
 const { registrar, SERVICIO } = require("../services/auditoria");
+const {
+  mismo,
+  cargar,
+  exigirAbierta,
+  diagnosticarItem,
+  calcularTotal,
+  enviar,
+  devolverConsumos,
+  avisarSiLaMesaEstaCompleta,
+} = require("../services/comandas");
 const { publicar, TOPICS } = require("../ws/hub");
 
-const { EN_COCINA, METODOS_PAGO } = Comanda;
+// Cuentas de las mesas (app del personal). Las reglas de negocio viven en
+// services/comandas.js; aquí solo se traduce HTTP ↔ servicio y se avisa.
 
-// --- Esquemas (mismos mensajes que la API anterior) ---
-
-const abrirSchema = z.object({
-  mesaId: objectId,
-  comensales: z.coerce
-    .number({ error: "El número de comensales debe ser un número" })
-    .int("El número de comensales debe ser entero")
-    .min(1, "Debe haber al menos 1 comensal")
-    .max(100, "Demasiados comensales para una sola mesa")
-    .nullish(),
-  notas: textoOpcional("Las notas"),
-});
-
-const cantidadPlato = z.coerce
-  .number({ error: "La cantidad es obligatoria" })
-  .int("La cantidad debe ser un número entero")
-  .min(1, "La cantidad mínima es 1")
-  .max(99, "Cantidad demasiado alta para un solo plato");
-
-const agregarItemSchema = z.object({
-  menuItemId: objectId,
-  cantidad: cantidadPlato.default(1),
-  notas: textoOpcional("Las notas"),
-});
-
-const editarItemSchema = z.object({ cantidad: cantidadPlato, notas: textoOpcional("Las notas") });
-
-const cerrarSchema = z.object({
-  metodoPago: z.enum(METODOS_PAGO, { error: "El método de pago debe ser EFECTIVO, TARJETA o TRANSFERENCIA" }),
-  // Salida de emergencia para el admin: cerrar aunque queden platos en cocina.
-  forzar: z.boolean().default(false),
-});
-
-const estadoCocinaSchema = z.object({
-  estado: z.enum(["PREPARANDO", "LISTO"], { error: "La cocina solo puede marcar PREPARANDO o LISTO" }),
-});
-
-const itemParams = z.object({ id: objectId, itemId: objectId });
-
-// --- Utilidades ---
-
-const codigo = (id) => String(id).slice(-6).toUpperCase();
-const mismo = (a, b) => String(a) === String(b);
-
-const cargar = async (id) => {
-  const comanda = await Comanda.findById(id).populate("mesa_id", "numero").lean();
-  if (!comanda) throw new HttpError(404, "Comanda no encontrada");
-  return comanda;
-};
-
-const exigirAbierta = (comanda) => {
-  if (comanda.estado !== "ABIERTA") throw new HttpError(409, `La comanda ya está ${comanda.estado.toLowerCase()}`);
-};
-
-// Cuando una actualización condicional no encontró nada, explica por qué con
-// el mismo mensaje que daba la API anterior.
-const diagnosticarItem = async (id, itemId, { session, porEstado } = {}) => {
-  const comanda = await Comanda.findById(id).session(session || null).lean();
-  if (!comanda) throw new HttpError(404, "Comanda no encontrada");
-  exigirAbierta(comanda);
-  const item = comanda.items.find((i) => mismo(i._id, itemId));
-  if (!item) throw new HttpError(404, "Plato no encontrado en esta comanda");
-  throw new HttpError(409, porEstado(item));
-};
-
+const { EN_COCINA } = Comanda;
 const NO_EDITABLE = () => "El plato ya se envió a cocina: cancélalo en vez de modificarlo";
 
 const responder = async (res, id) => res.json(toComanda(await cargar(id)));
-
-// Cuando el último plato de una mesa sale de cocina, el mesero puede llevarlo
-// todo de una vez. Los borradores no cuentan: la cocina ya terminó lo enviado.
-const avisarSiLaMesaEstaCompleta = (comanda) => {
-  const enCocina = comanda.items.filter((i) => EN_COCINA.includes(i.estado)).length;
-  const listos = comanda.items.filter((i) => i.estado === "LISTO").length;
-  if (enCocina > 0 || listos === 0) return;
-  const aviso = {
-    tipo: "mesaCompleta",
-    comandaId: String(comanda._id),
-    mesa: comanda.mesa_id?.numero ?? null,
-    platos: listos,
-  };
-  publicar(TOPICS.mesero(comanda.mesero_id), aviso);
-  publicar(TOPICS.salon, aviso);
-};
-
-// --- Comandas ---
 
 const abrir = async (req, res) => {
   const { mesaId, comensales, notas } = req.valid.body;
@@ -165,13 +91,7 @@ const agregarItem = async (req, res) => {
       { _id: id, estado: "ABIERTA" },
       {
         $push: {
-          items: {
-            menu_item_id: plato._id,
-            nombre_item: plato.nombre,
-            precio_unitario: precio,
-            cantidad,
-            notas: notas ?? null,
-          },
+          items: { menu_item_id: plato._id, nombre_item: plato.nombre, precio_unitario: precio, cantidad, notas: notas ?? null },
         },
       }
     );
@@ -183,7 +103,7 @@ const agregarItem = async (req, res) => {
 const editarItem = async (req, res) => {
   const { id, itemId } = req.valid.params;
   const set = { "items.$.cantidad": req.valid.body.cantidad };
-  // Solo se tocan las notas si vienen: antes, omitirlas las borraba.
+  // Solo se tocan las notas si vienen: omitirlas no debe borrarlas.
   if (req.body && Object.hasOwn(req.body, "notas")) set["items.$.notas"] = req.valid.body.notas;
 
   const r = await Comanda.updateOne(
@@ -204,106 +124,28 @@ const quitarItem = async (req, res) => {
   await responder(res, id);
 };
 
-/**
- * Envía a cocina los platos en borrador y descuenta el inventario.
- *
- * Todo ocurre en una transacción: marcar los platos es la puerta de entrada (si
- * otra petición los marcó primero, esta no encuentra nada que enviar y no
- * descuenta dos veces). Si el stock no alcanza NO se bloquea el envío: queda
- * negativo, el plato y la comanda se marcan con faltante y se avisa a admin.
- */
 const enviarACocina = async (req, res) => {
   const { id } = req.valid.params;
   exigirAbierta(await cargar(id));
 
-  const { faltantes, sinReceta } = await conTransaccion(async (session) => {
-    const lote = new mongoose.Types.ObjectId();
-    const comanda = await Comanda.findOneAndUpdate(
-      { _id: id, estado: "ABIERTA", "items.estado": "BORRADOR" },
-      {
-        $set: {
-          "items.$[b].estado": "PENDIENTE",
-          "items.$[b].fecha_envio": new Date(),
-          "items.$[b].inventario_aplicado": true,
-          "items.$[b].lote_envio": lote,
-        },
-      },
-      { arrayFilters: [{ "b.estado": "BORRADOR" }], session, returnDocument: "after" }
-    ).lean();
-
-    if (!comanda) {
-      const actual = await Comanda.findById(id).session(session).lean();
-      if (actual) exigirAbierta(actual);
-      throw new HttpError(409, "No hay platos nuevos que enviar");
-    }
-
-    const items = comanda.items.filter((i) => mismo(i.lote_envio, lote));
-    const menuIds = [...new Set(items.map((i) => i.menu_item_id).filter(Boolean).map(String))];
-    const recetas = await RecetaItem.find({ menu_item_id: { $in: menuIds } }).session(session).lean();
-
-    const consumos = [];
-    for (const item of items) {
-      for (const linea of recetas.filter((r) => mismo(r.menu_item_id, item.menu_item_id))) {
-        consumos.push({
-          insumoId: linea.insumo_id,
-          comandaItemId: item._id,
-          cantidad: redondear3(linea.cantidad * item.cantidad),
-        });
-      }
-    }
-
-    const faltantesPorInsumo = new Map();
-    const itemsConFaltante = new Set();
-    for (const consumo of ordenarPorInsumo(consumos)) {
-      const insumo = await aplicarMovimiento(session, {
-        insumoId: consumo.insumoId,
-        tipo: "CONSUMO",
-        cantidad: -consumo.cantidad,
-        motivo: `Comanda #${codigo(id)}`,
-        comandaId: comanda._id,
-        comandaItemId: consumo.comandaItemId,
-        usuarioId: req.usuario._id,
-      });
-      if (insumo.stock < 0) {
-        faltantesPorInsumo.set(String(insumo._id), { insumo: insumo.nombre, unidad: insumo.unidad, stock: insumo.stock });
-        itemsConFaltante.add(String(consumo.comandaItemId));
-      }
-    }
-
-    if (itemsConFaltante.size > 0) {
-      await Comanda.updateOne(
-        { _id: id },
-        { $set: { tiene_faltante: true, "items.$[f].falto_stock": true } },
-        {
-          arrayFilters: [{ "f._id": { $in: [...itemsConFaltante].map((x) => new mongoose.Types.ObjectId(x)) } }],
-          session,
-        }
-      );
-    }
-
-    const conReceta = new Set(recetas.map((r) => String(r.menu_item_id)));
-    const sinReceta = [...new Set(items.filter((i) => !conReceta.has(String(i.menu_item_id))).map((i) => i.nombre_item))];
-    return { faltantes: [...faltantesPorInsumo.values()], sinReceta };
-  });
+  const { faltantes, sinReceta } = await conTransaccion((session) =>
+    enviar(session, { comandaId: id, usuarioId: req.usuario._id })
+  );
 
   // Fuera de la transacción: si algo revierte, nadie debe haber sido avisado.
-  const comanda = await cargar(id);
-  const json = toComanda(comanda);
+  const json = toComanda(await cargar(id));
   publicar(TOPICS.cocina, json);
   if (faltantes.length > 0) publicar(TOPICS.adminInventario, { comandaId: json.id, faltantes });
   await registrar(
     req.usuario,
     "ENVIAR_COCINA",
-    `Envió a cocina la comanda #${codigo(id)} (mesa ${json.mesaNumero})${faltantes.length ? " con faltantes" : ""}`,
+    `Envió a cocina la comanda ${codigoCorto(id)} (mesa ${json.mesaNumero})${faltantes.length ? " con faltantes" : ""}`,
     SERVICIO.COMANDAS
   );
   res.json({ comanda: json, faltantes, sinReceta });
 };
 
-/**
- * Cancela un plato ya enviado y devuelve lo que consumió. La devolución sale de
- * los movimientos que realmente se registraron, no de la receta actual.
- */
+// Cancela un plato ya enviado y devuelve lo que consumió.
 const cancelarItem = async (req, res) => {
   const { id, itemId } = req.valid.params;
   exigirAbierta(await cargar(id));
@@ -324,21 +166,12 @@ const cancelarItem = async (req, res) => {
 
     const item = antes.items.find((i) => mismo(i._id, itemId));
     if (!item.inventario_aplicado) return;
-
-    const consumos = await MovimientoInventario.find({ comanda_item_id: item._id, tipo: "CONSUMO" })
-      .session(session)
-      .lean();
-    for (const mov of ordenarPorInsumo(consumos.map((c) => ({ ...c, insumoId: c.insumo_id })))) {
-      await aplicarMovimiento(session, {
-        insumoId: mov.insumo_id,
-        tipo: "DEVOLUCION",
-        cantidad: -mov.cantidad,
-        motivo: `Cancelación en comanda #${codigo(id)}`,
-        comandaId: antes._id,
-        comandaItemId: item._id,
-        usuarioId: req.usuario._id,
-      });
-    }
+    await devolverConsumos(session, {
+      comandaId: antes._id,
+      itemIds: [item._id],
+      usuarioId: req.usuario._id,
+      motivo: `Cancelación en comanda ${codigoCorto(id)}`,
+    });
   });
 
   const comanda = await cargar(id);
@@ -346,7 +179,7 @@ const cancelarItem = async (req, res) => {
   publicar(TOPICS.cocina, json);
   // Cancelar el último plato pendiente también deja la mesa lista para llevar.
   avisarSiLaMesaEstaCompleta(comanda);
-  await registrar(req.usuario, "CANCELAR_PLATO", `Canceló un plato de la comanda #${codigo(id)}`, SERVICIO.COMANDAS);
+  await registrar(req.usuario, "CANCELAR_PLATO", `Canceló un plato de la comanda ${codigoCorto(id)}`, SERVICIO.COMANDAS);
   res.json(json);
 };
 
@@ -366,25 +199,39 @@ const entregarItem = async (req, res) => {
   await responder(res, id);
 };
 
-// Cierra la cuenta. Se permite aunque no haya caja abierta (como antes): queda
-// sin arqueo y el reporte de ventas lo cuenta aparte.
+/**
+ * Cierra la cuenta. Se permite aunque no haya caja abierta (queda sin arqueo y
+ * el reporte lo cuenta aparte). Si un admin fuerza el cierre con platos aún en
+ * cocina, esos platos se cancelan y devuelven su inventario: no se cobran ni
+ * quedan como tickets en la pantalla de cocina.
+ */
 const cerrar = async (req, res) => {
   const { id } = req.valid.params;
   const { metodoPago, forzar } = req.valid.body;
 
-  const { total, sinCaja } = await conTransaccion(async (session) => {
+  const { total, sinCaja, cancelados } = await conTransaccion(async (session) => {
     const comanda = await Comanda.findById(id).session(session).lean();
     if (!comanda) throw new HttpError(404, "Comanda no encontrada");
     exigirAbierta(comanda);
 
     const enBorrador = comanda.items.filter((i) => i.estado === "BORRADOR").length;
     if (enBorrador > 0) throw new HttpError(409, `Hay ${enBorrador} plato(s) sin enviar a cocina`);
-    const enCocina = comanda.items.filter((i) => EN_COCINA.includes(i.estado)).length;
-    if (enCocina > 0 && !(forzar && req.usuario.rol_id === "admin")) {
-      throw new HttpError(409, `Todavía hay ${enCocina} plato(s) en cocina`);
+    const enCocina = comanda.items.filter((i) => EN_COCINA.includes(i.estado));
+    if (enCocina.length > 0 && !(forzar && req.usuario.rol_id === ROL.ADMIN)) {
+      throw new HttpError(409, `Todavía hay ${enCocina.length} plato(s) en cocina`);
     }
 
-    const total = redondear2(totalDeItems(comanda.items.map(toComandaItem)));
+    if (enCocina.length > 0) {
+      await devolverConsumos(session, {
+        comandaId: comanda._id,
+        itemIds: enCocina.filter((i) => i.inventario_aplicado).map((i) => i._id),
+        usuarioId: req.usuario._id,
+        motivo: `Cierre forzado de la comanda ${codigoCorto(id)}`,
+      });
+    }
+
+    const items = comanda.items.map((i) => (EN_COCINA.includes(i.estado) ? { ...i, estado: "CANCELADO" } : i));
+    const total = calcularTotal(items);
     const arqueo = await arqueoAbierto(session).select("_id").lean();
     const r = await Comanda.updateOne(
       { _id: id, estado: "ABIERTA" },
@@ -395,77 +242,32 @@ const cerrar = async (req, res) => {
           total,
           fecha_cierre: new Date(),
           arqueo_id: arqueo?._id ?? null,
+          "items.$[c].estado": "CANCELADO",
+          "items.$[c].inventario_aplicado": false,
         },
       },
-      { session }
+      { arrayFilters: [{ "c.estado": { $in: EN_COCINA } }], session }
     );
     if (r.modifiedCount === 0) throw new HttpError(409, "La comanda ya está cerrada");
-    return { total, sinCaja: !arqueo };
+    return { total, sinCaja: !arqueo, cancelados: enCocina.length };
   });
 
   const json = toComanda(await cargar(id));
   publicar(TOPICS.salon, json);
+  if (cancelados > 0) publicar(TOPICS.cocina, json);
   // El cobro cambia lo esperado en caja: se avisa para que el arqueo se actualice.
   publicarCaja();
   await registrar(
     req.usuario,
     "CERRAR_COMANDA",
-    `Cerró la comanda #${codigo(id)} (mesa ${json.mesaNumero}) por ${total} en ${metodoPago}${sinCaja ? " (sin caja abierta)" : ""}`,
+    `Cerró la comanda ${codigoCorto(id)} (mesa ${json.mesaNumero}) por ${total} en ${metodoPago}` +
+      `${cancelados ? ` cancelando ${cancelados} plato(s) en cocina` : ""}${sinCaja ? " (sin caja abierta)" : ""}`,
     SERVICIO.COMANDAS
   );
   res.json(json);
 };
 
-// --- Cocina ---
-
-const platoDeCocina = (comanda, item) => ({
-  ...toComandaItem(item),
-  comandaId: String(comanda._id),
-  mesa: comanda.mesa_id?.numero ?? null,
-});
-
-const colaCocina = async (req, res) => {
-  const comandas = await Comanda.find({ "items.estado": { $in: EN_COCINA } }).populate("mesa_id", "numero").lean();
-  const platos = comandas.flatMap((c) => c.items.filter((i) => EN_COCINA.includes(i.estado)).map((i) => ({ c, i })));
-  platos.sort((a, b) => new Date(a.i.fecha_envio) - new Date(b.i.fecha_envio));
-  res.json(platos.map(({ c, i }) => platoDeCocina(c, i)));
-};
-
-const cambiarEstadoCocina = async (req, res) => {
-  const itemId = req.valid.params.id;
-  const { estado } = req.valid.body;
-
-  const comanda = await Comanda.findOneAndUpdate(
-    { items: { $elemMatch: { _id: itemId, estado: { $in: EN_COCINA } } } },
-    { $set: { "items.$.estado": estado, "items.$.fecha_listo": estado === "LISTO" ? new Date() : null } },
-    { returnDocument: "after" }
-  )
-    .populate("mesa_id", "numero")
-    .lean();
-
-  if (!comanda) {
-    const actual = await Comanda.findOne({ "items._id": itemId }, { "items.$": 1 }).lean();
-    if (!actual) throw new HttpError(404, "Plato no encontrado");
-    throw new HttpError(409, `Ese plato ya está ${actual.items[0].estado.toLowerCase()}`);
-  }
-
-  const json = platoDeCocina(comanda, comanda.items.find((i) => mismo(i._id, itemId)));
-  publicar(TOPICS.cocina, json);
-  if (estado === "LISTO") {
-    publicar(TOPICS.salon, json);
-    publicar(TOPICS.mesero(comanda.mesero_id), json);
-    avisarSiLaMesaEstaCompleta(comanda);
-  }
-  res.json(json);
-};
-
 module.exports = {
-  abrirSchema,
-  agregarItemSchema,
-  editarItemSchema,
-  cerrarSchema,
-  estadoCocinaSchema,
-  itemParams,
   abrir,
   listar,
   detalle,
@@ -476,6 +278,4 @@ module.exports = {
   cancelarItem,
   entregarItem,
   cerrar,
-  colaCocina,
-  cambiarEstadoCocina,
 };

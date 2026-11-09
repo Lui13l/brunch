@@ -137,3 +137,32 @@ describe("Hub de tiempo real: permisos de temas", () => {
     expect(puedeSuscribirse({ id, rol: "admin" }, "/topic/inventado")).toBe(false);
   });
 });
+
+describe("Código corto y total de una comanda", () => {
+  test("codigoCorto muestra los últimos 6 caracteres del id con #", () => {
+    const { codigoCorto } = require("../src/utils/codigo");
+    expect(codigoCorto("6aee9828fefb9cd14c2a04ea")).toBe("#2A04EA");
+    expect(codigoCorto(null)).toBe("#");
+  });
+
+  test("calcularTotal suma lo no cancelado sin depender del serializador", () => {
+    const { calcularTotal } = require("../src/services/comandas");
+    const items = [
+      { precio_unitario: 1000.1, cantidad: 2, estado: "LISTO" },
+      { precio_unitario: 500, cantidad: 1, estado: "CANCELADO" },
+      { precio_unitario: 0.2, cantidad: 1, estado: "ENTREGADO" },
+    ];
+    expect(calcularTotal(items)).toBe(2000.4);
+  });
+});
+
+describe("Rango de días del restaurante", () => {
+  test("rangoLocal incluye el día final completo y respeta los extremos abiertos", () => {
+    const { rangoLocal } = require("../src/utils/tiempo");
+    const r = rangoLocal("2026-03-10", "2026-03-11");
+    expect(r.inicio.toISOString()).toBe("2026-03-10T05:00:00.000Z");
+    expect(r.fin.toISOString()).toBe("2026-03-12T05:00:00.000Z");
+    expect(rangoLocal(undefined, "2026-03-10").inicio).toBe(undefined);
+    expect(rangoLocal("2026-03-10").fin).toBe(undefined);
+  });
+});

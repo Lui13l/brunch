@@ -16,7 +16,11 @@ let mongo;
 
 const conectar = async () => {
   // Replica set de un nodo: las transacciones (comandas, inventario) lo necesitan, igual que Atlas.
-  mongo = await MongoMemoryReplSet.create({ replSet: { count: 1, storageEngine: "wiredTiger" } });
+  mongo = await MongoMemoryReplSet.create({
+    replSet: { count: 1, storageEngine: "wiredTiger" },
+    // Con varios archivos de prueba en paralelo el arranque en frío puede tardar.
+    instanceOpts: [{ launchTimeout: 60_000 }],
+  });
   await mongoose.connect(mongo.getUri());
   // Crea colecciones e índices (únicos y parciales) antes de cualquier prueba.
   await Promise.all(mongoose.modelNames().map((n) => mongoose.model(n).init()));

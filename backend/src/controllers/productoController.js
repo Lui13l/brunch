@@ -1,6 +1,7 @@
 const { MenuItem, Category } = require("../models");
 const { HttpError, pick } = require("../utils/http");
 const { esAdmin } = require("../middleware/auth");
+const { desactivarProducto } = require("../services/menu");
 
 const CAMPOS = ["tipo", "nombre", "descripcion", "precio", "categoria_id", "img_url", "activo", "orden"];
 
@@ -53,15 +54,9 @@ const actualizar = async (req, res) => {
   res.json(producto);
 };
 
-// No se borra de verdad: los pedidos antiguos siguen referenciando el producto.
+// No se borra de verdad (ver services/menu.js).
 const eliminar = async (req, res) => {
-  const producto = await MenuItem.findByIdAndUpdate(
-    req.params.id,
-    { activo: false },
-    { returnDocument: "after" }
-  );
-  if (!producto) throw new HttpError(404, "Producto no encontrado");
-  res.json(producto);
+  res.json(await desactivarProducto(req.params.id));
 };
 
 module.exports = { listar, obtener, crear, actualizar, eliminar };

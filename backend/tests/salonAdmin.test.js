@@ -131,7 +131,11 @@ describe("Carta del admin y del salón", () => {
 
     const borrado = await api().delete(`/api/admin/menu/${creado.body.id}`).set(admin());
     expect(borrado.status).toBe(204);
-    expect(await MenuItem.countDocuments({ nombre: "Waffle doble" })).toBe(0);
+    // Eliminar desactiva: el plato se conserva (oculto) para los reportes y pedidos viejos.
+    const doc = await MenuItem.findOne({ nombre: "Waffle doble" });
+    expect(doc.activo).toBe(false);
+    const listado = await api().get("/api/admin/menu").set(admin());
+    expect(listado.body.find((p) => p.nombre === "Waffle doble").disponible).toBe(false);
   });
 
   test("la carta del salón trae solo lo vendible y omite categorías vacías", async () => {

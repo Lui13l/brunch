@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../api/api";
 import { useAuth } from "../context/AuthContext";
 import { actualizarPerfil } from "../services/usuarioService";
+import { misPedidos, obtenerPedido } from "../services/pedidosService";
+import { misReservas } from "../services/reservasService";
 
 const FORMULARIO_INICIAL = (user) => ({
   nombre: user?.nombre || "",
@@ -39,7 +40,7 @@ export default function usePerfilUsuario() {
       setCargandoPedidos(true);
       setErrorPedidos("");
       try {
-        const resultado = await api.get("/pedidos/mis-pedidos");
+        const resultado = await misPedidos();
         if (activo) setPedidos(resultado);
       } catch (err) {
         if (activo) setErrorPedidos(err.message);
@@ -52,7 +53,7 @@ export default function usePerfilUsuario() {
       setCargandoReservas(true);
       setErrorReservas("");
       try {
-        const resultado = await api.get("/reservas/mis-reservas");
+        const resultado = await misReservas();
         if (activo) setReservas(resultado);
       } catch (err) {
         if (activo) setErrorReservas(err.message);
@@ -125,7 +126,7 @@ export default function usePerfilUsuario() {
     setCargandoDetalle(true);
     setErrorDetalle("");
     try {
-      const detalle = await api.get(`/pedidos/${pedido._id}`);
+      const detalle = await obtenerPedido(pedido._id);
       if (solicitudDetalle.current === solicitudActual) setPedidoSeleccionado(detalle);
     } catch (err) {
       if (solicitudDetalle.current === solicitudActual) setErrorDetalle(err.message);

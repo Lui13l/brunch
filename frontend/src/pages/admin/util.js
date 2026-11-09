@@ -39,11 +39,10 @@ export const rangoDias = (dias) => {
   return { desde: iso, hasta: hoy() };
 };
 
-export const pesos = (v) => `$${Number(v || 0).toLocaleString("es-CO")}`;
 export const fechaHora = (f) => (f ? String(f).replace("T", " ").slice(0, 16) : "");
 export const fechaCorta = (f) => {
   if (!f) return "";
   const d = new Date(f);
   return Number.isNaN(d.getTime()) ? String(f) : d.toLocaleString("es-CO", { dateStyle: "medium", timeStyle: "short" });
 };
-export const codigo = (id) => `#${String(id ?? "").slice(-6).toUpperCase()}`;
+export { formatearPrecio as pesos, codigoCorto as codigo } from "../../utils/formato";

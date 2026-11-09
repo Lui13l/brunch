@@ -24,8 +24,12 @@ const cobrar = async (metodoPago, cantidad = 1) => {
   const m = bearer(mesero.token);
   const { body: c } = await api().post("/api/comandas").set(m).send({ mesaId: mesa.id });
   await api().post(`/api/comandas/${c.id}/items`).set(m).send({ menuItemId: String(d.cafe._id), cantidad });
-  await api().post(`/api/comandas/${c.id}/enviar`).set(m);
-  return api().post(`/api/comandas/${c.id}/cerrar`).set(admin()).send({ metodoPago, forzar: true });
+  const { body: enviado } = await api().post(`/api/comandas/${c.id}/enviar`).set(m);
+  // La cocina saca los platos (un cierre forzado los cancelaría y no se cobrarían).
+  for (const item of enviado.comanda.items) {
+    await api().patch(`/api/cocina/items/${item.id}`).set(admin()).send({ estado: "LISTO" });
+  }
+  return api().post(`/api/comandas/${c.id}/cerrar`).set(admin()).send({ metodoPago });
 };
 
 describe("Caja", () => {

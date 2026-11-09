@@ -56,4 +56,12 @@ const Reservation = mongoose.model(
   reservationSchema
 );
 
+// Estados a los que puede pasar una reserva desde cada estado.
+Reservation.TRANSICIONES = Object.freeze({
+  pendiente: ["confirmada", "cancelada"],
+  confirmada: ["finalizada", "cancelada"],
+  finalizada: [],
+  cancelada: [],
+});
+
 module.exports = Reservation;

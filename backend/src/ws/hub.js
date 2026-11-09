@@ -1,5 +1,7 @@
 // Registro de suscripciones en memoria (una sola instancia del backend).
 // publicar() es seguro aunque no haya servidor WebSocket: no envía nada.
+const { ROL } = require("../utils/roles");
+
 const HEX = "[a-f\\d]{24}";
 const MESERO_RE = new RegExp(`^/topic/mesero/(${HEX})/comandas$`, "i");
 const USUARIO_RE = new RegExp(`^/topic/usuario/(${HEX})/pedido$`, "i");
@@ -20,11 +22,11 @@ const mismoId = (a, b) => String(a).toLowerCase() === String(b).toLowerCase();
 const puedeSuscribirse = (user, topic) => {
   if (!user || typeof topic !== "string") return false;
   const { id, rol } = user;
-  if (topic.startsWith("/topic/admin/")) return rol === "admin";
-  if (topic === TOPICS.cocina) return rol === "cocina" || rol === "admin";
-  if (topic === TOPICS.salon) return ["mesero", "cocina", "admin"].includes(rol);
+  if (topic.startsWith("/topic/admin/")) return rol === ROL.ADMIN;
+  if (topic === TOPICS.cocina) return rol === ROL.COCINA || rol === ROL.ADMIN;
+  if (topic === TOPICS.salon) return [ROL.MESERO, ROL.COCINA, ROL.ADMIN].includes(rol);
   const m = topic.match(MESERO_RE);
-  if (m) return rol === "admin" || mismoId(m[1], id);
+  if (m) return rol === ROL.ADMIN || mismoId(m[1], id);
   const u = topic.match(USUARIO_RE);
   if (u) return mismoId(u[1], id);
   return false;

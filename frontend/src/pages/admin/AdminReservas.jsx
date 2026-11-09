@@ -67,16 +67,20 @@ export default function AdminReservas() {
           return (
             <li key={r._id} className="adm-tarjeta">
               <div className="adm-tarjeta-cabeza">
-                <span className="adm-tarjeta-titulo">{fechaDia(r.dia)} · {r.hora}</span>
+                <span className="adm-tarjeta-titulo">{r.hora}</span>
                 <Chip tono={e.tono}>{e.texto}</Chip>
-                <span className="adm-tarjeta-meta">{codigo(r._id)}</span>
               </div>
-              <p>
-                <strong>{r.usuario_id?.nombre ?? "Cliente"}</strong> · {r.cupo} persona{r.cupo === 1 ? "" : "s"}
-                {r.usuario_id?.celular && <> · <a href={`tel:${r.usuario_id.celular}`}>{r.usuario_id.celular}</a></>}
+              <p className="adm-tarjeta-meta">{fechaDia(r.dia)}, reserva {codigo(r._id)}</p>
+              <p style={{ marginTop: "0.6rem" }}>
+                <strong>{r.usuario_id?.nombre ?? "Cliente"}</strong>, mesa para {r.cupo}
               </p>
+              {r.usuario_id?.celular && (
+                <p>
+                  <a href={`tel:${r.usuario_id.celular}`}>{r.usuario_id.celular}</a>
+                </p>
+              )}
               {r.ocasion && <p className="adm-tarjeta-meta">Ocasión: {r.ocasion}</p>}
-              {r.detalles && <p><em>{r.detalles}</em></p>}
+              {r.detalles && <p className="adm-nota">{r.detalles}</p>}
               {SIGUIENTES[r.estado_reserva]?.length > 0 && (
                 <div className="adm-tarjeta-acciones">
                   {SIGUIENTES[r.estado_reserva].map((s) => (

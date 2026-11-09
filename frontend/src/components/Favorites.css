@@ -130,7 +130,8 @@
   color: rgba(255,255,255,0.8);
 }
 
-.button{
+/* Solo el botón de esta sección (antes .button global: teñía todos los botones). */
+.button.fav-btn {
   background-color: #391903;
   border-color:black;
 }

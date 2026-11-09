@@ -1,19 +1,4 @@
-import { formatearPrecio } from "../../api/api";
-
-const formatearFecha = (fecha, soloFecha = false) => {
-  if (!fecha) return "Sin fecha";
-  const valor = new Date(
-    typeof fecha === "string" && /^\d{4}-\d{2}-\d{2}$/.test(fecha)
-      ? `${fecha}T12:00:00`
-      : fecha,
-  );
-  if (Number.isNaN(valor.getTime())) return "Sin fecha";
-  return valor.toLocaleString("es-CO", soloFecha
-    ? { dateStyle: "medium" }
-    : { dateStyle: "medium", timeStyle: "short" });
-};
-
-const codigoPedido = (id) => `#${String(id || "").slice(-6).toUpperCase()}`;
+import { codigoCorto as codigoPedido, formatearFecha, formatearPrecio } from "../../utils/formato";
 
 const EncabezadoHistorial = ({ id, titulo, subtitulo }) => (
   <>

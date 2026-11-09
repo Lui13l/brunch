@@ -1,4 +1,5 @@
 const { ChatIntent, MenuItem, Order, Reservation } = require("../models");
+const { diaCalendarioHoy } = require("../utils/tiempo");
 
 // Intención que se usa cuando ninguna otra coincide.
 const INTENCION_DESCONOCIDA = "desconocida";
@@ -84,11 +85,9 @@ const VARIABLES = {
 
   mis_reservas: async (usuario) => {
     if (!usuario) return "Inicia sesión para que pueda consultar tus reservas.";
-    const hoy = new Date();
-    hoy.setUTCHours(0, 0, 0, 0);
     const reservas = await Reservation.find({
       usuario_id: usuario._id,
-      dia: { $gte: hoy },
+      dia: { $gte: diaCalendarioHoy() },
       estado_reserva: { $in: ["pendiente", "confirmada"] },
     }).sort({ dia: 1, hora: 1 });
     if (reservas.length === 0) return "No tienes reservas próximas.";
@@ -128,4 +127,4 @@ const responder = async (mensaje, usuario) => {
   };
 };
 
-module.exports = { normalizar, detectarIntencion, responder, INTENCION_DESCONOCIDA };
+module.exports = { normalizar, responder };

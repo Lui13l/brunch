@@ -1,8 +1,17 @@
 import { useCallback, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import * as svc from "../../services/adminService";
-import { Aviso, Campo, Cargando, Chip, Encabezado, Modal, Selector, Vacio } from "./comun";
+import { Aviso, Campo, Cargando, Encabezado, Modal, Selector, Vacio } from "./comun";
 import { pesos, useCarga } from "./util";
+
+// Dónde se vende, dicho como se diría en el restaurante.
+const dondeSeOfrece = (p) => {
+  if (!p.disponible) return "agotado";
+  if (p.visibleWeb && p.visibleSalon) return "";
+  if (p.visibleWeb) return "solo web";
+  if (p.visibleSalon) return "solo salón";
+  return "oculto";
+};
 
 const VACIO = {
   nombre: "",
@@ -26,7 +35,6 @@ export default function AdminMenu() {
   const [errorModal, setErrorModal] = useState("");
   const [guardando, setGuardando] = useState(false);
 
-  const nombreCategoria = (id) => categorias.find((c) => (c.id ?? c._id) === id)?.nombre ?? "Sin categoría";
   const texto = filtro.texto.trim().toLowerCase();
   const visibles = platos
     .filter((p) => !filtro.categoria || p.categoriaId === filtro.categoria)
@@ -68,6 +76,11 @@ export default function AdminMenu() {
   };
 
   const opcionesCategoria = categorias.map((c) => ({ valor: c.id ?? c._id, texto: c.nombre }));
+  // La carta se lee por secciones, en el orden de las categorías.
+  const secciones = [
+    ...opcionesCategoria.map((categoria) => ({ categoria, platos: visibles.filter((p) => p.categoriaId === categoria.valor) })),
+    { categoria: { valor: "sin", texto: "Sin categoría" }, platos: visibles.filter((p) => !opcionesCategoria.some((c) => c.valor === p.categoriaId)) },
+  ].filter((sec) => sec.platos.length > 0);
   const campo = (k) => ({ value: editando[k] ?? "", onChange: (e) => setEditando({ ...editando, [k]: e.target.value }) });
   const casilla = (k) => ({ checked: Boolean(editando[k]), onChange: (e) => setEditando({ ...editando, [k]: e.target.checked }) });
 
@@ -96,42 +109,33 @@ export default function AdminMenu() {
       {cargando && !datos && <Cargando />}
       {!cargando && visibles.length === 0 && <Vacio>No hay platos con estos filtros.</Vacio>}
 
-      <div className="adm-tabla-wrap">
-        <table className="table adm-tabla is-hoverable">
-          <thead>
-            <tr>
-              <th>Plato</th>
-              <th>Categoría</th>
-              <th>Precio</th>
-              <th>Se ofrece en</th>
-              <th aria-label="Acciones" />
-            </tr>
-          </thead>
-          <tbody>
-            {visibles.map((p) => (
-              <tr key={p.id} style={p.disponible ? undefined : { opacity: 0.55 }}>
-                <td>
-                  <strong>{p.nombre}</strong>
-                  {!p.disponible && <> <Chip tono="apagado">No disponible</Chip></>}
-                </td>
-                <td>{nombreCategoria(p.categoriaId)}</td>
-                <td>{pesos(p.precio)}</td>
-                <td>
-                  {p.visibleWeb && <Chip>Web</Chip>} {p.visibleSalon && <Chip>Salón</Chip>}
-                </td>
-                <td className="has-text-right" style={{ whiteSpace: "nowrap" }}>
-                  <button type="button" className="adm-boton-icono" aria-label={`Editar ${p.nombre}`} onClick={() => setEditando({ ...VACIO, ...p, descripcion: p.descripcion ?? "", imagenUrl: p.imagenUrl ?? "" })}>
-                    <Pencil size={16} />
-                  </button>{" "}
-                  <button type="button" className="adm-boton-icono" aria-label={`Eliminar ${p.nombre}`} onClick={() => eliminar(p)}>
-                    <Trash2 size={16} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      {visibles.length > 0 && (
+        <div className="adm-carta">
+          {secciones.map(({ categoria, platos: lista }) => (
+            <section key={categoria.valor} className="adm-carta-seccion" aria-label={categoria.texto}>
+              <h3 className="adm-carta-categoria">{categoria.texto}</h3>
+              <ul>
+                {lista.map((p) => (
+                  <li key={p.id} className={`adm-carta-plato${p.disponible ? "" : " is-agotado"}`}>
+                    <span className="adm-carta-nombre">{p.nombre}</span>
+                    <span className="adm-carta-donde">{dondeSeOfrece(p)}</span>
+                    <span className="adm-guia" aria-hidden="true" />
+                    <span className="adm-carta-precio">{pesos(p.precio)}</span>
+                    <span className="adm-carta-acciones">
+                      <button type="button" className="adm-boton-icono" aria-label={`Editar ${p.nombre}`} title="Editar" onClick={() => setEditando({ ...VACIO, ...p, descripcion: p.descripcion ?? "", imagenUrl: p.imagenUrl ?? "" })}>
+                        <Pencil size={16} />
+                      </button>
+                      <button type="button" className="adm-boton-icono" aria-label={`Eliminar ${p.nombre}`} title="Eliminar" onClick={() => eliminar(p)}>
+                        <Trash2 size={16} />
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
 
       {editando && (
         <Modal titulo={editando.id ? "Editar plato" : "Nuevo plato"} error={errorModal} onCerrar={() => { setEditando(null); setErrorModal(""); }}>

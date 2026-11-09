@@ -1,18 +1,122 @@
-/* Panel de administración: misma paleta que el resto de la web
-   (crema, café y blanco) con densidad de herramienta de trabajo. */
+/* Panel de administración: "la libreta del encargado".
+   La trastienda de un brunch es papel —la carta impresa, las comandas de
+   cocina, el libro de reservas— y el panel se dibuja así. Misma tipografía
+   que la web: Fraunces (títulos y datos) y DM Serif Display (navegación y
+   botones). */
 
 .adm-main {
+  --tinta: #391903;
+  --tinta-hover: #5a2a08;
+  --tinta-suave: #7a6656;
+  --crema: #faf8f5;
+  --papel: #fffdf8;
+  --caramelo: #c4845a;
+  --linea: rgba(196, 132, 90, 0.35);
+  --linea-suave: rgba(57, 25, 3, 0.09);
+  --aguacate: #5f7a3a;
+  --miel: #b8801f;
+  --pimenton: #b23c22;
+
   min-height: calc(100vh - 130px);
-  background-color: #faf8f5;
-  padding: 1.5rem 1rem 3rem;
+  padding: 2.5rem 1.25rem 4rem;
+  color: var(--tinta);
+  background-color: var(--crema);
+  font-family: "Fraunces", serif;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .adm-shell {
-  max-width: 1200px;
+  max-width: 1080px;
   margin: 0 auto;
 }
 
+/* --- Cabecera --- */
+
 .adm-cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem 2rem;
+}
+
+.adm-h1 {
+  margin: 0;
+  font-family: "Fraunces", serif;
+  font-size: clamp(2.2rem, 5vw, 3.2rem);
+  font-weight: 700;
+  font-optical-sizing: auto;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.adm-fecha {
+  margin-top: 0.4rem;
+  color: var(--tinta-suave);
+  font-style: italic;
+  font-size: 1.05rem;
+}
+
+.adm-main .adm-boton-comandas.button {
+  gap: 0.55rem;
+  padding: 0.75rem 1.4rem;
+  font-family: "DM Serif Display", serif;
+  font-size: 1rem;
+  border-radius: 999px;
+}
+
+/* --- Índice de secciones (como el de una carta) --- */
+
+.adm-nav {
+  display: flex;
+  gap: 0.25rem 1.6rem;
+  margin: 2rem 0 2.25rem;
+  padding: 0.2rem 0 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--linea);
+  scrollbar-width: thin;
+}
+
+.adm-nav-item {
+  flex-shrink: 0;
+  position: relative;
+  padding: 0.55rem 0 0.75rem;
+  color: var(--tinta-suave);
+  font-family: "DM Serif Display", serif;
+  font-size: 1.05rem;
+  white-space: nowrap;
+}
+
+.adm-nav-item:hover,
+.adm-nav-item.is-active {
+  color: var(--tinta);
+}
+
+.adm-nav-item.is-active::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  background: var(--caramelo);
+  border-radius: 3px 3px 0 0;
+}
+
+.adm-nav-item:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* --- Encabezado de cada sección --- */
+
+.adm-contenido {
+  min-width: 0;
+}
+
+.adm-encabezado {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-end;
@@ -21,124 +125,83 @@
   margin-bottom: 1.5rem;
 }
 
-.adm-eyebrow {
-  color: #8a6f5a;
-  font-size: 0.8rem;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-.adm-h1 {
+.adm-titulo {
   margin: 0;
-  color: #391903;
-  font-family: "DM Serif Display", serif;
-  font-size: clamp(1.8rem, 4vw, 2.4rem);
+  font-family: "Fraunces", serif;
+  font-size: 2rem;
+  font-weight: 700;
   line-height: 1.1;
 }
 
-.adm-boton-comandas.button {
-  gap: 0.5rem;
-  height: auto;
-  padding: 0.7rem 1.2rem;
-  color: #fff;
-  background-color: #391903;
-  border: none;
-  border-radius: 999px;
-  font-weight: 700;
-}
-
-.adm-boton-comandas.button:hover {
-  color: #fff;
-  background-color: #5a2a08;
-}
-
-.adm-cuerpo {
-  display: grid;
-  grid-template-columns: 220px minmax(0, 1fr);
-  gap: 1.5rem;
-  align-items: start;
-}
-
-.adm-nav {
-  position: sticky;
-  top: calc(var(--nav-alto, 84px) + 1rem);
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.5rem;
-  background: #fff;
-  border: 1px solid #e8e2da;
-  border-radius: 14px;
-}
-
-.adm-nav-item {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-  min-height: 44px;
-  padding: 0.5rem 0.8rem;
-  color: #5b4636;
-  border-radius: 10px;
-  font-weight: 600;
-}
-
-.adm-nav-item:hover {
-  color: #391903;
-  background: #f4efe9;
-}
-
-.adm-nav-item.is-active {
-  color: #fff;
-  background: #391903;
-}
-
-.adm-contenido {
-  min-width: 0;
-  padding: 1.5rem;
-  background: #fff;
-  border: 1px solid #e8e2da;
-  border-radius: 18px;
-  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
-}
-
-.adm-encabezado {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.25rem;
-}
-
-.adm-titulo {
-  margin: 0;
-  color: #391903;
-  font-family: "DM Serif Display", serif;
-  font-size: 1.6rem;
-}
-
 .adm-descripcion {
-  margin-top: 0.25rem;
-  color: #7a6656;
+  max-width: 62ch;
+  margin-top: 0.35rem;
+  color: var(--tinta-suave);
+  font-style: italic;
+  line-height: 1.5;
 }
 
 .adm-encabezado-acciones {
   display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
+  gap: 0.6rem;
 }
+
+/* --- Filtros --- */
 
 .adm-filtros {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-  gap: 0.75rem;
-  margin-bottom: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.1rem 0.25rem;
+  background: var(--papel);
+  border: 1px solid var(--linea-suave);
+  border-radius: 12px;
 }
 
-.adm-label {
-  color: #5b4636;
-  font-size: 0.85rem;
+.adm-main .label.adm-label {
+  margin-bottom: 0.25rem;
+  color: var(--tinta-suave);
+  font-family: "DM Serif Display", serif;
+  font-size: 0.95rem;
+  font-weight: 400;
+}
+
+.adm-main .input,
+.adm-main .textarea,
+.adm-main .select select {
+  color: var(--tinta);
+  background-color: #fff;
+  border-color: #e3d9cd;
+  border-radius: 10px;
+  box-shadow: none;
+  font-family: "Fraunces", serif;
+}
+
+.adm-main .select:not(.is-multiple):not(.is-loading)::after {
+  border-color: var(--tinta);
+}
+
+.adm-main .input:focus,
+.adm-main .textarea:focus,
+.adm-main .select select:focus {
+  border-color: var(--tinta);
+  box-shadow: 0 0 0 3px rgba(57, 25, 3, 0.12);
+}
+
+.adm-main .help {
+  color: var(--tinta-suave);
+  font-style: italic;
+}
+
+.adm-main .checkbox {
+  color: var(--tinta);
+  font-family: "Fraunces", serif;
+}
+
+.adm-main .checkbox input {
+  accent-color: var(--tinta);
 }
 
 .adm-rango {
@@ -150,44 +213,195 @@
 
 .adm-atajos {
   display: flex;
-  gap: 1rem;
+  gap: 1.25rem;
   grid-column: 1 / -1;
-  margin-top: -0.5rem;
+  margin: -0.4rem 0 0.6rem;
 }
 
 .adm-atajos button {
-  min-height: 36px;
+  min-height: 32px;
   padding: 0;
-  color: #7a6656;
+  color: var(--tinta-suave);
   background: none;
   border: none;
+  font-family: "DM Serif Display", serif;
   text-decoration: underline;
+  text-decoration-color: var(--linea);
+  text-underline-offset: 4px;
   cursor: pointer;
 }
 
-.adm-tabs {
-  display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+.adm-atajos button:hover {
+  color: var(--tinta);
 }
 
-.adm-tabs .button.is-selected {
-  color: #fff;
-  background: #391903;
-  border-color: #391903;
+/* --- Pestañas (Activos / Historial) --- */
+
+.adm-tabs {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin-bottom: 1.25rem;
+  padding: 0.25rem;
+  background: #f1ebe3;
+  border-radius: 999px;
 }
+
+.adm-main .adm-tabs .button {
+  padding: 0.45em 1.2em;
+  color: var(--tinta-suave);
+  background: transparent;
+  border: none;
+  border-radius: 999px;
+}
+
+.adm-main .adm-tabs .button:hover {
+  color: var(--tinta);
+  background: transparent;
+}
+
+.adm-main .adm-tabs .button.is-selected {
+  color: #fff;
+  background: var(--tinta);
+}
+
+/* --- Botones del panel --- */
+
+.adm-main .button {
+  width: auto;
+  height: auto;
+  padding: 0.55em 1.15em;
+  color: var(--tinta);
+  background-color: transparent;
+  border: 1px solid #d9cbbb;
+  border-radius: 999px;
+  font-family: "DM Serif Display", serif;
+  font-size: 0.98rem;
+  box-shadow: none;
+}
+
+.adm-main .button:hover {
+  color: var(--tinta);
+  background-color: #f4ece2;
+  border-color: #cdb9a5;
+}
+
+.adm-main .button:focus-visible {
+  outline: 2px solid var(--tinta);
+  outline-offset: 2px;
+}
+
+.adm-main .button.is-small {
+  padding: 0.35em 0.9em;
+  font-size: 0.9rem;
+}
+
+.adm-main .button.is-fullwidth {
+  width: 100%;
+}
+
+.adm-main .button[disabled] {
+  opacity: 0.5;
+}
+
+.adm-main .adm-cafe.button,
+.adm-main .adm-boton-comandas.button {
+  color: #fff;
+  background-color: var(--tinta);
+  border-color: var(--tinta);
+}
+
+.adm-main .adm-cafe.button:hover,
+.adm-main .adm-boton-comandas.button:hover {
+  color: #fff;
+  background-color: var(--tinta-hover);
+  border-color: var(--tinta-hover);
+}
+
+.adm-boton-icono {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  color: var(--tinta-suave);
+  background: none;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+}
+
+.adm-boton-icono:hover {
+  color: var(--tinta);
+  background: #f1ebe3;
+}
+
+.adm-boton-icono:focus-visible {
+  outline: 2px solid var(--tinta);
+}
+
+/* --- Estado: palabra en cursiva con un punto del color de la cocina --- */
+
+.adm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-style: italic;
+  font-size: 0.95rem;
+  white-space: nowrap;
+}
+
+.adm-chip::before {
+  content: "";
+  width: 0.55rem;
+  height: 0.55rem;
+  background: currentColor;
+  border-radius: 50%;
+}
+
+.adm-chip-neutro { color: var(--tinta-suave); }
+.adm-chip-alerta { color: var(--pimenton); }
+.adm-chip-info { color: var(--tinta); }
+.adm-chip-proceso { color: var(--miel); }
+.adm-chip-ok { color: var(--aguacate); }
+.adm-chip-apagado { color: #a8998c; text-decoration: line-through; }
+
+/* Etiqueta discreta (palabras clave, "Tú", dónde se ofrece un plato). */
+.adm-etiqueta {
+  display: inline-block;
+  padding: 0.05rem 0.55rem;
+  color: var(--tinta-suave);
+  border: 1px solid var(--linea);
+  border-radius: 999px;
+  font-size: 0.85rem;
+}
+
+/* --- Comandas de papel (pedidos, reservas, domiciliarios, chatbot) --- */
 
 .adm-lista {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 1.25rem;
 }
 
 .adm-tarjeta {
-  padding: 1rem 1.1rem;
-  border: 1px solid #e8e2da;
-  border-radius: 14px;
-  background: #fffdfb;
+  position: relative;
+  padding: 1.35rem 1.25rem 1.1rem;
+  background: var(--papel);
+  border: 1px solid var(--linea-suave);
+  border-radius: 4px 4px 10px 10px;
+  box-shadow: 0 10px 22px -18px rgba(57, 25, 3, 0.35);
+}
+
+/* Borde perforado arriba, como una comanda arrancada del talonario. */
+.adm-tarjeta::before {
+  content: "";
+  position: absolute;
+  top: -1px;
+  right: 10px;
+  left: 10px;
+  height: 7px;
+  background: radial-gradient(circle at 6px 0, var(--crema) 4px, transparent 4.5px) repeat-x;
+  background-size: 12px 7px;
 }
 
 .adm-tarjeta.is-apagada {
@@ -197,71 +411,204 @@
 .adm-tarjeta-cabeza {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 0.5rem;
-  margin-bottom: 0.4rem;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.25rem 0.75rem;
+  margin-bottom: 0.6rem;
 }
 
 .adm-tarjeta-titulo {
-  color: #391903;
-  font-weight: 800;
+  font-family: "Fraunces", serif;
+  font-size: 1.35rem;
+  font-weight: 700;
+  line-height: 1.15;
 }
 
 .adm-tarjeta-meta {
-  color: #7a6656;
-  font-size: 0.9rem;
+  color: var(--tinta-suave);
+  font-size: 0.92rem;
+}
+
+.adm-tarjeta p + p {
+  margin-top: 0.15rem;
+}
+
+.adm-tarjeta a {
+  color: var(--tinta);
+  text-decoration: underline;
+  text-decoration-color: var(--linea);
+  text-underline-offset: 3px;
 }
 
 .adm-tarjeta-acciones {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
-  margin-top: 0.75rem;
+  margin-top: 1rem;
+  padding-top: 0.9rem;
+  border-top: 1px dashed var(--linea);
 }
 
 .adm-items {
-  margin: 0.5rem 0;
-  padding-top: 0.5rem;
-  border-top: 1px dashed #e8e2da;
-  font-size: 0.95rem;
+  margin: 0.85rem 0 0.6rem;
+  padding: 0.7rem 0 0;
+  border-top: 1px dashed var(--linea);
 }
 
 .adm-items li {
   display: flex;
-  justify-content: space-between;
-  gap: 1rem;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.12rem 0;
 }
 
-.adm-chip {
-  display: inline-block;
-  padding: 0.15rem 0.6rem;
-  border-radius: 999px;
-  font-size: 0.78rem;
+/* Puntos guía entre el nombre y el precio, como en una carta impresa. */
+.adm-guia {
+  flex: 1;
+  min-width: 1rem;
+  border-bottom: 2px dotted rgba(57, 25, 3, 0.25);
+  transform: translateY(-0.3em);
+}
+
+.adm-items .adm-total {
+  margin-top: 0.4rem;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.adm-nota {
+  margin-top: 0.6rem;
+  padding: 0.45rem 0.7rem;
+  background: #fbf3e4;
+  border-left: 3px solid var(--miel);
+  border-radius: 0 6px 6px 0;
+  font-style: italic;
+}
+
+/* --- La carta (sección Menú) --- */
+
+.adm-carta {
+  padding: 2rem clamp(1rem, 4vw, 3rem) 2.5rem;
+  background: var(--papel);
+  border: 1px solid var(--linea-suave);
+  border-radius: 6px;
+  box-shadow: 0 18px 40px -32px rgba(57, 25, 3, 0.45);
+}
+
+.adm-carta-seccion + .adm-carta-seccion {
+  margin-top: 2.25rem;
+}
+
+.adm-carta-categoria {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  font-family: "Fraunces", serif;
+  font-size: 1.55rem;
+  font-weight: 700;
+}
+
+.adm-carta-categoria::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--linea);
+}
+
+.adm-carta-plato {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  padding: 0.55rem 0.4rem;
+  border-radius: 6px;
+}
+
+.adm-carta-plato:hover,
+.adm-carta-plato:focus-within {
+  background: #f8f1e7;
+}
+
+.adm-carta-nombre {
+  font-size: 1.1rem;
+}
+
+.adm-carta-donde {
+  color: var(--tinta-suave);
+  font-style: italic;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.adm-carta-precio {
+  font-size: 1.1rem;
   font-weight: 700;
   white-space: nowrap;
 }
 
-.adm-chip-neutro { color: #5b4636; background: #f0ebe4; }
-.adm-chip-alerta { color: #fff; background: #c2410c; }
-.adm-chip-info { color: #fff; background: #391903; }
-.adm-chip-proceso { color: #3d2b00; background: #f6c453; }
-.adm-chip-ok { color: #fff; background: #2f7d4f; }
-.adm-chip-apagado { color: #7a6656; background: #f0ebe4; text-decoration: line-through; }
+.adm-carta-plato.is-agotado .adm-carta-nombre,
+.adm-carta-plato.is-agotado .adm-carta-precio {
+  color: #a8998c;
+  text-decoration: line-through;
+}
+
+.adm-carta-acciones {
+  display: flex;
+  gap: 0.15rem;
+  margin-left: 0.25rem;
+}
+
+/* --- Tablas tipo libro contable --- */
+
+.adm-tabla-wrap {
+  overflow-x: auto;
+  padding: 0.25rem 1rem;
+  background: var(--papel);
+  border: 1px solid var(--linea-suave);
+  border-radius: 10px;
+}
+
+.adm-main .table.adm-tabla {
+  width: 100%;
+  color: var(--tinta);
+  background: transparent;
+}
+
+.adm-main .adm-tabla th {
+  color: var(--tinta-suave);
+  font-family: "DM Serif Display", serif;
+  font-weight: 400;
+  border-bottom: 1px solid var(--linea);
+}
+
+.adm-main .adm-tabla td {
+  vertical-align: middle;
+  border-bottom: 1px solid var(--linea-suave);
+}
+
+.adm-main .adm-tabla tr:last-child td {
+  border-bottom: none;
+}
+
+.adm-main .table.is-hoverable tbody tr:not(.is-selected):hover {
+  background-color: #f8f1e7;
+}
+
+/* --- Avisos y vacíos --- */
 
 .adm-aviso {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
-  margin-bottom: 1rem;
-  padding: 0.7rem 0.9rem;
-  border-left: 4px solid;
-  border-radius: 8px;
-  font-weight: 600;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  border-left: 3px solid;
+  border-radius: 0 8px 8px 0;
 }
 
-.adm-aviso-error { color: #9a3412; background: #fff1eb; border-color: #c2410c; }
-.adm-aviso-ok { color: #1f5c3a; background: #edf7f0; border-color: #2f7d4f; }
+.adm-aviso-error { color: var(--pimenton); background: #fbece7; border-color: var(--pimenton); }
+.adm-aviso-ok { color: #44582a; background: #eef2e6; border-color: var(--aguacate); }
 
 .adm-aviso-cerrar {
   padding: 0;
@@ -272,123 +619,81 @@
 }
 
 .adm-vacio {
-  padding: 2.5rem 1rem;
-  color: #7a6656;
+  padding: 3rem 1rem;
+  color: var(--tinta-suave);
+  font-style: italic;
+  font-size: 1.1rem;
   text-align: center;
 }
 
-.adm-modal {
+/* --- Auditoría: libro de registro --- */
+
+.adm-dia {
+  margin: 1.75rem 0 0.6rem;
+  font-family: "Fraunces", serif;
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+
+.adm-hora {
+  width: 4.5rem;
+  color: var(--tinta-suave);
+  font-weight: 700;
+}
+
+.adm-accion {
+  font-family: "DM Serif Display", serif;
+  font-size: 1.02rem;
+}
+
+/* --- Ventana modal --- */
+
+.adm-main .modal-card.adm-modal {
   width: min(560px, calc(100vw - 2rem));
 }
 
-.adm-tabla-wrap {
-  overflow-x: auto;
+.adm-main .modal-card-head,
+.adm-main .modal-card-body {
+  background: var(--papel);
 }
 
-.adm-tabla.table {
-  width: 100%;
-  background: transparent;
+.adm-main .modal-card-head {
+  border-bottom: 1px solid var(--linea);
 }
 
-.adm-tabla td,
-.adm-tabla th {
-  vertical-align: middle;
+.adm-main .modal-card-title {
+  color: var(--tinta);
+  font-family: "Fraunces", serif;
+  font-size: 1.5rem;
+  font-weight: 700;
 }
 
-.adm-boton-icono {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  color: #5b4636;
-  background: none;
-  border: 1px solid #e8e2da;
-  border-radius: 10px;
-  cursor: pointer;
+.adm-main .modal-background {
+  background-color: rgba(57, 25, 3, 0.45);
 }
 
-.adm-boton-icono:hover {
-  background: #f4efe9;
-}
+/* --- Celular --- */
 
-.adm-cafe.button {
-  color: #fff;
-  background: #391903;
-  border-color: #391903;
-}
-
-.adm-cafe.button:hover {
-  color: #fff;
-  background: #5a2a08;
-}
-
-@media (max-width: 900px) {
-  .adm-cuerpo {
-    grid-template-columns: minmax(0, 1fr);
+@media (max-width: 640px) {
+  .adm-main {
+    padding-top: 1.75rem;
   }
 
-  .adm-nav {
-    position: static;
-    flex-direction: row;
-    overflow-x: auto;
-  }
-
-  .adm-nav-item {
-    flex-shrink: 0;
-  }
-
-  .adm-contenido {
-    padding: 1rem;
-  }
-}
-
-@media (max-width: 520px) {
   .adm-rango {
     grid-column: auto;
     grid-template-columns: minmax(0, 1fr);
   }
-}
 
-/* Favorites.css y ContactUs.css definen un `.button` global (fondo café, ancho
-   y relleno fijos). Dentro del panel se restablece el botón de Bulma. */
-.adm-main .button {
-  width: auto;
-  height: auto;
-  padding: 0.55em 1.1em;
-  color: #391903;
-  background-color: #fff;
-  border-color: #e8e2da;
-}
+  .adm-carta-plato {
+    flex-wrap: wrap;
+  }
 
-.adm-main .button:hover {
-  color: #391903;
-  background-color: #f4efe9;
-  border-color: #d9cfc4;
-}
+  .adm-carta-donde {
+    order: 3;
+    width: 100%;
+  }
 
-.adm-main .button.is-small {
-  padding: 0.35em 0.8em;
-}
-
-.adm-main .button.is-fullwidth {
-  width: 100%;
-}
-
-.adm-main .button[disabled] {
-  opacity: 0.55;
-}
-
-.adm-tabs .button.is-selected,
-.adm-main .adm-cafe.button,
-.adm-main .adm-boton-comandas.button {
-  color: #fff;
-  background-color: #391903;
-  border-color: #391903;
-}
-
-.adm-main .adm-cafe.button:hover,
-.adm-main .adm-boton-comandas.button:hover {
-  color: #fff;
-  background-color: #5a2a08;
+  .adm-lista {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

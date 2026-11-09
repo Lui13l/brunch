@@ -130,13 +130,14 @@ describe("Recetas", () => {
     expect(r.body.map((p) => p.nombre).sort()).toEqual(["Café", "Viejo"]);
   });
 
-  test("borrar un plato borra su receta", async () => {
+  test("eliminar un plato lo desactiva y conserva su receta", async () => {
     const { body: harina } = await crearInsumo();
     await api().put(`/api/admin/recetas/${d.cafe._id}`).set(admin())
       .send({ items: [{ insumoId: harina.id, cantidad: 1 }] });
-    await api().delete(`/api/admin/menu/${d.cafe._id}`).set(admin());
-    const r = await api().delete(`/api/admin/insumos/${harina.id}`).set(admin());
-    // Ya no está en recetas; solo lo frena su movimiento de stock inicial.
-    expect(r.text).toBe('"Harina" ya tiene movimientos registrados. Desactívalo en vez de borrarlo.');
+    const borrado = await api().delete(`/api/admin/menu/${d.cafe._id}`).set(admin());
+    expect(borrado.status).toBe(204);
+    const receta = await api().get(`/api/admin/recetas/${d.cafe._id}`).set(admin());
+    expect(receta.body.receta).toHaveLength(1);
+    expect(receta.body.plato.disponible).toBe(false);
   });
 });

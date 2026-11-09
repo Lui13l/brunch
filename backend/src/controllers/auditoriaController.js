@@ -2,7 +2,7 @@ const { z } = require("zod");
 const { AuditLog } = require("../models");
 const { objectId, fecha } = require("../utils/validar");
 const { toAuditLog } = require("../utils/serializar");
-const { inicioDiaLocal, sumarDias } = require("../utils/tiempo");
+const { rangoLocal } = require("../utils/tiempo");
 const { listar: listarAuditoria } = require("../services/auditoria");
 
 const listarSchema = z.object({
@@ -21,13 +21,8 @@ const listarSchema = z.object({
 // Historial de acciones del personal, del más reciente al más antiguo.
 const listar = async (req, res) => {
   const { servicio, usuarioId, desde, hasta, limite } = req.valid.query;
-  const logs = await listarAuditoria({
-    servicio,
-    usuarioId,
-    desde: desde ? inicioDiaLocal(desde) : undefined,
-    hasta: hasta ? inicioDiaLocal(sumarDias(hasta, 1)) : undefined,
-    limite,
-  });
+  const { inicio, fin } = rangoLocal(desde, hasta);
+  const logs = await listarAuditoria({ servicio, usuarioId, desde: inicio, hasta: fin, limite });
   res.json(logs.map(toAuditLog));
 };
 
