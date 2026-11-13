@@ -1,6 +1,7 @@
+
 import { createContext, useContext, useEffect, useState } from "react";
 import { getToken, setToken } from "../api/api";
-import * as authService from "../api/authService";
+import { authService } from "../services/authService";
 
 const AuthContext = createContext(null);
 
@@ -9,11 +10,17 @@ export const AuthProvider = ({ children }) => {
   const [cargando, setCargando] = useState(() => Boolean(getToken()));
 
   useEffect(() => {
-    if (!getToken()) return;
+    if (!getToken()) {
+      setCargando(false);
+      return;
+    }
 
-    authService.obtenerPerfil()
+    authService.getProfile()
       .then(setUser)
-      .catch(() => setToken(null))
+      .catch(() => {
+        setToken(null);
+        setUser(null);
+      })
       .finally(() => setCargando(false));
   }, []);
 
@@ -23,18 +30,34 @@ export const AuthProvider = ({ children }) => {
     return usuario;
   };
 
-  const login = async (correo, password) =>
-    iniciarSesion(await authService.login(correo, password));
+  // Inicio de sesión tradicional
+  const login = async (correo, password) => {
+    const respuesta = await authService.login(correo, password);
+    return iniciarSesion(respuesta);
+  };
 
-  const loginWithGoogle = async (credential) =>
-    iniciarSesion(await authService.loginGoogle(credential));
+  // Registro
+  const register = async (datos) => {
+    const respuesta = await authService.register(datos);
+    return iniciarSesion(respuesta);
+  };
 
-  const register = async (datos) =>
-    iniciarSesion(await authService.registro(datos));
+  // Inicio de sesión con Google
+  const loginWithGoogle = async (credential) => {
+    const respuesta = await authService.loginWithGoogle(credential);
+    return iniciarSesion(respuesta);
+  };
 
-  const logout = () => {
-    setToken(null);
-    setUser(null);
+  // Cerrar sesión
+  const logout = async () => {
+    try {
+      if (getToken()) {
+        await authService.logout();
+      }
+    } finally {
+      setToken(null);
+      setUser(null);
+    }
   };
 
   return (
@@ -54,4 +77,6 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+// Exportar el hook junto al provider es el patrón habitual; solo afecta a la recarga en caliente.
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => useContext(AuthContext);

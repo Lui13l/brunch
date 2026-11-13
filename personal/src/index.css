@@ -1,0 +1,68 @@
+@import "tailwindcss";
+
+/* Identidad propia del salón, distinta de la web pública: esto es una
+   herramienta de trabajo, no un escaparate. El cliente nunca la ve.
+
+   Principio que ordena toda la paleta: el color codifica TIEMPO Y ESTADO,
+   nunca decora. Si algo está coloreado es porque significa algo. El color de
+   marca aparece solo en el encabezado y en la entrada. */
+@theme {
+  /* Superficie de trabajo: un verde-gris frío, como una mesa de preparación.
+     Deliberadamente no es la crema cálida de cafetería. */
+  --color-sala: #eef2f1;
+  --color-mantel: #ffffff;
+  --color-filete: #d7e0dd;
+
+  /* La tinta es petróleo oscuro, un color elegido, no un negro aguado. */
+  --color-tinta: #06211f;
+  --color-tinta-2: #5a6e6b;
+
+  /* El mar, que es la categoría más grande de la carta. Solo para la marca. */
+  --color-rio: #0c6b62;
+  --color-rio-hondo: #084b45;
+
+  /* Escala de calor. Mide cuánto lleva esperando algo. */
+  --color-espera: #e4eae8;
+  --color-tibio: #e9a209;
+  --color-brasa: #c62f1a;
+  --color-listo: #16794a;
+
+  --font-sans: "Archivo", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--color-sala);
+  color: var(--color-tinta);
+  /* Sin rebote elástico ni zoom por doble toque: se usa con el dedo. */
+  overscroll-behavior: none;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Las cifras no deben bailar cuando los minutos avanzan o cambia el total.
+   Se aplica a todo: en esta app casi todo número es un dato que se vigila. */
+body {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* Foco visible y del color de la marca: se opera con teclado en la caja. */
+:where(button, a, input, select, textarea):focus-visible {
+  outline: 3px solid var(--color-rio);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

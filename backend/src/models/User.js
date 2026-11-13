@@ -43,6 +43,20 @@ const userSchema = new mongoose.Schema(
       type: String,
       ref: "Role",
       required: true,
+      index: true,
+    },
+
+    // Una cuenta desactivada no puede iniciar sesión y sus tokens dejan de servir.
+    activo: {
+      type: Boolean,
+      default: true,
+    },
+
+    // Tokens emitidos antes de esta fecha ya no valen (contraseña restablecida
+    // por un admin o cuenta desactivada).
+    credenciales_cambiadas_en: {
+      type: Date,
+      default: null,
     },
   },
   {

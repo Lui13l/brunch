@@ -7,7 +7,9 @@
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
     "seed": "node src/seed.js",
-    "test": "node --test \"tests/**/*.test.js\""
+    "e2e:limpiar": "node scripts/limpiarE2E.js",
+    "test": "node --test --test-concurrency=1 --test-timeout=120000 \"tests/**/*.test.js\"",
+    "lint": "eslint ."
   },
   "keywords": [],
   "author": "",
@@ -22,10 +24,18 @@
     "google-auth-library": "^11.3.2",
     "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.10.3"
+    "mongoose": "^9.10.3",
+    "ws": "^8.22.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "globals": "^15.15.0",
     "mongodb-memory-server": "^11.3.0",
     "supertest": "^7.3.1"
+  },
+  "engines": {
+    "node": ">=20.19"
   }
 }

@@ -17,9 +17,10 @@ npm run dev            # http://localhost:3000
 | `npm run dev` | Servidor con recarga automática (`node --watch`) |
 | `npm start` | Servidor normal |
 | `npm run seed` | Carga roles, admin, el menú de Brunch & Co. e intenciones del chatbot. Se puede repetir sin duplicar nada |
-| `npm test` | Tests de la API sobre una MongoDB en memoria (no toca Atlas) |
+| `npm test` | Tests de la API sobre una MongoDB en memoria (no toca Atlas). Corre los archivos de uno en uno: cada uno levanta su propio `mongod` |
+| `npm run lint` | ESLint del backend (`eslint.config.js`) |
 
-La primera vez que se ejecuta `npm test` se descarga el binario de MongoDB (~700 MB). Si ya tienes MongoDB instalado puedes evitarlo así:
+La primera vez que se ejecuta `npm test` se descarga el binario de MongoDB (~1,3 GB). Cada prueba necesita además unos 500 MB libres en disco. Si ya tienes MongoDB instalado puedes evitarlo así:
 `MONGOMS_SYSTEM_BINARY="C:/Program Files/MongoDB/Server/8.3/bin/mongod.exe" npm test`
 
 ## Variables de entorno
@@ -44,12 +45,17 @@ src/
   seed.js          datos iniciales
   config/          conexión a MongoDB
   models/          esquemas de Mongoose (index.js los exporta todos)
-  routes/          definición de endpoints
-  controllers/     lógica de cada endpoint
-  services/        lógica del chatbot (detección de intenciones y respuestas)
-  data/            menú inicial (menu.js) e intenciones del chatbot (intenciones.js)
-  middleware/      autenticación, roles y manejo de errores
-  utils/           HttpError y pick()
+  routes/          definición de endpoints (admin/ y salon.js son las de la app del personal)
+  controllers/     leen la petición, llaman a los servicios y responden
+  services/        reglas de negocio compartidas: comandas, inventario, caja, pedidos,
+                   cuentas (cambio de rol seguro), menu (desactivar), auditoría, chatbot
+  schemas/         esquemas zod de las rutas de comandas
+  data/            menú inicial, intenciones del chatbot y etiquetas e2e
+  middleware/      autenticación, roles, errores (JSON o texto), límites y auditar()
+  utils/           HttpError, validar (zod), serializar (contrato del personal), tiempo
+                   (hora de Bogotá, rangoLocal), dinero, roles (ROL), codigo (#XXXXXX),
+                   transaccion (conTransaccion)
+  ws/              WebSocket: hub (temas y permisos) e index (protocolo)
 tests/             tests de integración (node:test + supertest)
 ```
 
@@ -61,7 +67,7 @@ tests/             tests de integración (node:test + supertest)
 Authorization: Bearer <token>
 ```
 
-Hay dos roles: `cliente` (por defecto al registrarse) y `admin`.
+Roles: `cliente` (por defecto al registrarse), `admin`, `mesero` y `cocina`. En el código se usan las constantes `ROL.*` de `utils/roles.js`.
 
 ## Endpoints
 
@@ -87,7 +93,7 @@ Todas las rutas empiezan por `/api`. Las respuestas incluyen `id` además de `_i
 | GET | `/productos/:id` | Público | Detalle |
 | POST | `/productos` | Admin | `{tipo, nombre, precio, categoria_id, descripcion?, img_url?, orden?}`. `img_url` puede ser una ruta del frontend, como `/menu/pancakes.jpg` |
 | PUT | `/productos/:id` | Admin | Actualiza campos |
-| DELETE | `/productos/:id` | Admin | Lo desactiva (`activo: false`) |
+| DELETE | `/productos/:id` | Admin | Lo desactiva (`activo: false`); no se borra porque los pedidos viejos lo referencian. `DELETE /api/admin/menu/:id` hace lo mismo y conserva la receta |
 | GET | `/categorias` | Público | Lista |
 | POST / PUT / DELETE | `/categorias[/:id]` | Admin | `{nombre, orden?}`. Se listan por `orden`. No se borra si tiene productos |
 
@@ -102,7 +108,7 @@ Todas las rutas empiezan por `/api`. Las respuestas incluyen `id` además de `_i
 | PATCH | `/pedidos/:id/estado` | Admin | `{estado}` |
 | PATCH | `/pedidos/:id/domiciliario` | Admin | `{domiciliario_id}`. El domiciliario pasa a `ocupado` |
 
-Flujo de estados: `pendiente → confirmado → preparando → en_camino → entregado`. Se puede cancelar desde cualquier estado anterior a `en_camino`. Al entregar o cancelar, el domiciliario vuelve a quedar `disponible`.
+Flujo de estados (`Order.TRANSICIONES`): `pendiente → confirmado → preparando → en_camino → entregado`. Se puede cancelar desde cualquier estado anterior a `en_camino`. Al entregar o cancelar, el domiciliario vuelve a quedar `disponible`.
 
 ### Pagos
 | Método | Ruta | Acceso | Descripción |
@@ -160,9 +166,67 @@ Flujo de estados: `pendiente → confirmado → preparando → en_camino → ent
 
 Las intenciones iniciales están en [src/data/intenciones.js](src/data/intenciones.js). Volver a ejecutar el seed solo crea las que falten y no sobrescribe las que el admin haya editado.
 
+## Salón y administración (app `personal`)
+
+La app del personal ([../personal](../personal)) usa estas rutas. Responden en camelCase, con ids como texto, dinero y stock como números y fechas en hora de Bogotá sin `Z` (`ZONA_HORARIA`). **Sus errores son texto plano**, no JSON.
+
+**Roles:** `admin`, `mesero`, `cocina` y `cliente`. Hacia la app salen en mayúscula (`ADMIN`, `MESERO`, `COCINA`, y `USUARIO` para cliente). Una cuenta con `activo: false` no puede entrar y sus tokens dejan de servir.
+
+| Ruta | Quién | Qué hace |
+|---|---|---|
+| `POST /api/usuarios/login` | público | Login del personal: `{email, password}` → usuario plano + `token` |
+| `GET /api/mesas`, `GET /api/salon/menu` | mesero, cocina, admin | Mesas activas (con `comandaAbiertaId`) y carta del salón |
+| `/api/comandas` | mesero, admin | Abrir cuenta, agregar, editar y quitar platos en borrador, `enviar` a cocina (descuenta inventario por receta), `cancelar`, `entregar`, `cerrar` (cobro) |
+| `/api/cocina` | cocina, admin | `GET /pendientes` y `PATCH /items/:id {estado: PREPARANDO\|LISTO}` |
+| `/api/admin/mesas`, `/api/admin/menu` | admin | Mesas y carta (`disponible`, `visibleWeb`, `visibleSalon`) |
+| `/api/admin/insumos`, `/api/admin/recetas` | admin | Inventario (ajustes y movimientos) y recetas por plato |
+| `/api/admin/caja` | admin | Abrir y cerrar caja, entradas y salidas, cuadre, historial |
+| `/api/admin/reportes/ventas\|consumo` | admin | `?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` (por defecto, hoy) |
+| `/api/admin/personal` | admin | Crear meseros y cocina, cambiar rol, activar o desactivar, poner contraseña |
+| `/api/admin/pedidos` | admin | Pedidos web (`?activos=true`, `?estado=`, fechas) y `PATCH /:id/estado` |
+| `/api/admin/auditoria` | admin | Quién hizo qué: `?servicio=&usuarioId=&desde=&hasta=&limite=` |
+
+Reglas importantes:
+- Una mesa solo puede tener una cuenta abierta, y solo puede haber una caja abierta (índices únicos parciales).
+- Enviar a cocina nunca se bloquea por falta de stock. El stock queda en negativo y se avisa con `faltantes`.
+- Enviar, cancelar y cobrar usan **transacciones**, que necesitan un replica set. Atlas ya lo es; un MongoDB local suelto no.
+- Cobrar con platos todavía en cocina exige `forzar: true` (solo admin): esos platos pasan a `CANCELADO`, se devuelve su inventario y desaparecen de la pantalla de cocina. No se cobran.
+
+### Tiempo real (WebSocket en `/ws`)
+
+1. El cliente envía `{type:"auth", token}` y el servidor responde `ready`.
+2. El cliente se suscribe con `{type:"subscribe", topics:[...]}`.
+3. Los avisos llegan como `{type:"message", topic, data}`.
+
+Temas:
+
+| Tema | Quién puede suscribirse |
+|---|---|
+| `/topic/salon` | mesero, cocina, admin |
+| `/topic/cocina` | cocina, admin |
+| `/topic/mesero/{id}/comandas` | ese mesero o un admin |
+| `/topic/admin/caja`, `/topic/admin/pedidos`, `/topic/admin/pedidos/estado`, `/topic/admin/inventario` | admin |
+
+Códigos de cierre:
+- **4401**: la sesión no vale (token inválido, logout o cuenta desactivada).
+- **4403**: cambió el rol del usuario.
+
+El origen del navegador debe estar en `WS_ORIGINS` (o en `CORS_ORIGIN`). Las suscripciones viven en memoria, así que hay que usar **una sola instancia** del backend.
+
+### Pruebas e2e en la base compartida
+
+Las pruebas end-to-end marcan todo lo que crean:
+- correos `@e2e.brunch.test`
+- mesas con número 900 o más, o con nombre que empieza por `E2E`
+- insumos y platos con nombre que empieza por `[E2E]`
+
+Para limpiar:
+- `npm run e2e:limpiar` cuenta lo que borraría.
+- `npm run e2e:limpiar -- --confirmar` lo borra.
+
 ## Errores
 
-Todas las respuestas de error tienen la forma `{ "mensaje": "..." }`. Los errores de validación añaden un array `errores`.
+Las respuestas de error de la web tienen la forma `{ "mensaje": "..." }`, y los errores de validación añaden un array `errores`. Las rutas del personal responden el mismo mensaje en texto plano.
 
 | Código | Cuándo |
 |---|---|
@@ -170,5 +234,5 @@ Todas las respuestas de error tienen la forma `{ "mensaje": "..." }`. Los errore
 | 401 | Falta el token o no es válido |
 | 403 | El rol no tiene permiso o el recurso es de otro usuario |
 | 404 | Recurso o ruta inexistente |
-| 409 | Duplicado (correo, categoría) o conflicto (domiciliario ocupado, pago repetido) |
+| 409 | Duplicado (correo, categoría) o conflicto: domiciliario ocupado, pago repetido, o el pedido, pago o reserva cambió mientras tanto (los cambios de estado son condicionales y dos peticiones a la vez no se pisan) |
 | 429 | Demasiados intentos (login, registro o mensajes al chatbot) |

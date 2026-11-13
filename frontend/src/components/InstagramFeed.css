@@ -1,35 +1,57 @@
-.instagram-section{
-  padding: 5rem 0;
-  background: #f7f4f1;
-  text-align: center;
+/* Mosaico de fotos del local: una grande a la izquierda y cuatro a la derecha. */
+
+.instagram-section {
+  padding-bottom: clamp(3.5rem, 8vw, 6.5rem);
 }
 
-.instagram-subtitle{
-  font-size: .78rem;
-  letter-spacing: .3em;
-  color: #c4845a;
-  margin-bottom: .7rem;
-  font-family: 'DM Serif Display', serif;
+.instagram-encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  align-items: baseline;
+  justify-content: space-between;
 }
 
-.instagram-title{
-  font-family: 'DM Serif Display', serif;
-  font-size: 2.6rem;
-  color: #1f1a17;
-  margin-bottom: 2.5rem;
+.instagram-usuario {
+  font-weight: 600;
+  color: var(--caramelo);
 }
 
-.instagram-wrapper{
-  width: 100%;
-  max-width: 800px;
-  margin: 0 auto;
-  border-radius: 28px;
+.instagram-mosaico {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-rows: clamp(150px, 19vw, 250px);
+  gap: clamp(0.6rem, 1.4vw, 1rem);
+  margin-top: clamp(1.5rem, 3.5vw, 2.5rem);
+  list-style: none;
+}
+
+.instagram-mosaico li {
   overflow: hidden;
+  background-color: var(--mantequilla);
+  border-radius: var(--radio-m);
 }
 
-.instagram-widget{
+.instagram-mosaico li:first-child {
+  grid-column: span 2;
+  grid-row: span 2;
+}
+
+.instagram-mosaico img {
+  display: block;
   width: 100%;
-  height: 800px;
-  border: 25px;
-  overflow: hidden;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.9s var(--curva);
+}
+
+.instagram-mosaico li:hover img {
+  transform: scale(1.05);
+}
+
+@media (max-width: 700px) {
+  .instagram-mosaico {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 42vw;
+  }
 }

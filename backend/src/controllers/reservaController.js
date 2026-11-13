@@ -1,13 +1,9 @@
 const { Reservation } = require("../models");
 const { HttpError, pick } = require("../utils/http");
 const { verificarDueno } = require("../middleware/auth");
+const { diaCalendarioHoy } = require("../utils/tiempo");
 
-const TRANSICIONES = {
-  pendiente: ["confirmada", "cancelada"],
-  confirmada: ["finalizada", "cancelada"],
-  finalizada: [],
-  cancelada: [],
-};
+const { TRANSICIONES } = Reservation;
 
 const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -17,12 +13,19 @@ const buscarReserva = async (id) => {
   return reserva;
 };
 
+// Condicional sobre el estado leído: dos cambios simultáneos no se pisan.
 const aplicarEstado = async (reserva, estado) => {
-  if (!TRANSICIONES[reserva.estado_reserva]?.includes(estado)) {
-    throw new HttpError(400, `No se puede pasar de "${reserva.estado_reserva}" a "${estado}"`);
+  const anterior = reserva.estado_reserva;
+  if (!TRANSICIONES[anterior]?.includes(estado)) {
+    throw new HttpError(400, `No se puede pasar de "${anterior}" a "${estado}"`);
   }
-  reserva.estado_reserva = estado;
-  await reserva.save();
+  const actualizada = await Reservation.findOneAndUpdate(
+    { _id: reserva._id, estado_reserva: anterior },
+    { $set: { estado_reserva: estado } },
+    { returnDocument: "after" }
+  );
+  if (!actualizada) throw new HttpError(409, "La reserva cambió mientras tanto. Recarga e inténtalo de nuevo.");
+  return actualizada;
 };
 
 const crear = async (req, res) => {
@@ -32,10 +35,9 @@ const crear = async (req, res) => {
     throw new HttpError(400, "La hora debe tener formato HH:MM (24 horas)");
   }
 
-  // "dia" llega como YYYY-MM-DD; se compara contra el inicio de hoy.
-  const hoy = new Date();
-  hoy.setUTCHours(0, 0, 0, 0);
-  if (datos.dia && new Date(datos.dia) < hoy) {
+  // "dia" llega como YYYY-MM-DD y se guarda como medianoche UTC de esa fecha;
+  // se compara contra el día de hoy del restaurante (no el de UTC).
+  if (datos.dia && new Date(datos.dia) < diaCalendarioHoy()) {
     throw new HttpError(400, "No se puede reservar en una fecha pasada");
   }
 
@@ -74,15 +76,13 @@ const obtener = async (req, res) => {
 
 const cambiarEstado = async (req, res) => {
   const reserva = await buscarReserva(req.params.id);
-  await aplicarEstado(reserva, req.body?.estado);
-  res.json(reserva);
+  res.json(await aplicarEstado(reserva, req.body?.estado));
 };
 
 const cancelar = async (req, res) => {
   const reserva = await buscarReserva(req.params.id);
   verificarDueno(req, reserva.usuario_id);
-  await aplicarEstado(reserva, "cancelada");
-  res.json(reserva);
+  res.json(await aplicarEstado(reserva, "cancelada"));
 };
 
 module.exports = { crear, misReservas, listar, obtener, cambiarEstado, cancelar };

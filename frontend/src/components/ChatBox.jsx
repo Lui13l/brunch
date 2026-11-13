@@ -1,11 +1,15 @@
 import { useState, useRef, useEffect } from "react";
-import { api } from "../api/api";
+import { ArrowUp } from "lucide-react";
+import { enviarMensaje } from "../services/chatService";
 import "./ChatBox.css";
 
 const WELCOME = {
   from: "bot",
   text: "¡Hola! 👋 Soy el asistente de Brunch & Co. Pregúntame sobre nuestro menú, horarios, reservas, pagos o el estado de tu pedido.",
 };
+
+// Preguntas frecuentes para empezar sin tener que escribir.
+const SUGERENCIAS = ["¿Cuál es el horario?", "Quiero hacer una reserva", "¿Qué métodos de pago aceptan?"];
 
 // Las respuestas vienen del chatbot del backend (POST /api/chat/mensaje).
 // Con sesión iniciada la conversación se guarda y puede consultar tus pedidos y reservas.
@@ -14,6 +18,7 @@ const ChatBox = () => {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const messagesRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     // Se desplaza solo dentro del chat, sin mover toda la página.
@@ -21,15 +26,15 @@ const ChatBox = () => {
     if (lista) lista.scrollTo({ top: lista.scrollHeight, behavior: "smooth" });
   }, [messages, loading]);
 
-  const send = async () => {
-    const text = input.trim();
+  const send = async (textoDirecto) => {
+    const text = (textoDirecto ?? input).trim();
     if (!text || loading) return;
     setInput("");
     setMessages((prev) => [...prev, { from: "user", text }]);
     setLoading(true);
 
     try {
-      const { respuesta } = await api.post("/chat/mensaje", { mensaje: text });
+      const { respuesta } = await enviarMensaje(text);
       setMessages((prev) => [...prev, { from: "bot", text: respuesta }]);
     } catch (err) {
       setMessages((prev) => [
@@ -38,12 +43,16 @@ const ChatBox = () => {
       ]);
     } finally {
       setLoading(false);
+      // El campo se desactiva mientras responde: al terminar recupera el foco para seguir escribiendo.
+      requestAnimationFrame(() => inputRef.current?.focus({ preventScroll: true }));
     }
   };
 
   const handleKey = (e) => {
     if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void send(); }
   };
+
+  const soloBienvenida = messages.length === 1 && !loading;
 
   return (
     <div className="chatbox">
@@ -54,14 +63,24 @@ const ChatBox = () => {
           </div>
         ))}
         {loading && (
-          <div className="chatbox-bubble chatbox-bubble--bot chatbox-typing">
+          <div className="chatbox-bubble chatbox-bubble--bot chatbox-typing" aria-label="El asistente está escribiendo">
             <span /><span /><span />
+          </div>
+        )}
+        {soloBienvenida && (
+          <div className="chatbox-sugerencias">
+            {SUGERENCIAS.map((pregunta) => (
+              <button key={pregunta} type="button" className="chatbox-sugerencia" onClick={() => void send(pregunta)}>
+                {pregunta}
+              </button>
+            ))}
           </div>
         )}
       </div>
 
       <div className="chatbox-input-row">
         <input
+          ref={inputRef}
           className="chatbox-input"
           type="text"
           placeholder="Escribe tu mensaje..."
@@ -73,11 +92,13 @@ const ChatBox = () => {
           disabled={loading}
         />
         <button
+          type="button"
           className="chatbox-send"
           onClick={() => void send()}
           disabled={loading || !input.trim()}
+          aria-label="Enviar mensaje"
         >
-          Enviar
+          <ArrowUp size={20} strokeWidth={2} aria-hidden="true" />
         </button>
       </div>
     </div>

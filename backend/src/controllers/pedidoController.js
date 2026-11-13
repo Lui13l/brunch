@@ -1,36 +1,13 @@
 const { Order, MenuItem, DeliveryPerson } = require("../models");
 const { HttpError, pick } = require("../utils/http");
 const { verificarDueno } = require("../middleware/auth");
-
-// Estados a los que puede pasar un pedido desde cada estado.
-const TRANSICIONES = {
-  pendiente: ["confirmado", "cancelado"],
-  confirmado: ["preparando", "cancelado"],
-  preparando: ["en_camino", "cancelado"],
-  en_camino: ["entregado"],
-  entregado: [],
-  cancelado: [],
-};
+const { liberarDomiciliario, aplicarEstado } = require("../services/pedidos");
+const eventosPedido = require("../services/eventosPedido");
 
 const buscarPedido = async (id) => {
   const pedido = await Order.findById(id);
   if (!pedido) throw new HttpError(404, "Pedido no encontrado");
   return pedido;
-};
-
-const liberarDomiciliario = async (pedido) => {
-  if (pedido.domiciliario_id) {
-    await DeliveryPerson.findByIdAndUpdate(pedido.domiciliario_id, { estado: "disponible" });
-  }
-};
-
-const aplicarEstado = async (pedido, estado) => {
-  if (!TRANSICIONES[pedido.estado]?.includes(estado)) {
-    throw new HttpError(400, `No se puede pasar de "${pedido.estado}" a "${estado}"`);
-  }
-  pedido.estado = estado;
-  if (estado === "entregado" || estado === "cancelado") await liberarDomiciliario(pedido);
-  await pedido.save();
 };
 
 // El cliente solo manda productos y cantidades; nombres, precios y total
@@ -42,7 +19,7 @@ const crear = async (req, res) => {
   }
 
   const ids = items.map((i) => i.menu_item_id);
-  const productos = await MenuItem.find({ _id: { $in: ids }, activo: true });
+  const productos = await MenuItem.find({ _id: { $in: ids }, activo: true, visible_web: { $ne: false } });
   const porId = new Map(productos.map((p) => [String(p._id), p]));
 
   const lineas = items.map((item) => {
@@ -76,6 +53,8 @@ const crear = async (req, res) => {
     total: lineas.reduce((suma, l) => suma + l.subtotal, 0),
   });
 
+  // Aviso en vivo para el admin; no cambia la respuesta de la web.
+  eventosPedido.nuevo(pedido, req.usuario);
   res.status(201).json(pedido);
 };
 
@@ -124,19 +103,34 @@ const asignarDomiciliario = async (req, res) => {
     throw new HttpError(400, `El pedido ya está ${pedido.estado}`);
   }
 
-  const domiciliario = await DeliveryPerson.findById(req.body?.domiciliario_id);
-  if (!domiciliario) throw new HttpError(404, "Domiciliario no encontrado");
-  if (domiciliario.estado !== "disponible") {
+  // Se "reclama" el domiciliario de forma atómica: si dos pedidos lo piden a la
+  // vez, solo uno lo consigue.
+  const domiciliario = await DeliveryPerson.findOneAndUpdate(
+    { _id: req.body?.domiciliario_id, estado: "disponible" },
+    { $set: { estado: "ocupado" } },
+    { returnDocument: "after" }
+  );
+  if (!domiciliario) {
+    if (!(await DeliveryPerson.exists({ _id: req.body?.domiciliario_id }))) {
+      throw new HttpError(404, "Domiciliario no encontrado");
+    }
     throw new HttpError(409, "El domiciliario no está disponible");
   }
 
-  await liberarDomiciliario(pedido);
-  domiciliario.estado = "ocupado";
-  await domiciliario.save();
-
-  pedido.domiciliario_id = domiciliario._id;
-  await pedido.save();
-  res.json(pedido);
+  const anterior = await Order.findOneAndUpdate(
+    { _id: pedido._id, estado: { $nin: ["entregado", "cancelado"] } },
+    { $set: { domiciliario_id: domiciliario._id } },
+    { returnDocument: "before" }
+  );
+  if (!anterior) {
+    // El pedido terminó mientras tanto: el domiciliario vuelve a quedar libre.
+    await DeliveryPerson.updateOne({ _id: domiciliario._id }, { $set: { estado: "disponible" } });
+    throw new HttpError(400, "El pedido ya terminó");
+  }
+  if (anterior.domiciliario_id && String(anterior.domiciliario_id) !== String(domiciliario._id)) {
+    await liberarDomiciliario(anterior);
+  }
+  res.json(await Order.findById(pedido._id));
 };
 
 module.exports = {

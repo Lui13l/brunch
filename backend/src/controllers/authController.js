@@ -1,20 +1,22 @@
-const { randomBytes, randomUUID } = require("node:crypto");
-const jwt = require("jsonwebtoken");
+const { randomBytes } = require("node:crypto");
 const { OAuth2Client } = require("google-auth-library");
 const { User, RevokedToken } = require("../models");
 const { HttpError, pick } = require("../utils/http");
-const { hashToken } = require("../utils/authToken");
+const { hashToken, generarToken } = require("../utils/authToken");
+const { desconectarToken } = require("../ws/hub");
+const { ROL } = require("../utils/roles");
 
 const googleClient = new OAuth2Client();
 
-const generarToken = (usuario) =>
-  jwt.sign({ id: usuario._id, rol: usuario.rol_id, jti: randomUUID() }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || "7d",
-  });
+const rechazarInactivo = (usuario) => {
+  if (usuario.activo === false) {
+    throw new HttpError(403, "Tu cuenta está desactivada. Contacta al restaurante.");
+  }
+};
 
 const registro = async (req, res) => {
   const datos = pick(req.body, ["nombre", "correo", "password", "direccion", "celular"]);
-  const usuario = await User.create({ ...datos, rol_id: "cliente" });
+  const usuario = await User.create({ ...datos, rol_id: ROL.CLIENTE });
 
   res.status(201).json({ token: generarToken(usuario), usuario });
 };
@@ -29,6 +31,7 @@ const login = async (req, res) => {
   if (!usuario || !(await usuario.compararPassword(String(password)))) {
     throw new HttpError(401, "Correo o contraseña incorrectos");
   }
+  rechazarInactivo(usuario);
 
   res.json({ token: generarToken(usuario), usuario });
 };
@@ -67,10 +70,11 @@ const loginGoogle = async (req, res) => {
       nombre: payload.name?.trim() || correo.split("@")[0],
       correo,
       password: randomBytes(32).toString("hex"),
-      rol_id: "cliente",
+      rol_id: ROL.CLIENTE,
     });
   }
 
+  rechazarInactivo(usuario);
   res.json({ token: generarToken(usuario), usuario });
 };
 
@@ -79,10 +83,10 @@ const perfil = async (req, res) => {
 };
 
 const logout = async (req, res) => {
-  await RevokedToken.create({
-    tokenHash: hashToken(req.authToken.value),
-    expiresAt: req.authToken.expiresAt,
-  });
+  const tokenHash = hashToken(req.authToken.value);
+  await RevokedToken.create({ tokenHash, expiresAt: req.authToken.expiresAt });
+  // Corta también la conexión en vivo abierta con ese token.
+  desconectarToken(tokenHash);
 
   res.json({ mensaje: "Sesión cerrada correctamente" });
 };

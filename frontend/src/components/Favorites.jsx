@@ -1,158 +1,197 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { ArrowLeft, ArrowRight } from "lucide-react";
 import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import brunch from "../assets/brunch.jpg";
-import tostada from "../assets/tostada.jpg";
+import { listarProductos } from "../services/menuService";
+import { formatearPrecio } from "../utils/formato";
 import "./Favorites.css";
 
-// Fotos de productos: se sirven desde frontend/public/menu (las mismas del menú).
-const pancakes = "/menu/pancakes.jpg";
-const avocado = "/menu/avocado.jpg";
-const eggs = "/menu/eggs.jpg";
-const icecream = "/menu/helado.jpg";
-const latte = "/menu/latte.jpg";
-const macaroni = "/menu/macaroni.jpg";
-const redvelvet = "/menu/redvelvet.jpg";
-const smoothie = "/menu/smoothie.jpg";
-const soda = "/menu/soda.jpg";
+// Platos que se destacan en el inicio, en este orden. El precio y la
+// descripción salen de la carta real; mientras llega (o si falla) se muestran
+// solo con su foto.
+const FAVORITOS = [
+  { nombre: "Pancakes", img: "/menu/pancakes.jpg" },
+  { nombre: "Avocado Toast Campestre", img: "/menu/avocado.jpg" },
+  { nombre: "Matcha Latte", img: "/menu/matcha_latte.jpg" },
+  { nombre: "Eggs Benedict", img: "/menu/eggs.jpg" },
+  { nombre: "Torrijas de Ricotta", img: "/menu/torrejon.jpg" },
+  { nombre: "Mimosa", img: "/menu/mimosa_coctel.jpg" },
+  { nombre: "Brunch de la casa", img: "/menu/casa.jpg" },
+  { nombre: "Açaí bowl", img: "/menu/acai_bowl.jpg" },
+  { nombre: "French Toast Gourmet", img: "/menu/toastsweet.jpg" },
+  { nombre: "Parfait de granola y frutos rojos", img: "/menu/parfait.jpg" },
+];
 
-gsap.registerPlugin(ScrollTrigger);
+const PASO = 360 / FAVORITOS.length; // grados entre un plato y el siguiente
+const SEGUNDOS_POR_VUELTA = 70;
+
+const sinMovimiento = () => globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const Favorites = () => {
-  const sectionRef = useRef(null);
-
-  const items = [
-    { name: "Pancakes", img: pancakes },
-    { name: "Soda de Café", img: soda },
-    { name: "Avocado Toast", img: avocado },
-    { name: "Coffe Latte", img: latte },
-    { name: "Macaroni", img: macaroni },
-    { name: "Eggs Benedict", img: eggs },
-    { name: "Smoothie", img: smoothie },
-    { name: "Pancakes", img: pancakes },
-    { name: "Ice cream", img: icecream },
-    { name: "Avocado Toast", img: avocado },
-    { name: "Cupcake", img: redvelvet },
-    { name: "Eggs Benedict", img: eggs },
-    { name: "brunch", img: brunch },  
-   
-    
-    { name: "Tostada de la casa", img: tostada },
-  ];
+  const aroRef = useRef(null);
+  const giroRef = useRef(null);
+  const sobreElCarrusel = useRef(false);
+  const [platos, setPlatos] = useState(FAVORITOS);
+  const [volteado, setVolteado] = useState(null);
 
   useEffect(() => {
-    if (globalThis.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-
-    const ctx = gsap.context(() => {
-
-      gsap.from(".fav-title", {
-        scrollTrigger: { trigger: ".fav-title", start: "top 85%", once: true },
-        y: 25,
-        opacity: 0,
-        duration: 0.45,
-        ease: "power2.out",
-      });
-
-      gsap.from(".fav-btn", {
-        scrollTrigger: { trigger: ".fav-btn", start: "top 95%", once: true },
-        y: 15,
-        opacity: 0,
-        duration: 0.4,
-        ease: "power2.out",
-      });
-
-      const cards = gsap.utils.toArray(".fav-card");
-      const total = cards.length;
-      const angle = 360 / total;
-      const radius = 420;
-
-      cards.forEach((card, i) => {
-        gsap.set(card, {
-          rotationY: i * angle,
-          transformOrigin: `50% 50% -${radius}px`,
-          z: radius,
-        });
-      });
-
-      const tween = gsap.to(".carousel", {
-        rotationY: "+=360",
-        duration: 35,
-        repeat: -1,
-        ease: "none",
-      });
-
-      // ⏸ pausa al hover
-      const carousel = document.querySelector(".carousel");
-      carousel.addEventListener("mouseenter", () => tween.pause());
-      carousel.addEventListener("mouseleave", () => tween.resume());
-
-    }, sectionRef);
-
-    const onLoad = () => ScrollTrigger.refresh();
-    globalThis.addEventListener("load", onLoad);
-
+    let activo = true;
+    listarProductos()
+      .then((productos) => {
+        if (!activo) return;
+        const porNombre = new Map(productos.map((p) => [p.nombre, p]));
+        setPlatos(
+          FAVORITOS.map((fav) => {
+            const real = porNombre.get(fav.nombre);
+            return real
+              ? { ...fav, img: real.img_url || fav.img, precio: real.precio, descripcion: real.descripcion }
+              : fav;
+          }),
+        );
+      })
+      .catch(() => {}); // Sin carta, los favoritos se quedan con su foto y su nombre.
     return () => {
-      ctx.revert();
-      globalThis.removeEventListener("load", onLoad);
+      activo = false;
     };
   }, []);
 
+  // El aro gira solo, despacio. Los platos que quedan de espaldas se ocultan
+  // para que no se vean al revés a través de los de adelante.
+  useEffect(() => {
+    const aro = aroRef.current;
+    const tarjetas = [...aro.children];
+
+    const ocultarLosDeAtras = () => {
+      const angulo = Number(gsap.getProperty(aro, "rotationY"));
+      tarjetas.forEach((tarjeta, i) => {
+        const deEspaldas = Math.cos(((i * PASO + angulo) * Math.PI) / 180) < 0.05;
+        tarjeta.classList.toggle("fav-card--atras", deEspaldas);
+      });
+    };
+
+    // Con inicio y fin fijos: así una vuelta siempre va de 0° a -360°, aunque
+    // el efecto se monte dos veces (modo estricto de React en desarrollo).
+    const giro = gsap.fromTo(
+      aro,
+      { rotationY: 0 },
+      {
+        rotationY: -360,
+        duration: SEGUNDOS_POR_VUELTA,
+        repeat: -1,
+        ease: "none",
+        onUpdate: ocultarLosDeAtras,
+      },
+    );
+    // Empieza varias vueltas adentro para que las flechas puedan ir hacia atrás.
+    giro.totalTime(SEGUNDOS_POR_VUELTA * 50);
+    if (sinMovimiento()) giro.timeScale(0);
+    giroRef.current = giro;
+    ocultarLosDeAtras();
+
+    return () => {
+      gsap.killTweensOf(giro);
+      giro.kill();
+    };
+  }, []);
+
+  // Se detiene con suavidad mientras el mouse está encima o hay un plato volteado.
+  const ajustarGiro = (hayVolteado) => {
+    const giro = giroRef.current;
+    if (!giro || sinMovimiento()) return;
+    const quieto = sobreElCarrusel.current || hayVolteado;
+    gsap.to(giro, { timeScale: quieto ? 0 : 1, duration: 0.7, ease: "power2.out", overwrite: "auto" });
+  };
+
+  const voltear = (indice) => {
+    const nuevo = volteado === indice ? null : indice;
+    setVolteado(nuevo);
+    ajustarGiro(nuevo !== null);
+  };
+
+  const mover = (pasos) => {
+    const giro = giroRef.current;
+    if (!giro) return;
+    setVolteado(null);
+    const porPaso = SEGUNDOS_POR_VUELTA / FAVORITOS.length;
+    // Va al plato vecino exacto, aunque el aro estuviera a medio camino.
+    const destino = (Math.round(giro.totalTime() / porPaso) + pasos) * porPaso;
+    gsap.to(giro, { totalTime: destino, duration: 0.8, ease: "power3.out", overwrite: "auto" });
+  };
+
   return (
-    <section ref={sectionRef} className="section favorites-section">
-      <div className="container has-text-centered">
-        
-        <h2 className="title is-4 fav-title">Nuestros Favoritos</h2>
-
-
-        <div className="carousel-container mt-5">
-          <div className="carousel">
-            {items.map((item, index) => (
-              <div
-                className="fav-card"
-                key={index}
-                onClick={(e) => {
-                  e.currentTarget.classList.toggle("flipped");
-                }}
-              >
-                <div className="fav-card-inner">
-
-                  {/* FRONT */}
-                  <div className="fav-card-front card custom-card">
-                    <div className="card-image">
-                      <figure className="image is-4by3">
-                        <img src={item.img} alt={item.name} loading="lazy" />
-                      </figure>
-                    </div>
-
-                    <div className="card-content">
-                      <p>{item.name}</p>
-                    </div>
-                  </div>
-
-                  {/* BACK */}
-                  <div className="fav-card-back">
-                    <h3>{item.name}</h3>
-
-                    <p>
-                      Delicioso brunch preparado con ingredientes frescos y
-                      sabores artesanales.
-                    </p>
-                  </div>
-
-                </div>
-              </div>
-            ))}
+    <section className="favorites-section">
+      <div className="contenedor">
+        <div className="fav-encabezado">
+          <div>
+            <h2 className="titulo-seccion">Los favoritos de la casa</h2>
+            <p className="bajada">Toca un plato para ver de qué está hecho.</p>
+          </div>
+          <div className="fav-flechas">
+            <button type="button" className="fav-flecha" onClick={() => mover(-1)} aria-label="Plato anterior">
+              <ArrowLeft size={20} strokeWidth={1.8} aria-hidden="true" />
+            </button>
+            <button type="button" className="fav-flecha" onClick={() => mover(1)} aria-label="Plato siguiente">
+              <ArrowRight size={20} strokeWidth={1.8} aria-hidden="true" />
+            </button>
           </div>
         </div>
+      </div>
 
-        <Link to="/menu" className="button is-black is-rounded mt-5 fav-btn">
-          Ver menú completo
-        </Link>
+      <div
+        className="fav-escena"
+        onMouseEnter={() => {
+          sobreElCarrusel.current = true;
+          ajustarGiro(volteado !== null);
+        }}
+        onMouseLeave={() => {
+          sobreElCarrusel.current = false;
+          setVolteado(null);
+          ajustarGiro(false);
+        }}
+      >
+        <div className="fav-fondo">
+          <ul className="fav-aro" ref={aroRef}>
+            {platos.map((plato, i) => (
+              <li
+                key={plato.nombre}
+                className={`fav-card${volteado === i ? " flipped" : ""}`}
+                style={{ "--i": i }}
+              >
+                <div
+                  className="fav-card-inner"
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={volteado === i}
+                  aria-label={`${plato.nombre}: ver detalles`}
+                  onClick={() => voltear(i)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      voltear(i);
+                    }
+                  }}
+                >
+                  <div className="fav-cara fav-frente">
+                    <img src={plato.img} alt="" loading="lazy" draggable="false" />
+                    <span className="fav-nombre">{plato.nombre}</span>
+                  </div>
 
+                  <div className="fav-cara fav-dorso">
+                    <h3>{plato.nombre}</h3>
+                    {plato.precio != null && <p className="fav-precio">{formatearPrecio(plato.precio)}</p>}
+                    <p className="fav-desc">{plato.descripcion || "Encuéntralo en nuestra carta."}</p>
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      <div className="contenedor fav-pie">
+        <Link to="/menu" className="boton boton--primario">Ver la carta completa</Link>
       </div>
     </section>
-    
   );
 };
 

@@ -1,7 +1,8 @@
 import { useNavigate } from "react-router-dom";
+import { Check, Clock } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import "./PedidoExitoso.css";
+import "./Exito.css";
 
 const PedidoExitoso = () => {
   const navigate = useNavigate();
@@ -10,34 +11,31 @@ const PedidoExitoso = () => {
     <>
       <Navbar />
 
-      <main className="pedido-main">
-        <div className="pedido-card">
-          <div className="pedido-icon">✓</div>
+      <main className="exito-main">
+        <div className="exito-card tarjeta entrada-pagina">
+          <span className="exito-icon" aria-hidden="true">
+            <Check size={32} strokeWidth={2.2} />
+          </span>
 
-          <span className="pedido-eyebrow">Pedido confirmado</span>
-          <h1 className="pedido-title">¡En camino!</h1>
+          <h1 className="exito-title">¡En camino!</h1>
 
-          <div className="pedido-divider">
-            <span className="pedido-divider-line" />
-            <span className="pedido-divider-gem">✦</span>
-            <span className="pedido-divider-line" />
-          </div>
-
-          <p className="pedido-sub">
+          <p className="exito-sub">
             Tu pedido ha sido recibido con éxito. Nuestro equipo lo está
             preparando con todo el cariño para que llegue fresquito a tu puerta.
           </p>
 
-          <div className="pedido-eta">
-            <span className="pedido-eta-label">Tiempo estimado de entrega</span>
-            <span className="pedido-eta-time">30 – 45 min</span>
-          </div>
+          <p className="exito-detalle">
+            <Clock size={18} strokeWidth={1.8} aria-hidden="true" />
+            <span>
+              Tiempo estimado de entrega: <strong>30 – 45 min</strong>
+            </span>
+          </p>
 
-          <div className="pedido-actions">
-            <button className="pedido-btn-primary" onClick={() => navigate("/")}>
+          <div className="exito-actions">
+            <button type="button" className="boton boton--primario" onClick={() => navigate("/")}>
               Volver al inicio
             </button>
-            <button className="pedido-btn-secondary" onClick={() => navigate("/menu")}>
+            <button type="button" className="boton boton--secundario" onClick={() => navigate("/menu")}>
               Hacer otro pedido
             </button>
           </div>

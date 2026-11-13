@@ -49,3 +49,17 @@ describe("Seguridad", () => {
     expect(bloqueado.body.mensaje.includes("Demasiados intentos")).toBe(true);
   });
 });
+
+// Corre después del test anterior, con el cupo de login de la IP ya agotado.
+describe("Límite de login en la app del personal", () => {
+  test("el 429 del login del personal llega en texto plano y se puede mostrar", async () => {
+    const res = await api().post("/api/usuarios/login").send({ email: "nadie@test.com", password: "x" });
+    expect(res.status).toBe(429);
+    expect(res.type).toBe("text/plain");
+    expect(res.text).toBe("Demasiados intentos. Espera unos minutos antes de volver a intentarlo.");
+
+    const web = await api().post("/api/auth/login").send({ correo: "nadie@test.com", password: "x" });
+    expect(web.status).toBe(429);
+    expect(typeof web.body.mensaje).toBe("string");
+  });
+});

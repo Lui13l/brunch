@@ -1,0 +1,107 @@
+/* Pantallas de confirmación (pedido y reserva). */
+
+.exito-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100svh - var(--nav-alto));
+  padding: clamp(2rem, 6vw, 4rem) var(--margen-pagina) clamp(3rem, 7vw, 6rem);
+  background-color: var(--crema);
+}
+
+.exito-card {
+  width: 100%;
+  max-width: 34rem;
+  padding: clamp(2rem, 6vw, 3.25rem);
+  text-align: center;
+}
+
+@keyframes exito-aparece {
+  0% {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.12);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes exito-trazo {
+  from {
+    stroke-dashoffset: 30;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+.exito-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 76px;
+  height: 76px;
+  color: #fff;
+  background-color: var(--salvia);
+  border-radius: 50%;
+  animation: exito-aparece 0.6s 0.15s var(--curva) both;
+}
+
+/* El visto bueno se dibuja después de que aparece el círculo. */
+.exito-icon svg path {
+  stroke-dasharray: 30;
+  animation: exito-trazo 0.45s 0.55s ease-out both;
+}
+
+.exito-title {
+  margin-top: 1.5rem;
+  font-size: clamp(2.2rem, 1.6rem + 2vw, 3rem);
+  font-variation-settings: "SOFT" 100;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+}
+
+.exito-sub {
+  margin-top: 0.9rem;
+  color: var(--tinta-suave);
+}
+
+.exito-detalle {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-start;
+  margin-top: 1.75rem;
+  padding: 1rem 1.15rem;
+  color: var(--tinta);
+  text-align: left;
+  background-color: var(--mantequilla);
+  border-radius: var(--radio-m);
+}
+
+.exito-detalle svg {
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+  color: var(--caramelo);
+}
+
+.exito-detalle span::first-letter {
+  text-transform: uppercase;
+}
+
+.exito-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  justify-content: center;
+  margin-top: 2rem;
+}
+
+@media (max-width: 480px) {
+  .exito-actions .boton {
+    width: 100%;
+  }
+}

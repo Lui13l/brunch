@@ -1,0 +1,50 @@
+/* Portada de las páginas interiores: video de fondo y título abajo a la izquierda. */
+
+.portada {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  min-height: clamp(380px, 58vh, 560px);
+  overflow: hidden;
+  color: #fff;
+  background-color: var(--espresso-hondo);
+  background-position: center;
+  background-size: cover;
+}
+
+.portada-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.portada-velo {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(26, 12, 3, 0.86) 0%, rgba(26, 12, 3, 0.45) 55%, rgba(26, 12, 3, 0.3) 100%);
+}
+
+.portada-contenido {
+  position: relative;
+  z-index: 1;
+  padding-top: calc(var(--nav-alto) + 2rem);
+  padding-bottom: clamp(1.75rem, 4vw, 2.75rem);
+}
+
+.portada-titulo {
+  font-size: clamp(2.6rem, 1.4rem + 5vw, 5rem);
+  font-weight: 500;
+  font-variation-settings: "SOFT" 100;
+  line-height: 1;
+  letter-spacing: -0.028em;
+  color: #fff;
+}
+
+.portada-bajada {
+  max-width: 32rem;
+  margin-top: 0.9rem;
+  font-size: clamp(1.05rem, 0.98rem + 0.3vw, 1.2rem);
+  color: rgba(255, 255, 255, 0.86);
+}

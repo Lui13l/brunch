@@ -1,64 +1,67 @@
 import { Link } from "react-router-dom";
+import { Clock, MapPin, Phone } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
-import SocialLinks from "../components/SocialLinks";
 import ChatBox from "../components/ChatBox";
+import PortadaPagina from "../components/PortadaPagina";
+import { HORARIO, LOCAL } from "../utils/horario";
+import brunchShop from "../assets/brunchshop.jpg";
 import "./ContactUs.css";
-import brunchShop from "../assets/brunchshop.jpg"
 
 const ContactUs = () => {
   return (
     <>
-      <Navbar />
+      <Navbar sobreFoto />
 
-      <section className="menu-hero">
-        <video
-          className="menu-hero-video"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="metadata"
-        >
-          <source
-            src="https://res.cloudinary.com/dwhezsxkg/video/upload/v1778112262/menubrunch_xe5q9r.mp4"
-            type="video/mp4"
-          />
-        </video>
-        <div className="menu-hero-overlay">
-          <h1 className="contact-hero-title">Contáctanos</h1>
-          <p className="menu-hero-sub">En Brunch & Co. somos una familia unida dispuesta a ayudarte</p>
-        </div>
-      </section>
+      <PortadaPagina
+        titulo="Contáctanos"
+        bajada="En Brunch & Co. somos una familia unida dispuesta a ayudarte."
+      />
 
       <main className="contact-main">
-        <div className="contact-wrapper">
+        <div className="contenedor contact-wrapper">
+          <section className="contact-info" aria-labelledby="contacto-titulo">
+            <h2 id="contacto-titulo" className="titulo-seccion">Hagamos de tu mañana algo especial</h2>
 
-          <section className="contact-card contact-info">
-            <span className="contact-eyebrow">Brunch & Co.</span>
-
-            <h2 className="contact-heading">
-              Hagamos de tu mañana algo especial
-            </h2>
-
-            <p className="contact-body">
-              Nuestro espacio fue creado para disfrutar sin afán,
-              compartir buena comida y vivir una experiencia cálida
-              en cada visita.
+            <p className="bajada">
+              Nuestro espacio fue creado para disfrutar sin afán, compartir buena comida y vivir una
+              experiencia cálida en cada visita.
             </p>
 
-            <Link to="/reservas" className="button is-black is-rounded mt-4">
-              Reservar mesa
-            </Link>
-            <img src={brunchShop} alt="Local de Brunch & Co." className="contact-image" />
+            <ul className="contact-datos">
+              <li>
+                <MapPin size={18} strokeWidth={1.8} aria-hidden="true" />
+                {LOCAL.direccion}
+              </li>
+              <li>
+                <Clock size={18} strokeWidth={1.8} aria-hidden="true" />
+                <span>
+                  {HORARIO.semana.texto}, {HORARIO.semana.horas}
+                  <br />
+                  {HORARIO.finde.texto}, {HORARIO.finde.horas}
+                </span>
+              </li>
+              <li>
+                <Phone size={18} strokeWidth={1.8} aria-hidden="true" />
+                <a href={`tel:${LOCAL.telefono.replace(/\s/g, "")}`}>{LOCAL.telefono}</a>
+              </li>
+            </ul>
+
+            <Link to="/reservas" className="boton boton--primario">Reservar mesa</Link>
+
+            <img src={brunchShop} alt="Barra de café del local de Brunch & Co." className="contact-image" loading="lazy" />
           </section>
 
-          <section className="contact-card contact-form">
-            <span className="contact-eyebrow">Asistente virtual</span>
-            <h2 className="contact-heading">¿En qué podemos ayudarte?</h2>
+          <section className="contact-chat tarjeta" aria-labelledby="chat-titulo">
+            <div className="contact-chat-header">
+              <span className="contact-chat-avatar" aria-hidden="true">B</span>
+              <div>
+                <h2 id="chat-titulo" className="contact-chat-titulo">Asistente de Brunch & Co.</h2>
+                <p className="contact-chat-estado">Responde al instante</p>
+              </div>
+            </div>
             <ChatBox />
           </section>
-
         </div>
       </main>
 

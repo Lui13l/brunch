@@ -40,6 +40,15 @@ const menuItemSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    // Dónde se ofrece: carta de la web, carta del salón (comandas) o ambas.
+    visible_web: {
+      type: Boolean,
+      default: true,
+    },
+    visible_salon: {
+      type: Boolean,
+      default: true,
+    },
 
     // Posición dentro de su categoría (menor = primero).
     orden: {

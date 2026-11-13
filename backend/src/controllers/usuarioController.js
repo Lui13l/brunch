@@ -1,5 +1,7 @@
 const { User, Role } = require("../models");
 const { HttpError, pick } = require("../utils/http");
+const { cambiarCuenta } = require("../services/cuentas");
+const { desconectarUsuario } = require("../ws/hub");
 
 const listar = async (req, res) => {
   const filtro = pick(req.query, ["rol_id"]);
@@ -30,12 +32,13 @@ const cambiarRol = async (req, res) => {
     throw new HttpError(400, "Rol inválido");
   }
 
-  const usuario = await User.findByIdAndUpdate(
-    req.params.id,
-    { rol_id },
-    { returnDocument: "after" }
-  );
-  if (!usuario) throw new HttpError(404, "Usuario no encontrado");
+  if (String(req.params.id) === String(req.usuario._id)) {
+    throw new HttpError(409, "No puedes cambiar tu propio rol");
+  }
+  // Mismas garantías que la gestión de personal: siempre queda un admin activo
+  // y la conexión en vivo de esa persona se corta para que tome el rol nuevo.
+  const usuario = await cambiarCuenta(req.params.id, { rol_id });
+  desconectarUsuario(usuario._id, 4403, "Cambió tu rol");
   res.json(usuario);
 };
 

@@ -1,45 +1,33 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { ArrowDown, Cloud, CloudRain, Sun } from "lucide-react";
 import "./WeatherRecommendation.css";
 
 const API_KEY = "ad91376c322b5e62d181a5ecdf79b8ee";
 
 const recommendations = {
   hot: {
-    emoji: "☀️",
-    theme: "weather-hot",
-    title: "Perfecto para algo refrescante",
-    text: "Hoy recomendamos smoothies, soda de café y bebidas frías.",
+    Icono: Sun,
+    title: "Hoy hace calor: algo refrescante",
+    text: "Smoothies, soda de café y bebidas frías.",
   },
-
   rain: {
-    emoji: "🌧️",
-    theme: "weather-rain",
+    Icono: CloudRain,
     title: "Clima ideal para algo cálido",
-    text: "Un latte caliente y nuestros pancakes son la combinación perfecta.",
+    text: "Un latte caliente con nuestros pancakes.",
   },
-
   cold: {
-    emoji: "☁️",
-    theme: "weather-cold",
+    Icono: Cloud,
     title: "Un brunch acogedor siempre ayuda",
-    text: "Prueba nuestros Eggs Benedict y café artesanal.",
+    text: "Eggs Benedict y café recién hecho.",
   },
 };
 
+// Sugerencia según el clima de hoy. El botón baja hasta las bebidas de la carta.
 const WeatherRecommendation = () => {
   const [weather, setWeather] = useState(null);
-  const navigate = useNavigate();
 
   const handleViewRecommended = () => {
-    navigate("/menu");
-    // Desplazarse a la sección de Bebidas después de navegar
-    setTimeout(() => {
-      const bebidasSection = document.getElementById("bebidas");
-      if (bebidasSection) {
-        bebidasSection.scrollIntoView({ behavior: "smooth" });
-      }
-    }, 100);
+    document.getElementById("bebidas")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
   useEffect(() => {
@@ -64,38 +52,22 @@ const WeatherRecommendation = () => {
   if (!weather) return null;
 
   return (
-  <section className="weather-section">
+    <div className="weather-card">
+      <span className="weather-icono" aria-hidden="true">
+        <weather.Icono size={22} strokeWidth={1.7} />
+      </span>
 
-    <div className={`weather-card ${weather.theme}`}> 
-
-      <div className="weather-left">
-
-        <span className="weather-emoji">
-          {weather.emoji}
-        </span>
-
-        <div className="weather-content">
-
-          <h2 className="weather-title">
-            {weather.title}
-          </h2>
-
-          <p className="weather-text">
-            {weather.text}
-          </p>
-
-        </div>
-
+      <div className="weather-content">
+        <p className="weather-title">{weather.title}</p>
+        <p className="weather-text">{weather.text}</p>
       </div>
 
-      <button className="weather-btn" onClick={handleViewRecommended}>
-        Ver recomendados
+      <button type="button" className="boton boton--crema boton--chico weather-btn" onClick={handleViewRecommended}>
+        Ver bebidas
+        <ArrowDown size={16} strokeWidth={2} aria-hidden="true" />
       </button>
-
     </div>
-
-  </section>
-);
+  );
 };
 
 export default WeatherRecommendation;

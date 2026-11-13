@@ -1,6 +1,7 @@
 const { MenuItem, Category } = require("../models");
 const { HttpError, pick } = require("../utils/http");
 const { esAdmin } = require("../middleware/auth");
+const { desactivarProducto } = require("../services/menu");
 
 const CAMPOS = ["tipo", "nombre", "descripcion", "precio", "categoria_id", "img_url", "activo", "orden"];
 
@@ -15,7 +16,10 @@ const listar = async (req, res) => {
   const filtro = {};
   if (req.query.categoria) filtro.categoria_id = req.query.categoria;
   if (req.query.tipo) filtro.tipo = req.query.tipo;
-  if (!(esAdmin(req) && req.query.incluir_inactivos === "true")) filtro.activo = true;
+  if (!(esAdmin(req) && req.query.incluir_inactivos === "true")) {
+    filtro.activo = true;
+    filtro.visible_web = { $ne: false };
+  }
 
   const productos = await MenuItem.find(filtro)
     .populate("categoria_id", "nombre orden")
@@ -25,7 +29,7 @@ const listar = async (req, res) => {
 
 const obtener = async (req, res) => {
   const producto = await MenuItem.findById(req.params.id).populate("categoria_id", "nombre orden");
-  if (!producto || (!producto.activo && !esAdmin(req))) {
+  if (!producto || ((!producto.activo || producto.visible_web === false) && !esAdmin(req))) {
     throw new HttpError(404, "Producto no encontrado");
   }
   res.json(producto);
@@ -50,15 +54,9 @@ const actualizar = async (req, res) => {
   res.json(producto);
 };
 
-// No se borra de verdad: los pedidos antiguos siguen referenciando el producto.
+// No se borra de verdad (ver services/menu.js).
 const eliminar = async (req, res) => {
-  const producto = await MenuItem.findByIdAndUpdate(
-    req.params.id,
-    { activo: false },
-    { returnDocument: "after" }
-  );
-  if (!producto) throw new HttpError(404, "Producto no encontrado");
-  res.json(producto);
+  res.json(await desactivarProducto(req.params.id));
 };
 
 module.exports = { listar, obtener, crear, actualizar, eliminar };
