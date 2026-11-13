@@ -42,7 +42,7 @@ export default function Login() {
               autoComplete="username"
               autoCapitalize="none"
               required
-              className="min-h-12 w-full rounded-lg border border-filete px-3 text-[17px] text-tinta outline-none focus:border-rio"
+              className="min-h-12 w-full rounded-lg border border-filete px-3 text-[17px] text-tinta outline-none focus:border-caramelo"
             />
           </label>
 
@@ -54,7 +54,7 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
               required
-              className="min-h-12 w-full rounded-lg border border-filete px-3 text-[17px] text-tinta outline-none focus:border-rio"
+              className="min-h-12 w-full rounded-lg border border-filete px-3 text-[17px] text-tinta outline-none focus:border-caramelo"
             />
           </label>
 
