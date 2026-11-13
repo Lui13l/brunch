@@ -1,14 +1,421 @@
-* {
+/* Tema de Brunch & Co.: colores, tipografía y piezas que comparten todas las
+   páginas. Cada página o componente solo añade su propio diseño encima. */
+
+:root {
+  /* Café y tinta */
+  --espresso: #391903;
+  --espresso-suave: #5a2a08;
+  --espresso-hondo: #241003;
+  --tinta: #2b1a10;
+  --tinta-suave: #6b584a;
+  --tinta-tenue: #9c8b7d;
+
+  /* Cremas */
+  --crema: #faf6ef;
+  --crema-alta: #fffdf9;
+  --mantequilla: #f3e9da;
+  --linea: #e6dacb;
+
+  /* Acentos: caramelo para detalles y enlaces, yema para lo que debe saltar a la vista */
+  --caramelo: #a8642f;
+  --caramelo-claro: #c4845a;
+  --yema: #f4b942;
+  --salvia: #55704d;
+  --salvia-fondo: #eef3ea;
+  --error: #b3402e;
+  --error-fondo: #fbeeea;
+
+  --fuente-titulo: "Fraunces", "Iowan Old Style", Georgia, serif;
+  --fuente-texto: "Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  --radio-s: 10px;
+  --radio-m: 16px;
+  --radio-l: 24px;
+  --radio-pildora: 999px;
+
+  --sombra-1: 0 1px 2px rgba(57, 25, 3, 0.05), 0 6px 18px rgba(57, 25, 3, 0.06);
+  --sombra-2: 0 2px 6px rgba(57, 25, 3, 0.06), 0 18px 44px rgba(57, 25, 3, 0.14);
+
+  --curva: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --rapido: 0.18s;
+  --medio: 0.32s;
+
+  --ancho-pagina: 1160px;
+  --margen-pagina: clamp(1.25rem, 4vw, 2.5rem);
+
+  /* Bulma hereda la tipografía y el color del tema. */
+  --bulma-family-primary: var(--fuente-texto);
+  --bulma-body-family: var(--fuente-texto);
+  --bulma-text: var(--tinta);
+  --bulma-text-strong: var(--tinta);
+}
+
+*,
+*::before,
+*::after {
   box-sizing: border-box;
+}
+
+* {
   margin: 0;
   padding: 0;
 }
 
-body {
-  font-family: 'DM Serif Display', serif;
-  background: #fff;
+html {
+  background-color: var(--crema);
+  -webkit-text-size-adjust: 100%;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-family: 'Fraunces', serif;
+body {
+  font-family: var(--fuente-texto);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--tinta);
+  background: var(--crema);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--fuente-titulo);
+  font-variation-settings: "SOFT" 70;
+  font-weight: 600;
+  line-height: 1.12;
+  letter-spacing: -0.015em;
+  color: var(--espresso);
+  text-wrap: balance;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+img,
+video {
+  max-width: 100%;
+}
+
+::selection {
+  color: var(--espresso);
+  background: var(--yema);
+}
+
+:focus-visible {
+  outline: 2px solid var(--caramelo);
+  outline-offset: 3px;
+}
+
+/* --- Piezas compartidas --- */
+
+.contenedor {
+  width: 100%;
+  max-width: calc(var(--ancho-pagina) + var(--margen-pagina) * 2);
+  margin-inline: auto;
+  padding-inline: var(--margen-pagina);
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.titulo-seccion {
+  font-size: clamp(1.9rem, 1.3rem + 2.2vw, 2.9rem);
+}
+
+.bajada {
+  max-width: 34rem;
+  font-size: 1.0625rem;
+  color: var(--tinta-suave);
+}
+
+/* Botones */
+.boton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  min-height: 48px;
+  padding: 0.7rem 1.6rem;
+  font-family: var(--fuente-texto);
+  font-size: 0.975rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+  text-decoration: none;
+  white-space: nowrap;
+  border: 1.5px solid transparent;
+  border-radius: var(--radio-pildora);
+  cursor: pointer;
+  transition:
+    background-color var(--rapido) ease,
+    border-color var(--rapido) ease,
+    color var(--rapido) ease,
+    box-shadow var(--rapido) ease,
+    transform var(--rapido) var(--curva);
+}
+
+.boton:active {
+  transform: scale(0.98);
+}
+
+.boton:disabled,
+.boton[aria-disabled="true"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.boton--primario {
+  color: var(--crema-alta);
+  background-color: var(--espresso);
+}
+
+.boton--primario:hover:not(:disabled),
+.boton--primario:focus-visible {
+  color: var(--crema-alta);
+  background-color: var(--espresso-suave);
+  box-shadow: 0 8px 22px rgba(57, 25, 3, 0.22);
+}
+
+.boton--secundario {
+  color: var(--espresso);
+  background-color: transparent;
+  border-color: rgba(57, 25, 3, 0.28);
+}
+
+.boton--secundario:hover:not(:disabled),
+.boton--secundario:focus-visible {
+  color: var(--espresso);
+  background-color: rgba(57, 25, 3, 0.06);
+  border-color: var(--espresso);
+}
+
+/* Sobre fotos y fondos oscuros */
+.boton--crema {
+  color: var(--espresso);
+  background-color: var(--crema-alta);
+}
+
+.boton--crema:hover:not(:disabled),
+.boton--crema:focus-visible {
+  color: var(--espresso);
+  background-color: #fff;
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.28);
+}
+
+.boton--contorno-claro {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.6);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+.boton--contorno-claro:hover:not(:disabled),
+.boton--contorno-claro:focus-visible {
+  color: #fff;
+  background-color: rgba(255, 255, 255, 0.18);
+  border-color: #fff;
+}
+
+.boton--ancho {
+  width: 100%;
+}
+
+.boton--chico {
+  min-height: 40px;
+  padding: 0.5rem 1.15rem;
+  font-size: 0.9rem;
+}
+
+/* Enlace con subrayado que crece */
+.enlace {
+  color: var(--caramelo);
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(168, 100, 47, 0.35);
+  text-underline-offset: 0.22em;
+  transition: text-decoration-color var(--rapido) ease, color var(--rapido) ease;
+}
+
+.enlace:hover {
+  color: var(--espresso);
+  text-decoration-color: currentColor;
+}
+
+/* Formularios */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.campo label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--tinta);
+}
+
+.campo input,
+.campo select,
+.campo textarea {
+  width: 100%;
+  min-height: 48px;
+  padding: 0.7rem 0.95rem;
+  font-size: 1rem;
+  color: var(--tinta);
+  background-color: #fff;
+  border: 1.5px solid var(--linea);
+  border-radius: var(--radio-s);
+  outline: none;
+  transition: border-color var(--rapido) ease, box-shadow var(--rapido) ease, background-color var(--rapido) ease;
+}
+
+.campo textarea {
+  min-height: 6.5rem;
+  line-height: 1.5;
+  resize: vertical;
+}
+
+.campo select {
+  padding-right: 2.5rem;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b584a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.9rem center;
+  cursor: pointer;
+}
+
+.campo input::placeholder,
+.campo textarea::placeholder {
+  color: var(--tinta-tenue);
+}
+
+.campo input:hover,
+.campo select:hover,
+.campo textarea:hover {
+  border-color: #d3c3b0;
+}
+
+.campo input:focus,
+.campo select:focus,
+.campo textarea:focus {
+  border-color: var(--caramelo);
+  box-shadow: 0 0 0 4px rgba(168, 100, 47, 0.16);
+}
+
+.campo input[readonly] {
+  color: var(--tinta-suave);
+  background-color: var(--mantequilla);
+  border-color: transparent;
+  cursor: default;
+}
+
+.campo input[readonly]:focus {
+  box-shadow: none;
+}
+
+.campo-ayuda {
+  font-size: 0.8125rem;
+  color: var(--tinta-suave);
+}
+
+.fila-campos {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 600px) {
+  .fila-campos {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Avisos dentro de formularios */
+.aviso {
+  padding: 0.75rem 1rem;
+  font-size: 0.925rem;
+  line-height: 1.45;
+  border-radius: var(--radio-s);
+}
+
+.aviso--error {
+  color: var(--error);
+  background-color: var(--error-fondo);
+}
+
+.aviso--ok {
+  color: var(--salvia);
+  background-color: var(--salvia-fondo);
+}
+
+/* Tarjeta de formulario o de resultado */
+.tarjeta {
+  background-color: var(--crema-alta);
+  border: 1px solid var(--linea);
+  border-radius: var(--radio-l);
+  box-shadow: var(--sombra-1);
+}
+
+/* Las páginas entran con un fundido corto al cambiar de ruta. */
+@keyframes entrar-pagina {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.entrada-pagina {
+  animation: entrar-pagina 0.45s var(--curva) both;
+}
+
+@keyframes brillo-esqueleto {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.esqueleto {
+  background: linear-gradient(90deg, #ece2d4 25%, #f6eee3 50%, #ece2d4 75%);
+  background-size: 200% 100%;
+  animation: brillo-esqueleto 1.4s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

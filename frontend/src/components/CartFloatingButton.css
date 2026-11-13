@@ -1,3 +1,5 @@
+/* Botón flotante del carrito: crema cuando está vacío, café cuando lleva algo. */
+
 .cart-floating-btn {
   position: fixed;
   right: 1.5rem;
@@ -6,58 +8,80 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 59px;
-  height: 59px;
+  width: 58px;
+  height: 58px;
   padding: 0;
-  color: #391903;
-  background-color: rgba(245, 245, 242, 0.82);
-  border: 1px solid rgba(57, 25, 3, 0.12);
+  color: var(--espresso);
+  background-color: rgba(255, 253, 249, 0.92);
+  border: 1px solid rgba(57, 25, 3, 0.1);
   border-radius: 50%;
-  box-shadow: 0 4px 16px rgba(57, 25, 3, 0.28);
+  box-shadow: 0 6px 20px rgba(57, 25, 3, 0.22);
   -webkit-backdrop-filter: blur(8px);
   backdrop-filter: blur(8px);
   cursor: pointer;
-  transition: background-color 0.2s ease, transform 0.2s ease;
+  transition:
+    background-color var(--medio) ease,
+    color var(--medio) ease,
+    box-shadow var(--rapido) ease,
+    transform var(--rapido) var(--curva);
+}
+
+.cart-floating-btn--lleno {
+  color: var(--crema-alta);
+  background-color: var(--espresso);
+  border-color: transparent;
 }
 
 .cart-floating-btn:hover {
-  background-color: rgba(245, 245, 242, 0.96);
-  transform: translateY(-2px);
+  box-shadow: 0 10px 28px rgba(57, 25, 3, 0.3);
+  transform: translateY(-3px);
+}
+
+.cart-floating-btn:active {
+  transform: scale(0.95);
 }
 
 .cart-floating-btn:focus-visible {
-  outline: 2px solid #391903;
+  outline: 2px solid var(--caramelo);
   outline-offset: 4px;
+}
+
+@keyframes rebote-carrito {
+  0% {
+    transform: scale(0.4);
+  }
+  60% {
+    transform: scale(1.25);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
 
 .cart-floating-badge {
   position: absolute;
-  top: -3px;
-  right: -3px;
+  top: -4px;
+  right: -4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
-  padding: 0 4px;
-  color: #391903;
-  background-color: #faf8f5;
-  border: 1px solid #391903;
-  border-radius: 50%;
-  font-family: 'DM Serif Display', serif;
-  font-size: 0.7rem;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  font-family: var(--fuente-texto);
+  font-size: 0.78rem;
   font-weight: 700;
+  line-height: 1;
+  color: var(--espresso);
+  background-color: var(--yema);
+  border: 2px solid var(--crema);
+  border-radius: var(--radio-pildora);
+  animation: rebote-carrito 0.4s var(--curva);
 }
 
 @media (max-width: 600px) {
   .cart-floating-btn {
     right: 1rem;
     bottom: 1rem;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cart-floating-btn {
-    transition: none;
   }
 }

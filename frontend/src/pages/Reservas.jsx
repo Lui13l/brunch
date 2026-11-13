@@ -51,43 +51,37 @@ const Reservas = () => {
       <Navbar />
 
       <main className="reservas-main">
-        <div className="reservas-card">
-          <span className="reservas-eyebrow">Bienvenido, {user?.nombre}</span>
-          <h1 className="reservas-title">Haz tu reserva</h1>
-          <div className="reservas-divider">
-            <span className="reservas-divider-line" />
-            <span className="reservas-divider-gem">✦</span>
-            <span className="reservas-divider-line" />
-          </div>
+        <div className="reservas-card tarjeta entrada-pagina">
+          <h1 className="reservas-title">Reserva tu mesa</h1>
           <p className="reservas-sub">
-            Reserva tu mesa y disfruta de la mejor experiencia brunch
+            Hola, {user?.nombre?.split(" ")[0]}. Dinos cuándo vienes y te guardamos el lugar.
           </p>
 
           <form className="reservas-form" onSubmit={handleSubmit}>
-            <div className="reservas-row">
-              <div className="reservas-field">
+            <div className="fila-campos">
+              <div className="campo">
                 <label htmlFor="reserva-nombre">Nombre completo</label>
                 <input id="reserva-nombre" type="text" value={user?.nombre || ""} readOnly />
               </div>
-              <div className="reservas-field">
+              <div className="campo">
                 <label htmlFor="reserva-correo">Correo electrónico</label>
                 <input id="reserva-correo" type="email" value={user?.correo || ""} readOnly />
               </div>
             </div>
 
-            <div className="reservas-row">
-              <div className="reservas-field">
+            <div className="fila-campos">
+              <div className="campo">
                 <label htmlFor="reserva-dia">Fecha</label>
                 <input id="reserva-dia" type="date" min={hoyLocal()} required {...campo("dia")} />
               </div>
-              <div className="reservas-field">
+              <div className="campo">
                 <label htmlFor="reserva-hora">Hora</label>
                 <input id="reserva-hora" type="time" min="08:00" max="17:00" required {...campo("hora")} />
               </div>
             </div>
 
-            <div className="reservas-row">
-              <div className="reservas-field">
+            <div className="fila-campos">
+              <div className="campo">
                 <label htmlFor="reserva-cupo">Número de personas</label>
                 <select id="reserva-cupo" {...campo("cupo")}>
                   {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
@@ -95,7 +89,7 @@ const Reservas = () => {
                   ))}
                 </select>
               </div>
-              <div className="reservas-field">
+              <div className="campo">
                 <label htmlFor="reserva-ocasion">Ocasión especial</label>
                 <select id="reserva-ocasion" {...campo("ocasion")}>
                   <option value="">Sin ocasión especial</option>
@@ -106,7 +100,7 @@ const Reservas = () => {
               </div>
             </div>
 
-            <div className="reservas-field">
+            <div className="campo">
               <label htmlFor="reserva-detalles">Notas adicionales</label>
               <textarea
                 id="reserva-detalles"
@@ -116,9 +110,9 @@ const Reservas = () => {
               />
             </div>
 
-            {error && <p className="reservas-error" role="alert">{error}</p>}
+            {error && <p className="aviso aviso--error" role="alert">{error}</p>}
 
-            <button type="submit" className="reservas-submit-btn" disabled={enviando}>
+            <button type="submit" className="boton boton--primario boton--ancho" disabled={enviando}>
               {enviando ? "Reservando..." : "Confirmar reserva"}
             </button>
           </form>

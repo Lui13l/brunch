@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
 import { LayoutDashboard } from "lucide-react";
-import gsap from "gsap";
 import { useAuth } from "../context/AuthContext";
 import "./Navbar.css";
 
@@ -12,8 +11,16 @@ import "./Navbar.css";
 // `alRas`: la página dibuja su propio fondo bajo el navbar (sin espaciador).
 const UMBRAL_SCROLL = 24;
 
+const ENLACES = [
+  { a: "/", texto: "Inicio" },
+  { a: "/menu", texto: "Menú" },
+  { a: "/about", texto: "Nosotros" },
+  { a: "/contact", texto: "Contacto" },
+];
+
+const claseEnlace = ({ isActive }) => `navbar-item nav-link${isActive ? " nav-link--activo" : ""}`;
+
 const Navbar = ({ sobreFoto = false, alRas = false }) => {
-  const navRef = useRef(null);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   // Menú desplegable en pantallas pequeñas (Bulma oculta el menú por debajo de 1024px).
@@ -28,6 +35,16 @@ const Navbar = ({ sobreFoto = false, alRas = false }) => {
     return () => window.removeEventListener("scroll", alDesplazar);
   }, []);
 
+  // Con el menú del celular abierto, Escape lo cierra.
+  useEffect(() => {
+    if (!menuAbierto) return undefined;
+    const alTeclear = (e) => {
+      if (e.key === "Escape") setMenuAbierto(false);
+    };
+    window.addEventListener("keydown", alTeclear);
+    return () => window.removeEventListener("keydown", alTeclear);
+  }, [menuAbierto]);
+
   const conFondo = conScroll || menuAbierto;
   let tono = "nav-sobre-crema";
   if (conFondo) tono = "nav-con-fondo";
@@ -38,73 +55,66 @@ const Navbar = ({ sobreFoto = false, alRas = false }) => {
     navigate("/");
   };
 
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      gsap.from(".nav-animate", {
-        y: -20,
-        opacity: 0,
-        duration: 0.5,
-        stagger: 0.08,
-        ease: "power2.out",
-      });
-    }, navRef);
-
-    return () => ctx.revert();
-  }, []);
-
   return (
     <>
-    <nav ref={navRef} className={`navbar navbar-custom ${tono}`} role="navigation" aria-label="Navegación principal">
-      <div className="navbar-brand">
-        <Link to="/" className="navbar-item nav-animate brand-name">
-          Brunch & Co.
-        </Link>
-        <button
-          type="button"
-          className={`navbar-burger${menuAbierto ? " is-active" : ""}`}
-          aria-label="Abrir menú"
-          aria-expanded={menuAbierto}
-          onClick={() => setMenuAbierto((abierto) => !abierto)}
-        >
-          <span aria-hidden="true" />
-          <span aria-hidden="true" />
-          <span aria-hidden="true" />
-          <span aria-hidden="true" />
-        </button>
-      </div>
-
-      <div className={`navbar-menu${menuAbierto ? " is-active" : ""}`}>
-        <div className="navbar-end">
-          <Link to="/" className="navbar-item nav-link nav-animate">Inicio</Link>
-          <Link to="/menu" className="navbar-item nav-link nav-animate">Menú</Link>
-          <Link to="/about" className="navbar-item nav-link nav-animate">Nosotros</Link>
-          <Link to="/contact" className="navbar-item nav-link nav-animate">Contacto</Link>
-          {user ? (
-            <>
-              {user.rol_id === "admin" && (
-                <div className="navbar-item nav-animate">
-                  <Link to="/admin" className="nav-icono-btn" aria-label="Administración" title="Administración">
-                    <LayoutDashboard size={20} strokeWidth={1.8} aria-hidden="true" />
-                    <span className="nav-icono-texto">Administración</span>
-                  </Link>
-                </div>
-              )}
-              <Link to="/perfil" className="navbar-item nav-user nav-animate">
-                Hola, {user.nombre.split(" ")[0]}
-              </Link>
-              <button type="button" className="navbar-item nav-link nav-logout nav-animate" onClick={handleLogout}>
-                Salir
-              </button>
-            </>
-          ) : (
-            <Link to="/login" className="navbar-item nav-link nav-animate">Ingresar</Link>
-          )}
-            <Link to="/reservas" className="navbar-item nav-link nav-animate">Reservar</Link>
+      <nav className={`navbar navbar-custom ${tono}`} role="navigation" aria-label="Navegación principal">
+        <div className="navbar-brand">
+          <Link to="/" className="navbar-item brand-name">
+            Brunch & Co.
+          </Link>
+          <button
+            type="button"
+            className={`navbar-burger${menuAbierto ? " is-active" : ""}`}
+            aria-label={menuAbierto ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={menuAbierto}
+            onClick={() => setMenuAbierto((abierto) => !abierto)}
+          >
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+            <span aria-hidden="true" />
+          </button>
         </div>
-      </div>
-    </nav>
-    {/* Las páginas sin foto arriba necesitan que el contenido empiece bajo el navbar fijo. */}
-    {!sobreFoto && !alRas && <div className="nav-espaciador" aria-hidden="true" />}
+
+        <div className={`navbar-menu${menuAbierto ? " is-active" : ""}`}>
+          <div className="navbar-end">
+            {ENLACES.map(({ a, texto }) => (
+              <NavLink key={a} to={a} end={a === "/"} className={claseEnlace}>
+                {texto}
+              </NavLink>
+            ))}
+
+            <span className="nav-separador" aria-hidden="true" />
+
+            {user ? (
+              <>
+                {user.rol_id === "admin" && (
+                  <div className="navbar-item nav-item-icono">
+                    <Link to="/admin" className="nav-icono-btn" aria-label="Administración" title="Administración">
+                      <LayoutDashboard size={20} strokeWidth={1.8} aria-hidden="true" />
+                      <span className="nav-icono-texto">Administración</span>
+                    </Link>
+                  </div>
+                )}
+                <NavLink to="/perfil" className={({ isActive }) => `navbar-item nav-user${isActive ? " nav-link--activo" : ""}`}>
+                  Hola, {user.nombre.split(" ")[0]}
+                </NavLink>
+                <button type="button" className="navbar-item nav-link nav-logout" onClick={handleLogout}>
+                  Salir
+                </button>
+              </>
+            ) : (
+              <NavLink to="/login" className={claseEnlace}>Ingresar</NavLink>
+            )}
+
+            <div className="navbar-item nav-item-reservar">
+              <Link to="/reservas" className="reservar-btn">Reservar</Link>
+            </div>
+          </div>
+        </div>
+      </nav>
+      {/* Las páginas sin foto arriba necesitan que el contenido empiece bajo el navbar fijo. */}
+      {!sobreFoto && !alRas && <div className="nav-espaciador" aria-hidden="true" />}
     </>
   );
 };

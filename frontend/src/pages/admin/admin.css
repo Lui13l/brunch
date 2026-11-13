@@ -1,7 +1,7 @@
 /* Panel de administración: "la libreta del encargado".
    La trastienda de un brunch es papel —la carta impresa, las comandas de
    cocina, el libro de reservas— y el panel se dibuja así. Misma tipografía
-   que la web: Fraunces (títulos y datos) y DM Serif Display (navegación y
+   que la web: Fraunces (títulos y datos) y Figtree (navegación y
    botones). */
 
 .adm-main {
@@ -61,7 +61,7 @@
 .adm-main .adm-boton-comandas.button {
   gap: 0.55rem;
   padding: 0.75rem 1.4rem;
-  font-family: "DM Serif Display", serif;
+  font-family: var(--fuente-texto);
   font-size: 1rem;
   border-radius: 999px;
 }
@@ -83,7 +83,7 @@
   position: relative;
   padding: 0.55rem 0 0.75rem;
   color: var(--tinta-suave);
-  font-family: "DM Serif Display", serif;
+  font-family: var(--fuente-texto);
   font-size: 1.05rem;
   white-space: nowrap;
 }
@@ -163,7 +163,7 @@
 .adm-main .label.adm-label {
   margin-bottom: 0.25rem;
   color: var(--tinta-suave);
-  font-family: "DM Serif Display", serif;
+  font-family: var(--fuente-texto);
   font-size: 0.95rem;
   font-weight: 400;
 }
@@ -224,7 +224,7 @@
   color: var(--tinta-suave);
   background: none;
   border: none;
-  font-family: "DM Serif Display", serif;
+  font-family: var(--fuente-texto);
   text-decoration: underline;
   text-decoration-color: var(--linea);
   text-underline-offset: 4px;
@@ -274,7 +274,7 @@
   background-color: transparent;
   border: 1px solid #d9cbbb;
   border-radius: 999px;
-  font-family: "DM Serif Display", serif;
+  font-family: var(--fuente-texto);
   font-size: 0.98rem;
   box-shadow: none;
 }
@@ -576,7 +576,7 @@
 
 .adm-main .adm-tabla th {
   color: var(--tinta-suave);
-  font-family: "DM Serif Display", serif;
+  font-family: var(--fuente-texto);
   font-weight: 400;
   border-bottom: 1px solid var(--linea);
 }
@@ -642,7 +642,7 @@
 }
 
 .adm-accion {
-  font-family: "DM Serif Display", serif;
+  font-family: var(--fuente-texto);
   font-size: 1.02rem;
 }
 

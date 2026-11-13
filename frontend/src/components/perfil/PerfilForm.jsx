@@ -10,14 +10,13 @@ export default function PerfilForm({
 }) {
   return (
     <section className="perfil-card" aria-labelledby="perfil-title">
-      <span className="perfil-eyebrow">Tu cuenta</span>
       <h1 id="perfil-title" className="perfil-title">Mi perfil</h1>
       <p className="perfil-subtitle">Administra la información de tu cuenta.</p>
-      {error && <p className="perfil-error" role="alert">{error}</p>}
-      {mensaje && <p className="perfil-success" role="status">{mensaje}</p>}
+      {error && <p className="aviso aviso--error" role="alert">{error}</p>}
+      {mensaje && <p className="aviso aviso--ok" role="status">{mensaje}</p>}
 
       <form className="perfil-form" onSubmit={onSubmit}>
-        <div className="perfil-field">
+        <div className="campo">
           <label htmlFor="perfil-nombre">Nombre de usuario</label>
           <input
             id="perfil-nombre"
@@ -29,7 +28,7 @@ export default function PerfilForm({
             required
           />
         </div>
-        <div className="perfil-field">
+        <div className="campo">
           <label htmlFor="perfil-correo">Correo electrónico</label>
           <input
             id="perfil-correo"
@@ -39,7 +38,7 @@ export default function PerfilForm({
             readOnly
           />
         </div>
-        <div className="perfil-field">
+        <div className="campo">
           <label htmlFor="perfil-direccion">Dirección</label>
           <input
             id="perfil-direccion"
@@ -51,7 +50,7 @@ export default function PerfilForm({
             onChange={onChange}
           />
         </div>
-        <div className="perfil-field">
+        <div className="campo">
           <label htmlFor="perfil-celular">Teléfono</label>
           <input
             id="perfil-celular"
@@ -63,7 +62,7 @@ export default function PerfilForm({
             onChange={onChange}
           />
         </div>
-        <div className="perfil-field">
+        <div className="campo">
           <label htmlFor="perfil-password">Nueva contraseña</label>
           <input
             id="perfil-password"
@@ -74,9 +73,9 @@ export default function PerfilForm({
             value={form.password}
             onChange={onChange}
           />
-          <span className="perfil-help">Tu contraseña actual nunca se muestra.</span>
+          <span className="campo-ayuda">Tu contraseña actual nunca se muestra.</span>
         </div>
-        <div className="perfil-field">
+        <div className="campo">
           <label htmlFor="perfil-confirmar-password">Confirmar nueva contraseña</label>
           <input
             id="perfil-confirmar-password"
@@ -88,7 +87,7 @@ export default function PerfilForm({
             onChange={onChange}
           />
         </div>
-        <button type="submit" className="perfil-save" disabled={guardando || cerrandoSesion}>
+        <button type="submit" className="boton boton--primario perfil-save" disabled={guardando || cerrandoSesion}>
           {guardando ? "Guardando..." : "Guardar cambios"}
         </button>
       </form>

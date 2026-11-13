@@ -38,20 +38,30 @@ const SandwichFalling = ({ heroSelector = ".hero-bg", rightOffset = 24 }) => {
         end: "top bottom",
         scrub: 1.5,
 
+        // Al llegar el pie de página el pan deja de seguir la pantalla: se suelta
+        // en el mismo punto donde estaba (sin salto) y cae hasta quedar apoyado
+        // sobre el borde del pie. La línea de tiempo deja su `y` en 57vh, así
+        // que las posiciones se calculan restando ese desplazamiento.
         onLeave: () => {
           const footerTop = footer.getBoundingClientRect().top + window.scrollY;
+          const caida = 0.57 * window.innerHeight;
+          // El dibujo del pan caído termina al 80 % de la altura de su caja.
+          const apoyo = wrapper.offsetHeight * 0.8;
+          gsap.killTweensOf(wrapper, "top");
           gsap.set(wrapper, {
             position: "absolute",
-            top: footerTop - wrapper.offsetHeight - 380,
+            top: footerTop - window.innerHeight + 60,
             right: rightOffset,
             left: "auto",
-            y: 0, x: 0, rotation: 0, opacity: 1,
+            x: 0, rotation: 0, opacity: 1,
           });
+          gsap.to(wrapper, { top: footerTop - apoyo - caida, duration: 0.8, ease: "bounce.out" });
           gsap.set(volando, { opacity: 0 });
           gsap.set(caido,   { opacity: 1, scale: 1 });
         },
 
         onEnterBack: () => {
+          gsap.killTweensOf(wrapper, "top");
           gsap.set(wrapper, {
             position: "fixed",
             top: 60, right: rightOffset, left: "auto",
@@ -92,7 +102,12 @@ const SandwichFalling = ({ heroSelector = ".hero-bg", rightOffset = 24 }) => {
       duration: 0.1, ease: "power1.out",
     });
 
-    return () => ScrollTrigger.getAll().forEach(t => t.kill());
+    // Solo se limpia lo propio: otras páginas tienen sus propias animaciones de scroll.
+    return () => {
+      gsap.killTweensOf(wrapper);
+      tl.scrollTrigger?.kill();
+      tl.kill();
+    };
   }, [heroSelector, rightOffset]);
 
   return (

@@ -1,118 +1,122 @@
+/* Pie de página, en café oscuro. */
+
 .custom-footer {
-  background-color: #0f0d0b;
-  color: #aaa;
-  padding: 2.2rem 1.5rem;
-  height: 200px;
+  padding-block: clamp(3rem, 6vw, 4.5rem) 1.75rem;
+  color: rgba(250, 246, 239, 0.72);
+  background-color: var(--espresso-hondo);
 }
 
-.footer-inner {
-  max-width: 820px;
-  margin: 0 auto;
+.footer-cols {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) repeat(3, minmax(0, 1fr));
+  gap: 2.5rem clamp(1.5rem, 4vw, 3.5rem);
 }
 
+.footer-logo {
+  display: inline-block;
+  font-family: var(--fuente-titulo);
+  font-variation-settings: "SOFT" 70;
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--crema);
+}
 
-
-.footer-slogan-mini {
-  font-family: 'DM Serif Display', serif;
+.footer-logo:hover {
   color: #fff;
-  font-weight: 700;
-  font-size: 1.5rem;
-  margin-bottom: 0.4rem;
 }
 
-.footer-subtitle {
-  color: #888;
-  font-family: 'DM Serif Display', serif;
-  font-size: 0.92rem;
-  margin-bottom: 1.4rem;
+.footer-text {
+  max-width: 19rem;
+  margin-block: 0.8rem 1.4rem;
+  font-size: 0.95rem;
+  line-height: 1.55;
 }
 
-/* ── Social icons ── */
+.footer-title {
+  margin-bottom: 0.9rem;
+  font-family: var(--fuente-texto);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--crema);
+}
+
+.footer-lista {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  list-style: none;
+}
+
+.footer-lista span {
+  display: block;
+  color: rgba(250, 246, 239, 0.52);
+}
+
+.footer-lista a {
+  color: inherit;
+  transition: color var(--rapido) ease;
+}
+
+.footer-lista a:hover {
+  color: #fff;
+}
+
+/* --- Redes --- */
+
 .social-icons {
   display: flex;
-  justify-content: center;
-  gap: 18px;
+  gap: 0.6rem;
 }
 
 .social-icon-link {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
+  color: var(--crema);
+  border: 1px solid rgba(250, 246, 239, 0.22);
   border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  transition: border-color 0.25s ease, background 0.25s ease;
+  transition:
+    background-color var(--rapido) ease,
+    border-color var(--rapido) ease,
+    color var(--rapido) ease,
+    transform var(--rapido) var(--curva);
 }
 
 .social-icon-link:hover {
-  border-color: rgba(255, 255, 255, 0.5);
-  background: rgba(255, 255, 255, 0.06);
+  color: var(--espresso);
+  background-color: var(--yema);
+  border-color: var(--yema);
+  transform: translateY(-2px);
 }
 
-/* Dark-background variant (footer default) is white icons — handled by color prop */
-
-/* ── Separator ── */
-.footer-sep {
-  height: 1px;
-  background: rgba(255, 255, 255, 0.08);
-  margin-bottom: 2rem;
-}
-
-/* ── Columns ── */
-.footer-cols {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1.2rem;
-}
-
-.footer-col {
-  flex: 1;
-  text-align: center;
-}
-
-.footer-title {
-  color: #fff;
-  font-family: 'DM Serif Display', serif;
-  font-weight: 700;
-  font-size: 0.75rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin-bottom: 0.6rem;
-}
-
-.footer-text {
-  font-family: 'DM Serif Display', serif;
-  font-size: 0.82rem;
-  color: #777;
-  margin: 3px 0;
-  line-height: 1.6;
-}
-
-/* ── Bottom ── */
 .footer-bottom {
-  text-align: center;
-  font-family: 'DM Serif Display', serif;
-  font-size: 0.75rem;
-  color: #444;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  margin-top: clamp(2.5rem, 5vw, 3.5rem);
   padding-top: 1.4rem;
+  font-size: 0.85rem;
+  color: rgba(250, 246, 239, 0.5);
+  border-top: 1px solid rgba(250, 246, 239, 0.12);
 }
 
-.footer-socials {
-  display: flex;
-  justify-content: center;
-  margin-top: 0.4rem;
-}
-
-@media (max-width: 600px) {
+@media (max-width: 860px) {
   .footer-cols {
-    flex-direction: column;
-    gap: 1.2rem;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .footer-slogan {
-    font-size: 1.6rem;
+  .footer-marca {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 480px) {
+  .footer-cols {
+    grid-template-columns: 1fr;
+    gap: 2rem;
   }
 }

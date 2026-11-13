@@ -1,137 +1,218 @@
+/* Inicio: los favoritos giran despacio en un aro, como una bandeja giratoria. */
+
 .favorites-section {
-  background: linear-gradient(
-    180deg,
-    #f8f4ef 0%,
-    #eee5da 100%
-  );
-
+  --fav-ancho: 230px;
+  --fav-alto: 310px;
+  /* Radio del aro para 10 platos: (ancho / 2) / tan(18°), más un respiro entre tarjetas. */
+  --fav-radio: 392px;
+  padding-block: clamp(4rem, 9vw, 7rem);
   overflow: hidden;
+  background-color: var(--mantequilla);
 }
 
-.fav-title {
-  font-family: 'DM Serif Display', serif !important;
+.fav-encabezado {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-end;
+  justify-content: space-between;
 }
 
-.custom-card {
-  border-radius: 20px;
-  overflow: hidden;
-  transition: all 0.3s ease;
+.fav-encabezado .bajada {
+  margin-top: 0.7rem;
 }
 
-.custom-card:hover {
-  transform: translateY(-5px);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+.fav-flechas {
+  display: flex;
+  flex-shrink: 0;
+  gap: 0.6rem;
 }
 
-.card-image img {
-  object-fit: cover;
-  height: 100%;
-}
-
-.carousel-container {
-  width: 100%;
-  max-width: 900px;
-  height: 420px;
-  margin: 0 auto;
-  perspective: 1400px;
-}
-
-.carousel {
-  width: 100%;
-  height: 100%;
-  position: relative;
-  transform-style: preserve-3d; /* 👈 activa 3D */
-}
-
-.fav-card {
-  width: 180px;
-  height: 250px;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform-style: preserve-3d;
-  transform: translate(-50%, -50%);
-}
-
-/* mejora visual */
-.fav-card img {
-  border-radius: 12px;
-}
-
-/* CARD 3D */
-.fav-card {
-  width: 160px;
-  height: 220px;
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform-style: preserve-3d;
-  transform: translate(-50%, -50%);
+.fav-flecha {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  color: var(--espresso);
+  background-color: transparent;
+  border: 1.5px solid rgba(57, 25, 3, 0.28);
+  border-radius: 50%;
   cursor: pointer;
-  transition: transform 0.5s ease;
+  transition:
+    background-color var(--rapido) ease,
+    border-color var(--rapido) ease,
+    color var(--rapido) ease,
+    transform var(--rapido) var(--curva);
 }
 
-.fav-card.flipped {
-  z-index: 1000;
+.fav-flecha:hover {
+  color: var(--crema-alta);
+  background-color: var(--espresso);
+  border-color: var(--espresso);
 }
-.fav-card-inner {
+
+.fav-flecha:active {
+  transform: scale(0.94);
+}
+
+/* --- El aro en 3D --- */
+
+.fav-escena {
+  height: calc(var(--fav-alto) + 110px);
+  margin-top: clamp(1rem, 3vw, 2rem);
+  perspective: 1500px;
+  /* Los platos de los lados se desvanecen hacia los bordes. */
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 14%, #000 86%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 14%, #000 86%, transparent 100%);
+}
+
+/* Aleja el aro para que el plato del frente quede a su tamaño real. */
+.fav-fondo {
   width: 100%;
   height: 100%;
-  position: relative;
+  transform: translateZ(calc(var(--fav-radio) * -1));
   transform-style: preserve-3d;
-  transition: transform 0.8s;
+}
+
+.fav-aro {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  list-style: none;
+  transform-style: preserve-3d;
+}
+
+.fav-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: var(--fav-ancho);
+  height: var(--fav-alto);
+  margin: calc(var(--fav-alto) / -2) 0 0 calc(var(--fav-ancho) / -2);
+  transform: rotateY(calc(var(--i) * 36deg)) translateZ(var(--fav-radio));
+  transform-style: preserve-3d;
+}
+
+.fav-card--atras {
+  visibility: hidden;
+}
+
+.fav-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: var(--radio-l);
+  cursor: pointer;
+  transform-style: preserve-3d;
+  transition: transform 0.7s var(--curva);
+}
+
+.fav-card-inner:hover {
+  transform: translateY(-8px);
 }
 
 .fav-card.flipped .fav-card-inner {
-  transform: rotateY(180deg) scale(1.15);
+  transform: rotateY(180deg) scale(1.06);
 }
 
-.fav-card-front,
-.fav-card-back {
+.fav-card-inner:focus-visible {
+  outline: 3px solid var(--caramelo);
+  outline-offset: 5px;
+}
+
+.fav-cara {
   position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: var(--radio-l);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  box-shadow: 0 16px 34px rgba(57, 25, 3, 0.2);
+}
+
+.fav-frente {
+  background-color: #d9cbb8;
+}
+
+.fav-frente img {
+  display: block;
   width: 100%;
   height: 100%;
-  backface-visibility: hidden;
-  border-radius: 20px;
-  overflow: hidden;
+  object-fit: cover;
+  user-select: none;
 }
 
-/* frente */
-.fav-card-front {
-  background: rgb(249, 230, 213);
+.fav-nombre {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  padding: 3.5rem 1.1rem 1rem;
+  font-family: var(--fuente-titulo);
+  font-variation-settings: "SOFT" 70;
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.15;
+  color: #fff;
+  text-align: left;
+  background: linear-gradient(to top, rgba(26, 12, 3, 0.85), rgba(26, 12, 3, 0));
 }
 
-/* atrás */
-.fav-card-back {
-  background: #391903;
-  color: rgb(255, 255, 255);
-
-  transform: rotateY(180deg);
-
+.fav-dorso {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
-
-  padding: 1rem;
-  text-align: center;
+  padding: 1.4rem 1.25rem;
+  color: var(--crema);
+  text-align: left;
+  background-color: var(--espresso);
+  transform: rotateY(180deg);
 }
 
-.fav-card-back h3 {
-  font-family: 'DM Serif Display', serif;
-  margin-bottom: 0.7rem;
-  font-size: 1rem;
+.fav-dorso h3 {
+  font-size: 1.3rem;
+  color: #fff;
 }
 
-.fav-card-back p {
-  font-family: 'DM Serif Display', serif;
-  font-size: 0.82rem;
-  line-height: 1.4;
-  color: rgba(255,255,255,0.8);
+.fav-precio {
+  margin-top: 0.3rem;
+  font-weight: 700;
+  color: var(--yema);
 }
 
-/* Solo el botón de esta sección (antes .button global: teñía todos los botones). */
-.button.fav-btn {
-  background-color: #391903;
-  border-color:black;
+.fav-desc {
+  display: -webkit-box;
+  margin-top: 0.8rem;
+  overflow: hidden;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: rgba(250, 246, 239, 0.84);
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 7;
+  line-clamp: 7;
+}
+
+.fav-pie {
+  display: flex;
+  justify-content: center;
+  margin-top: clamp(0.5rem, 2vw, 1.5rem);
+}
+
+@media (max-width: 700px) {
+  .favorites-section {
+    --fav-ancho: 190px;
+    --fav-alto: 262px;
+    --fav-radio: 326px;
+  }
+
+  .fav-escena {
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .fav-desc {
+    font-size: 0.84rem;
+    -webkit-line-clamp: 6;
+    line-clamp: 6;
+  }
 }

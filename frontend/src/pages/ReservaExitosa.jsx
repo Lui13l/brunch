@@ -1,8 +1,9 @@
 import { useLocation, useNavigate } from "react-router-dom";
+import { CalendarCheck, Check } from "lucide-react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useAuth } from "../context/AuthContext";
-import "./ReservaExitosa.css";
+import "./Exito.css";
 
 // "2026-10-25T00:00:00.000Z" -> "sábado, 25 de octubre"
 const formatearDia = (iso) =>
@@ -22,37 +23,35 @@ const ReservaExitosa = () => {
     <>
       <Navbar />
 
-      <main className="success-main">
-        <div className="success-card">
-          <div className="success-icon">✓</div>
+      <main className="exito-main">
+        <div className="exito-card tarjeta entrada-pagina">
+          <span className="exito-icon" aria-hidden="true">
+            <Check size={32} strokeWidth={2.2} />
+          </span>
 
-          <span className="success-eyebrow">Reserva recibida</span>
-          <h1 className="success-title">¡Todo listo, {user?.nombre?.split(" ")[0]}!</h1>
+          <h1 className="exito-title">¡Todo listo, {user?.nombre?.split(" ")[0]}!</h1>
 
-          <div className="success-divider">
-            <span className="success-divider-line" />
-            <span className="success-divider-gem">✦</span>
-            <span className="success-divider-line" />
-          </div>
-
-          <p className="success-sub">
+          <p className="exito-sub">
             Tu reserva ha sido recibida con éxito. Te avisaremos cuando quede confirmada.
             Te esperamos con los brazos abiertos y el mejor brunch de la ciudad.
           </p>
 
           {reserva && (
-            <p className="success-detalle">
-              {formatearDia(reserva.dia)} a las {reserva.hora} · {reserva.cupo}{" "}
-              {reserva.cupo === 1 ? "persona" : "personas"}
-              {reserva.ocasion && ` · ${reserva.ocasion}`}
+            <p className="exito-detalle">
+              <CalendarCheck size={18} strokeWidth={1.8} aria-hidden="true" />
+              <span>
+                <strong>{formatearDia(reserva.dia)}</strong> a las <strong>{reserva.hora}</strong>, {reserva.cupo}{" "}
+                {reserva.cupo === 1 ? "persona" : "personas"}
+                {reserva.ocasion && ` (${reserva.ocasion})`}
+              </span>
             </p>
           )}
 
-          <div className="success-actions">
-            <button className="success-btn-primary" onClick={() => navigate("/")}>
+          <div className="exito-actions">
+            <button type="button" className="boton boton--primario" onClick={() => navigate("/")}>
               Volver al inicio
             </button>
-            <button className="success-btn-secondary" onClick={() => navigate("/menu")}>
+            <button type="button" className="boton boton--secundario" onClick={() => navigate("/menu")}>
               Ver el menú
             </button>
           </div>
