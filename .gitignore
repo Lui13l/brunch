@@ -15,3 +15,6 @@ dump.rdb
 
 # Ledger de ejecución de planes (superpowers)
 .superpowers/
+
+# Índice local de CodeGraph (cada computador genera el suyo)
+.codegraph/

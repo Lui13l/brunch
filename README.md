@@ -5,7 +5,7 @@ Web de un restaurante de brunch: menú, carrito y pedidos a domicilio, reservas 
 | Carpeta | Qué es |
 |---|---|
 | [backend/](backend/) | API REST con Express + MongoDB. Ver [backend/README.md](backend/README.md) para los endpoints |
-| [frontend/](frontend/) | Web con React + Vite + Bulma + GSAP |
+| [frontend/](frontend/) | Web de clientes y panel de admin. React + Vite + Bulma + GSAP. Los colores, fuentes y botones compartidos están en [src/index.css](frontend/src/index.css) |
 | [personal/](personal/) | App del personal (mesero, cocina y administración): comandas, caja, inventario. React + Vite + Tailwind |
 
 ## Cómo ejecutarlo
@@ -77,14 +77,26 @@ Levanta los tres proyectos (ver [Cómo ejecutarlo](#cómo-ejecutarlo)). Para ver
 **Web (http://localhost:5173)**
 1. Navega por Inicio, Menú, Nosotros y Contacto. El navbar es transparente:
    - Arriba es blanco sobre las fotos y café sobre los fondos crema.
-   - Al bajar se vuelve crema.
-2. Regístrate con un correo `@e2e.brunch.test`, agrega un plato al carrito, paga y haz una reserva.
-3. En **Perfil**, cambia tu nombre y guarda.
+   - Al bajar se vuelve crema. La página actual queda subrayada.
+2. En **Inicio**:
+   - La portada dice si el local está abierto ahora, con el clima de Neiva y la dirección.
+   - En "Los favoritos de la casa" el carrusel gira solo y se detiene al pasar el mouse. Las flechas lo mueven de a un plato. Al tocar un plato se voltea y muestra su precio y descripción.
+3. En **Menú**:
+   - La barra de categorías queda fija al bajar y marca la sección que estás viendo. Al tocar una categoría, la página baja hasta ella.
+   - El botón **+** de cada tarjeta agrega el plato sin voltearla.
+   - El carrito se abre a la derecha y se cierra con Escape o tocando fuera.
+4. Regístrate con un correo `@e2e.brunch.test`, agrega un plato al carrito, paga y haz una reserva.
+5. En **Contacto**, toca una de las preguntas sugeridas del chat. Con sesión iniciada, escribe "Quiero hacer una reserva": el asistente pide fecha, hora y personas, y guarda la reserva como pendiente.
+6. En **Perfil**:
+   - Cambia tu nombre y guarda.
+   - En **Pedidos**, abre el detalle de tu pedido.
+   - En **Reservas**, cada reserva muestra su estado con color. Las pendientes y confirmadas tienen **Editar** (día, hora y personas) y **Cancelar** (pide confirmación). La reserva hecha desde el chat también aparece aquí.
+7. Revisa al menos una página en tamaño celular (en el navegador, F12 → modo dispositivo). El menú se abre con el botón de tres rayas y no debe haber scroll horizontal.
 
 **Panel de admin (http://localhost:5173/admin, con una cuenta admin)**
 1. **Categorías:** crea `[E2E] Prueba`.
 2. **Menú:** crea `[E2E] Plato` en esa categoría y edita su precio. Si desmarcas "Visible en la web", no aparece en la carta pública.
-3. **Pedidos:** el pedido del paso 2 de la web aparece en *Activos*. Confírmalo y asígnale un domiciliario (crea antes `[E2E] Domiciliario` en **Domiciliarios**).
+3. **Pedidos:** el pedido del paso 4 de la web aparece en *Activos*. Confírmalo y asígnale un domiciliario (crea antes `[E2E] Domiciliario` en **Domiciliarios**).
 4. **Pagos:** aprueba el pago. **Reservas:** confirma la reserva.
 5. **Usuarios y roles:** desactiva y reactiva tu cuenta de cliente e2e. Al desactivarla, su sesión se cierra.
 6. **Chatbot:** crea `[E2E] Intención` con una palabra clave rara y prueba esa palabra en el chat de Contacto.
@@ -125,11 +137,13 @@ npm run e2e:limpiar                # comprueba que todo quedó en 0
 
 | Página | Qué hace | Necesita sesión |
 |---|---|---|
-| Inicio, Nosotros | Contenido del restaurante | No |
-| Menú | Productos de la base de datos; se agregan al carrito | No |
+| Inicio | Portada con horario de hoy y clima, razones para venir, favoritos de la carta y mapa | No |
+| Nosotros | Historia, valores y fotos del local | No |
+| Menú | Productos de la base de datos por categoría, con una sugerencia según el clima. Se agregan al carrito | No |
 | Carrito → Pagar | Crea el pedido y el pago en el backend | Sí |
 | Reservar | Crea una reserva | Sí |
-| Contacto | Chat con el asistente. Con sesión también responde sobre tus pedidos y reservas | No |
+| Contacto | Datos del local y chat con el asistente. Con sesión también responde sobre tus pedidos y puede crear, cambiar o cancelar reservas | No |
+| Perfil | Datos de la cuenta, historial de pedidos y reservas. Las reservas pendientes o confirmadas se pueden editar o cancelar | Sí |
 | Ingresar | Login y registro | — |
 | Administración (`/admin`) | Panel del admin. Desde aquí se gestionan pedidos, menú, categorías, reservas, pagos, domiciliarios, usuarios y roles, chatbot y auditoría. El botón **Abrir comandas** abre la app del personal con la sesión ya iniciada | Solo admin |
 
@@ -138,3 +152,31 @@ El seed crea el usuario admin `admin@brunch.com` / `admin123` (cámbialo en prod
 ## Imágenes del menú
 
 Las fotos de los productos están en [frontend/public/menu/](frontend/public/menu/) y cada producto guarda su ruta en `img_url` (por ejemplo `/menu/pancakes.jpg`). Para añadir un producto con foto, copia la imagen ahí y créalo con esa ruta.
+
+## Datos del local
+
+La dirección, el teléfono y el horario que muestra la web están en [frontend/src/utils/horario.js](frontend/src/utils/horario.js). El inicio, el mapa, el contacto y el pie de página los leen de ahí. Si cambia el horario, actualízalo también en el backend ([backend/src/utils/horarioReservas.js](backend/src/utils/horarioReservas.js)), que es el que valida las reservas.
+
+## Asistentes de código
+
+[AGENTS.md](AGENTS.md) tiene el contexto del proyecto para asistentes de IA (Claude Code, Codex, Cursor, Copilot…): arquitectura, convenciones y reglas de la base compartida. Si cambias algo de eso, actualízalo también.
+
+Opcional: [CodeGraph](https://github.com/colbymchenry/codegraph) indexa el código para que el asistente encuentre funciones y llamadas sin leer archivo por archivo. Se instala una vez por computador:
+
+```bash
+npm i -g @colbymchenry/codegraph
+codegraph install --target=claude --location=global --yes   # conecta Claude Code
+cd brunch && codegraph init --yes                            # indexa este repo
+```
+
+En Windows, ejecuta `codegraph` desde PowerShell la primera vez: desde Git Bash falla la descarga ("tar exited 128"). El índice queda en `.codegraph/` y no se sube a git. Reinicia Claude Code después de instalarlo.
+
+Mientras Claude Code está abierto, el índice se actualiza solo cuando cambian los archivos. Después de un `git pull` con Claude Code cerrado, o si las respuestas parecen viejas:
+
+| Comando | Para qué |
+|---|---|
+| `codegraph status` | Ver si el índice está al día ("Index is up to date") |
+| `codegraph sync` | Indexar solo lo que cambió (segundos) |
+| `codegraph index` | Rehacer el índice desde cero, si algo quedó raro |
+| `codegraph upgrade` | Actualizar CodeGraph a la última versión |
+| `codegraph unlock` | Quitar un bloqueo viejo si `sync` dice que el índice está bloqueado |
