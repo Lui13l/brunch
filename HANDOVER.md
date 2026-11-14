@@ -10,7 +10,7 @@ Relevo de trabajo entre sesiones y entre asistentes (cualquier modelo). Lee esto
 |---|---|
 | Rama | `arreglos-viernes` (sale de `main`, **sin push**) |
 | Árbol de trabajo | Limpio |
-| Pruebas backend | Ver "Última verificación" abajo |
+| Pruebas backend | 200 de 200 pasan |
 | Lint y build | Limpios en `backend`, `frontend` y `personal` |
 | Base de datos | Nada escrito en Atlas. Todo probado con MongoDB en memoria y API simulada |
 
@@ -66,7 +66,7 @@ Relevo de trabajo entre sesiones y entre asistentes (cualquier modelo). Lee esto
 
 | Qué | Resultado |
 |---|---|
-| `backend`: `npm test` completo | PENDIENTE DE ANOTAR |
+| `backend`: `npm test` completo | 200 de 200 pasan (2026-11-14, sobre `7aae987`) |
 | `backend`: `npm run lint` | Limpio |
 | `frontend`: `npx eslint .` y `npm run build` | Limpios |
 | `personal`: `npm run lint` y `npm run build` | Limpios |
