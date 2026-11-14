@@ -227,6 +227,43 @@
   text-decoration-color: currentColor;
 }
 
+.perfil-cancel-link {
+  color: var(--error);
+}
+
+.perfil-cancel-link:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.perfil-reserva-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.perfil-reserva-edicion {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  padding-block: 0.75rem;
+}
+
+.perfil-reserva-edicion label {
+  display: grid;
+  gap: 0.4rem;
+  color: var(--tinta-suave);
+  font-size: 0.9rem;
+}
+
+.perfil-reserva-edicion-acciones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+  grid-column: 1 / -1;
+}
+
 /* Etiqueta del estado de una reserva */
 .perfil-estado {
   display: inline-block;
@@ -440,6 +477,10 @@
 
 @media (max-width: 640px) {
   .perfil-form {
+    grid-template-columns: 1fr;
+  }
+
+  .perfil-reserva-edicion {
     grid-template-columns: 1fr;
   }
 

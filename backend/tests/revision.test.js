@@ -82,12 +82,16 @@ describe("Seed", () => {
 });
 
 describe("Reservas: el día de hoy es el de Bogotá, no el de UTC", () => {
-  test("a las 8:30 p. m. en Bogotá se puede reservar para ese mismo día", async (t) => {
+  test("usa el día y la hora local del restaurante para rechazar horarios pasados", async (t) => {
     // 01:30 UTC del 10 de marzo = 20:30 del 9 de marzo en Bogotá.
     t.mock.timers.enable({ apis: ["Date"], now: new Date("2026-03-10T01:30:00Z") });
     const hoyBogota = await api().post("/api/reservas").set(bearer(d.tokenCliente))
-      .send({ dia: "2026-03-09", hora: "21:00", cupo: 2 });
-    expect(hoyBogota.status).toBe(201);
+      .send({ dia: "2026-03-09", hora: "17:00", cupo: 2 });
+    expect(hoyBogota.status).toBe(400);
+
+    const mananaBogota = await api().post("/api/reservas").set(bearer(d.tokenCliente))
+      .send({ dia: "2026-03-10", hora: "09:00", cupo: 2 });
+    expect(mananaBogota.status).toBe(201);
 
     const ayer = await api().post("/api/reservas").set(bearer(d.tokenCliente))
       .send({ dia: "2026-03-08", hora: "10:00", cupo: 2 });

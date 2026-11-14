@@ -81,4 +81,4 @@ const parseFecha = (valor) => {
   return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === valor ? valor : null;
 };
 
-module.exports = { fechaLocal, diaLocal, inicioDiaLocal, hoyLocal, diaCalendarioHoy, rangoLocal, parseFecha };
+module.exports = { fechaLocal, diaLocal, inicioDiaLocal, hoyLocal, diaCalendarioHoy, rangoLocal, parseFecha, sumarDias };

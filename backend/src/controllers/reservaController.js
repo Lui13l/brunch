@@ -1,11 +1,14 @@
 const { Reservation } = require("../models");
 const { HttpError, pick } = require("../utils/http");
 const { verificarDueno } = require("../middleware/auth");
-const { diaCalendarioHoy } = require("../utils/tiempo");
+const { errorHorarioReserva } = require("../utils/horarioReservas");
+const {
+  MAX_PERSONAS_POR_HORARIO,
+  crearConCapacidad,
+  actualizarConCapacidad,
+} = require("../services/reservas");
 
 const { TRANSICIONES } = Reservation;
-
-const HORA = /^([01]\d|2[0-3]):[0-5]\d$/;
 
 const buscarReserva = async (id) => {
   const reserva = await Reservation.findById(id);
@@ -31,18 +34,34 @@ const aplicarEstado = async (reserva, estado) => {
 const crear = async (req, res) => {
   const datos = pick(req.body, ["dia", "hora", "ocasion", "detalles", "cupo"]);
 
-  if (datos.hora !== undefined && !HORA.test(datos.hora)) {
-    throw new HttpError(400, "La hora debe tener formato HH:MM (24 horas)");
+  const errorHorario = errorHorarioReserva(datos.dia, datos.hora);
+  if (errorHorario) throw new HttpError(400, errorHorario);
+  if (!Number.isInteger(datos.cupo) || datos.cupo < 1) {
+    throw new HttpError(400, "El cupo debe ser un número entero mayor que cero");
+  }
+  if (datos.cupo > MAX_PERSONAS_POR_HORARIO) {
+    throw new HttpError(400, `El máximo es de ${MAX_PERSONAS_POR_HORARIO} personas por horario`);
   }
 
-  // "dia" llega como YYYY-MM-DD y se guarda como medianoche UTC de esa fecha;
-  // se compara contra el día de hoy del restaurante (no el de UTC).
-  if (datos.dia && new Date(datos.dia) < diaCalendarioHoy()) {
-    throw new HttpError(400, "No se puede reservar en una fecha pasada");
-  }
-
-  const reserva = await Reservation.create({ ...datos, usuario_id: req.usuario._id });
+  const reserva = await crearConCapacidad(datos, req.usuario._id);
+  if (!reserva) throw new HttpError(409, "No hay suficiente cupo disponible para ese horario");
   res.status(201).json(reserva);
+};
+
+const actualizar = async (req, res) => {
+  const datos = pick(req.body, ["dia", "hora", "cupo"]);
+  const errorHorario = errorHorarioReserva(datos.dia, datos.hora);
+  if (errorHorario) throw new HttpError(400, errorHorario);
+  if (!Number.isInteger(datos.cupo) || datos.cupo < 1) {
+    throw new HttpError(400, "El cupo debe ser un número entero mayor que cero");
+  }
+  if (datos.cupo > MAX_PERSONAS_POR_HORARIO) {
+    throw new HttpError(400, `El máximo es de ${MAX_PERSONAS_POR_HORARIO} personas por horario`);
+  }
+
+  const reserva = await actualizarConCapacidad(req.params.id, req.usuario._id, datos);
+  if (!reserva) throw new HttpError(409, "No hay suficiente cupo disponible para ese horario");
+  res.json(reserva);
 };
 
 const misReservas = async (req, res) => {
@@ -85,4 +104,4 @@ const cancelar = async (req, res) => {
   res.json(await aplicarEstado(reserva, "cancelada"));
 };
 
-module.exports = { crear, misReservas, listar, obtener, cambiarEstado, cancelar };
+module.exports = { crear, actualizar, misReservas, listar, obtener, cambiarEstado, cancelar };

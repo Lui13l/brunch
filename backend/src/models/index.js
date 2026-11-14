@@ -19,6 +19,7 @@ module.exports = {
   Order: require("./Order"),
   Payment: require("./Payment"),
   Reservation: require("./Reservation"),
+  ReservationSlot: require("./ReservationSlot"),
   RevokedToken: require("./RevokedToken"),
   Role: require("./Role"),
   User: require("./User"),

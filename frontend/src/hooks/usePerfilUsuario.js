@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { actualizarPerfil } from "../services/usuarioService";
 import { misPedidos, obtenerPedido } from "../services/pedidosService";
-import { misReservas } from "../services/reservasService";
+import { actualizarReserva, cancelarReserva, misReservas } from "../services/reservasService";
 
 const FORMULARIO_INICIAL = (user) => ({
   nombre: user?.nombre || "",
@@ -28,6 +28,8 @@ export default function usePerfilUsuario() {
   const [reservas, setReservas] = useState([]);
   const [cargandoReservas, setCargandoReservas] = useState(false);
   const [errorReservas, setErrorReservas] = useState("");
+  const [reservaCancelandoId, setReservaCancelandoId] = useState(null);
+  const [reservaGuardandoId, setReservaGuardandoId] = useState(null);
   const [pedidoSeleccionado, setPedidoSeleccionado] = useState(null);
   const [cargandoDetalle, setCargandoDetalle] = useState(false);
   const [errorDetalle, setErrorDetalle] = useState("");
@@ -142,6 +144,37 @@ export default function usePerfilUsuario() {
     setErrorDetalle("");
   };
 
+  const cancelarReservaPerfil = async (reserva) => {
+    const dia = reserva.dia?.slice(0, 10);
+    if (!window.confirm(`¿Cancelar tu reserva del ${dia} a las ${reserva.hora}?`)) return;
+
+    setErrorReservas("");
+    setReservaCancelandoId(reserva._id);
+    try {
+      const actualizada = await cancelarReserva(reserva._id);
+      setReservas((actuales) => actuales.map((item) => (item._id === actualizada._id ? actualizada : item)));
+    } catch (err) {
+      setErrorReservas(err.message);
+    } finally {
+      setReservaCancelandoId(null);
+    }
+  };
+
+  const editarReservaPerfil = async (id, datos) => {
+    setErrorReservas("");
+    setReservaGuardandoId(id);
+    try {
+      const actualizada = await actualizarReserva(id, datos);
+      setReservas((actuales) => actuales.map((item) => (item._id === actualizada._id ? actualizada : item)));
+      return true;
+    } catch (err) {
+      setErrorReservas(err.message);
+      return false;
+    } finally {
+      setReservaGuardandoId(null);
+    }
+  };
+
   return {
     seccion,
     setSeccion,
@@ -160,6 +193,10 @@ export default function usePerfilUsuario() {
     reservas,
     cargandoReservas,
     errorReservas,
+    reservaCancelandoId,
+    cancelarReservaPerfil,
+    reservaGuardandoId,
+    editarReservaPerfil,
     pedidoSeleccionado,
     cargandoDetalle,
     errorDetalle,

@@ -4,7 +4,7 @@ const { diaCalendarioHoy } = require("../utils/tiempo");
 // Intención que se usa cuando ninguna otra coincide.
 const INTENCION_DESCONOCIDA = "desconocida";
 const RESPUESTA_POR_DEFECTO =
-  "Lo siento, no entendí tu mensaje. Puedes preguntarme por el menú, tus pedidos o tus reservas.";
+  "¡Ups! No entendí bien. Puedo ayudarte con el menú, tus pedidos o tus reservas.";
 
 const ESTADOS_PEDIDO = {
   pendiente: "pendiente de confirmación",
@@ -25,6 +25,7 @@ const normalizar = (texto) =>
     .trim();
 
 const formatearPrecio = (valor) => `$${valor.toLocaleString("es-CO")}`;
+const formatearPersonas = (cantidad) => `${cantidad} ${cantidad === 1 ? "persona" : "personas"}`;
 
 // Puntúa cada intención por las palabras clave que aparecen en el mensaje.
 // Las frases largas pesan más ("estado de mi pedido" gana a "pedido").
@@ -57,7 +58,7 @@ const VARIABLES = {
     const productos = await MenuItem.find({ activo: true, visible_web: { $ne: false } })
       .populate("categoria_id", "nombre orden")
       .sort({ orden: 1, nombre: 1 });
-    if (productos.length === 0) return "Por ahora no hay productos disponibles.";
+    if (productos.length === 0) return "Por ahora no tenemos productos disponibles. Puedes volver a consultar más tarde.";
 
     const porCategoria = new Map();
     for (const p of productos) {
@@ -75,27 +76,27 @@ const VARIABLES = {
   },
 
   ultimo_pedido: async (usuario) => {
-    if (!usuario) return "Inicia sesión para que pueda consultar tus pedidos.";
+    if (!usuario) return "Para revisar tus pedidos, inicia sesión y con gusto te ayudo.";
     const pedido = await Order.findOne({ usuario_id: usuario._id }).sort({ createdAt: -1 });
-    if (!pedido) return "Todavía no tienes pedidos.";
+    if (!pedido) return "Aún no tienes pedidos. Cuando hagas uno, puedo ayudarte a revisar cómo va.";
 
     const productos = pedido.items.map((i) => `${i.cantidad}x ${i.nombre}`).join(", ");
     return `Tu último pedido (${productos}) por ${formatearPrecio(pedido.total)} está ${ESTADOS_PEDIDO[pedido.estado]}.`;
   },
 
   mis_reservas: async (usuario) => {
-    if (!usuario) return "Inicia sesión para que pueda consultar tus reservas.";
+    if (!usuario) return "Para revisar tus reservas, inicia sesión y con gusto te ayudo.";
     const reservas = await Reservation.find({
       usuario_id: usuario._id,
       dia: { $gte: diaCalendarioHoy() },
       estado_reserva: { $in: ["pendiente", "confirmada"] },
     }).sort({ dia: 1, hora: 1 });
-    if (reservas.length === 0) return "No tienes reservas próximas.";
+    if (reservas.length === 0) return "No veo reservas próximas a tu nombre. Si quieres, puedo ayudarte a agendar una.";
 
     const lineas = reservas.map(
-      (r) => `- ${r.dia.toISOString().slice(0, 10)} a las ${r.hora} para ${r.cupo} persona(s) (${r.estado_reserva})`
+      (r) => `- ${r.dia.toISOString().slice(0, 10)} a las ${r.hora}, para ${formatearPersonas(r.cupo)} (${r.estado_reserva})`
     );
-    return `Tus próximas reservas:\n${lineas.join("\n")}`;
+    return `¡Estas son tus próximas reservas!\n${lineas.join("\n")}`;
   },
 };
 
@@ -127,4 +128,4 @@ const responder = async (mensaje, usuario) => {
   };
 };
 
-module.exports = { normalizar, responder };
+module.exports = { normalizar, detectarIntencion, responder };

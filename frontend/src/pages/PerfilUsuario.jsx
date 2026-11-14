@@ -49,6 +49,10 @@ const PerfilUsuario = () => {
                 reservas={cuenta.reservas}
                 cargando={cuenta.cargandoReservas}
                 error={cuenta.errorReservas}
+                onCancelar={cuenta.cancelarReservaPerfil}
+                cancelandoId={cuenta.reservaCancelandoId}
+                onEditar={cuenta.editarReservaPerfil}
+                guardandoId={cuenta.reservaGuardandoId}
               />
             )}
           </section>

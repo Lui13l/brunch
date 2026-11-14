@@ -14,6 +14,7 @@ router.use(auth);
 router.post("/", c.crear);
 router.get("/mis-reservas", c.misReservas);
 router.get("/", requireRole(ROL.ADMIN), c.listar);
+router.patch("/:id", c.actualizar);
 router.get("/:id", c.obtener);
 router.patch("/:id/cancelar", c.cancelar);
 router.patch("/:id/estado", requireRole(ROL.ADMIN), auditar(SERVICIO.RESERVAS, "CAMBIAR_ESTADO_RESERVA", (req, b) => `Reserva ${codigoCorto(req.params.id)}: ${b.estado_reserva}`), c.cambiarEstado);

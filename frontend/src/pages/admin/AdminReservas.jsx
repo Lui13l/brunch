@@ -43,7 +43,7 @@ export default function AdminReservas() {
 
   return (
     <>
-      <Encabezado titulo="Reservas" descripcion="Reservas hechas desde la web, ordenadas por día y hora." />
+      <Encabezado titulo="Reservas" descripcion="Reservas de los clientes, incluidas las del chatbot. Las canceladas aparecen con su estado actualizado." />
 
       <div className="adm-filtros">
         <Selector

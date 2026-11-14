@@ -9,8 +9,8 @@ module.exports = [
     descripcion: "El usuario saluda",
     palabras_clave: ["hola", "buenas", "buenos dias", "buenas tardes", "buenas noches", "hey"],
     respuestas: [
-      texto("¡Hola {nombre}! Soy el asistente de Brunch & Co. Puedo mostrarte el menú, contarte cómo va tu pedido o revisar tus reservas."),
-      texto("¡Hola {nombre}! ¿En qué te ayudo? Pregúntame por el menú, tus pedidos o tus reservas."),
+      texto("¡Hola {nombre}! Soy el asistente de Brunch & Co. Estoy aquí para ayudarte con el menú, tus pedidos o tus reservas."),
+      texto("¡Hola {nombre}! ¿Qué necesitas? Puedo ayudarte con el menú, tus pedidos o tus reservas."),
     ],
   },
   {
@@ -34,11 +34,51 @@ module.exports = [
     respuestas: [texto("{ultimo_pedido}")],
   },
   {
+    nombre: "crear_reserva",
+    descripcion: "Quiere agendar una reserva desde el chatbot",
+    palabras_clave: ["reservar una mesa", "quiero reservar", "hacer una reserva", "agendar una reserva", "reservar"],
+    respuestas: [texto("¡Claro! Te ayudo a organizar tu visita. Cuéntame qué día y a qué hora te gustaría venir, y cuántas personas serán.")],
+  },
+  {
+    nombre: "editar_reserva",
+    descripcion: "Quiere modificar una reserva",
+    palabras_clave: [
+      "editar reserva",
+      "editar mi reserva",
+      "modificar reserva",
+      "modificar mi reserva",
+      "cambiar reserva",
+      "cambiar mi reserva",
+      "cambiar la reserva",
+      "quiero editar",
+      "quiero modificar",
+      "quiero cambiar",
+      "actualizar mi reserva",
+    ],
+    respuestas: [texto("¡Claro! Puedo ayudarte a cambiar la fecha, la hora o la cantidad de personas de una reserva.")],
+  },
+  {
+    nombre: "cancelar_reserva",
+    descripcion: "Quiere cancelar una reserva",
+    palabras_clave: [
+      "cancelar",
+      "cancela",
+      "cancelar reserva",
+      "cancelar la reserva",
+      "cancelar mi reserva",
+      "cancelar reservas",
+      "cancela la reserva",
+      "quiero cancelarla",
+      "anular reserva",
+    ],
+    respuestas: [texto("¡Claro! Revisemos tus reservas y vemos cuál quieres cancelar.")],
+  },
+  {
     nombre: "hacer_reserva",
     descripcion: "Quiere reservar una mesa",
     palabras_clave: ["reservar", "quiero reservar", "hacer una reserva", "mesa", "reservacion"],
     respuestas: [
-      texto("Puedes reservar desde la sección de reservas indicando el día, la hora y el número de personas. Te avisaremos cuando quede confirmada."),
+      texto("¡Con gusto te ayudo a agendarla! Dime qué día y a qué hora te queda bien, y cuántas personas vienen."),
     ],
   },
   {
@@ -86,7 +126,7 @@ module.exports = [
     descripcion: "Respuesta cuando ninguna otra intención coincide",
     palabras_clave: [],
     respuestas: [
-      texto("Lo siento, no entendí tu mensaje. Puedes preguntarme por el menú, tus pedidos, tus reservas o los métodos de pago."),
+      texto("¡Ups! No entendí bien. Puedo ayudarte con el menú, tus pedidos, tus reservas o los métodos de pago."),
     ],
   },
 ];

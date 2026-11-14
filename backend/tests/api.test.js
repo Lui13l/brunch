@@ -322,9 +322,25 @@ describe("Reservas", () => {
   const reservar = (datos) => api().post("/api/reservas").set(bearer(d.tokenCliente)).send(datos);
 
   test("valida fecha pasada, formato de hora y cupo", async () => {
+    expect((await reservar({})).status).toBe(400);
     expect((await reservar({ dia: "2020-01-01", hora: "10:00", cupo: 2 })).status).toBe(400);
     expect((await reservar({ dia: manana(), hora: "25:00", cupo: 2 })).status).toBe(400);
     expect((await reservar({ dia: manana(), hora: "10:00", cupo: 0 })).status).toBe(400);
+    expect((await reservar({ dia: manana(), hora: "10:00", cupo: -1 })).status).toBe(400);
+    expect((await reservar({ dia: manana(), hora: "10:00", cupo: 31 })).status).toBe(400);
+  });
+
+  test("rechaza horas fuera del horario y horas pasadas de hoy", async (t) => {
+    t.mock.timers.enable({ apis: ["Date"], now: new Date("2026-11-13T15:00:00Z") });
+
+    const antesDeAbrir = await reservar({ dia: "2026-11-14", hora: "08:00", cupo: 2 });
+    expect(antesDeAbrir.status).toBe(400);
+
+    const horaPasada = await reservar({ dia: "2026-11-13", hora: "09:59", cupo: 2 });
+    expect(horaPasada.status).toBe(400);
+
+    const valida = await reservar({ dia: "2026-11-13", hora: "10:30", cupo: 2 });
+    expect(valida.status).toBe(201);
   });
 
   test("crear, filtrar por fecha (admin) y cancelar", async () => {
@@ -340,6 +356,102 @@ describe("Reservas", () => {
 
     const otraVez = await api().patch(`/api/reservas/${reserva.body.id}/cancelar`).set(bearer(d.tokenCliente));
     expect(otraVez.status).toBe(400);
+
+    const editarCancelada = await api()
+      .patch(`/api/reservas/${reserva.body.id}`)
+      .set(bearer(d.tokenCliente))
+      .send({ dia: manana(), hora: "11:00", cupo: 2 });
+    expect(editarCancelada.status).toBe(400);
+  });
+
+  test("el cliente actualiza la fecha, hora y cupo de su reserva", async () => {
+    const fecha = manana();
+    const creada = await reservar({ dia: fecha, hora: "10:30", cupo: 3, ocasion: "Cumpleaños" });
+    const actualizada = await api()
+      .patch(`/api/reservas/${creada.body.id}`)
+      .set(bearer(d.tokenCliente))
+      .send({ dia: fecha, hora: "11:30", cupo: 5 });
+
+    expect(actualizada.status).toBe(200);
+    expect(actualizada.body.hora).toBe("11:30");
+    expect(actualizada.body.cupo).toBe(5);
+    expect(actualizada.body.ocasion).toBe("Cumpleaños");
+
+    const ajena = await api()
+      .patch(`/api/reservas/${creada.body.id}`)
+      .set(bearer(d.tokenAdmin))
+      .send({ dia: fecha, hora: "12:00", cupo: 2 });
+    expect(ajena.status).toBe(404);
+  });
+
+  test("al editar valida fecha, hora, cantidad y capacidad del horario", async () => {
+    const fecha = manana();
+    const creada = await reservar({ dia: fecha, hora: "14:00", cupo: 5 });
+    expect((await api().patch(`/api/reservas/${creada.body.id}`).set(bearer(d.tokenCliente)).send({
+      dia: "2020-01-01",
+      hora: "14:00",
+      cupo: 5,
+    })).status).toBe(400);
+    expect((await api().patch(`/api/reservas/${creada.body.id}`).set(bearer(d.tokenCliente)).send({
+      dia: fecha,
+      hora: "25:00",
+      cupo: 5,
+    })).status).toBe(400);
+    expect((await api().patch(`/api/reservas/${creada.body.id}`).set(bearer(d.tokenCliente)).send({
+      dia: fecha,
+      hora: "23:00",
+      cupo: 5,
+    })).status).toBe(400);
+    expect((await api().patch(`/api/reservas/${creada.body.id}`).set(bearer(d.tokenCliente)).send({
+      dia: fecha,
+      hora: "14:00",
+      cupo: 31,
+    })).status).toBe(400);
+
+    await reservar({ dia: fecha, hora: "15:00", cupo: 20 });
+    const sinCupo = await api()
+      .patch(`/api/reservas/${creada.body.id}`)
+      .set(bearer(d.tokenCliente))
+      .send({ dia: fecha, hora: "15:00", cupo: 11 });
+    expect(sinCupo.status).toBe(409);
+
+    const sigueIgual = await api().get(`/api/reservas/${creada.body.id}`).set(bearer(d.tokenCliente));
+    expect(sigueIgual.body.hora).toBe("14:00");
+    expect(sigueIgual.body.cupo).toBe(5);
+  });
+
+  test("al editar en el mismo horario no cuenta la reserva dos veces", async () => {
+    const fecha = manana();
+    const propia = await reservar({ dia: fecha, hora: "16:00", cupo: 3 });
+    await api().post("/api/reservas").set(bearer(d.tokenAdmin)).send({
+      dia: fecha,
+      hora: "16:00",
+      cupo: 27,
+    });
+
+    const actualizada = await api()
+      .patch(`/api/reservas/${propia.body.id}`)
+      .set(bearer(d.tokenCliente))
+      .send({ dia: fecha, hora: "16:00", cupo: 3 });
+    expect(actualizada.status).toBe(200);
+  });
+
+  test("la capacidad máxima por fecha y hora es 30 personas", async () => {
+    const fecha = manana();
+    expect((await reservar({ dia: fecha, hora: "12:00", cupo: 31 })).status).toBe(400);
+    expect((await reservar({ dia: fecha, hora: "12:00", cupo: 18 })).status).toBe(201);
+    expect((await reservar({ dia: fecha, hora: "12:00", cupo: 13 })).status).toBe(409);
+    expect((await reservar({ dia: fecha, hora: "12:30", cupo: 13 })).status).toBe(201);
+  });
+
+  test("dos solicitudes simultáneas no superan la capacidad del horario", async () => {
+    const fecha = manana();
+    await reservar({ dia: fecha, hora: "13:00", cupo: 20 });
+    const resultados = await Promise.all([
+      reservar({ dia: fecha, hora: "13:00", cupo: 6 }),
+      reservar({ dia: fecha, hora: "13:00", cupo: 6 }),
+    ]);
+    expect(resultados.map((r) => r.status).sort()).toEqual([201, 409]);
   });
 });
 

@@ -53,8 +53,8 @@ src/
   data/            menú inicial, intenciones del chatbot y etiquetas e2e
   middleware/      autenticación, roles, errores (JSON o texto), límites y auditar()
   utils/           HttpError, validar (zod), serializar (contrato del personal), tiempo
-                   (hora de Bogotá, rangoLocal), dinero, roles (ROL), codigo (#XXXXXX),
-                   transaccion (conTransaccion)
+                   (hora de Bogotá, rangoLocal), horarioReservas, dinero, roles (ROL),
+                   codigo (#XXXXXX), transaccion (conTransaccion)
   ws/              WebSocket: hub (temas y permisos) e index (protocolo)
 tests/             tests de integración (node:test + supertest)
 ```
@@ -125,8 +125,11 @@ Flujo de estados (`Order.TRANSICIONES`): `pendiente → confirmado → preparand
 | GET | `/reservas/mis-reservas` | Usuario | Reservas propias |
 | GET | `/reservas` | Admin | Todas (`?fecha=YYYY-MM-DD`, `?estado=`) |
 | GET | `/reservas/:id` | Dueño / admin | Detalle |
+| PATCH | `/reservas/:id` | Dueño | `{dia, hora, cupo}`. Cambia una reserva pendiente o confirmada |
 | PATCH | `/reservas/:id/cancelar` | Dueño / admin | Cancela |
 | PATCH | `/reservas/:id/estado` | Admin | `{estado}`: `pendiente → confirmada → finalizada` |
+
+Las reservas deben ser futuras y estar dentro del horario de atención: lunes a viernes de 08:00 a 18:00; sábados y domingos de 09:00 a 17:00 (la hora de cierre no se admite). La hora se evalúa en la zona del restaurante. Cada horario (misma fecha y hora) admite hasta 30 personas entre reservas pendientes y confirmadas. Al cancelar, el cupo queda disponible.
 
 ### Domiciliarios (solo admin)
 | Método | Ruta | Descripción |
@@ -155,6 +158,7 @@ Flujo de estados (`Order.TRANSICIONES`): `pendiente → confirmado → preparand
 - **Visitantes:** sin sesión el bot responde igual (menú, horario, pagos…). `{nombre}` se omite y `{ultimo_pedido}` / `{mis_reservas}` piden iniciar sesión.
 - **Detección:** el texto se compara con las `palabras_clave` de cada intención activa, sin tener en cuenta mayúsculas ni tildes. Gana la que más palabras coinciden, así que "hacer un pedido" gana a "pedido". Si ninguna coincide se usa la intención `desconocida`.
 - **Respuesta:** si la intención tiene varias respuestas, se elige una al azar.
+- **Reservas:** un usuario con sesión puede indicar fecha (`DD/MM/AAAA` o mañana), hora y cantidad (puede responder con un número solo cuando el bot pregunta cuántas personas). El bot valida horario de atención, fechas y horas pasadas, y el límite de 30 personas; pregunta y guarda la ocasión y las notas adicionales antes de confirmar. La reserva se guarda como pendiente. También puede editar o cancelar sus reservas pendientes o confirmadas desde el chat. Los visitantes deben iniciar sesión.
 - **Variables:** una respuesta puede incluir variables que se rellenan con datos reales:
 
 | Variable | Se reemplaza por |

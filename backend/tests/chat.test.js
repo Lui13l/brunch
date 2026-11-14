@@ -3,8 +3,15 @@ const { conectar, desconectar, limpiar, api, datosBase, bearer, expect } = requi
 const { ChatIntent } = require("../src/models");
 const { normalizar } = require("../src/services/chatbot");
 const INTENCIONES = require("../src/data/intenciones");
+const { hoyLocal } = require("../src/utils/tiempo");
 
 let d;
+
+const mananaLocal = () => {
+  const fecha = new Date(`${hoyLocal()}T00:00:00.000Z`);
+  fecha.setUTCDate(fecha.getUTCDate() + 1);
+  return fecha.toISOString().slice(0, 10);
+};
 
 before(conectar, { timeout: 10 * 60 * 1000 });
 after(desconectar);
@@ -47,7 +54,7 @@ describe("Chatbot: detección de intenciones", () => {
   test("estado del pedido usa los datos reales del usuario", async () => {
     const sinPedidos = await enviar(d.tokenCliente, "¿Cómo va mi pedido?");
     expect(sinPedidos.body.intencion).toBe("estado_pedido");
-    expect(sinPedidos.body.respuesta).toBe("Todavía no tienes pedidos.");
+    expect(sinPedidos.body.respuesta).toBe("Aún no tienes pedidos. Cuando hagas uno, puedo ayudarte a revisar cómo va.");
 
     await api()
       .post("/api/pedidos")
@@ -61,19 +68,210 @@ describe("Chatbot: detección de intenciones", () => {
 
   test("mis reservas muestra solo las próximas", async () => {
     const vacio = await enviar(d.tokenCliente, "mis reservas");
-    expect(vacio.body.respuesta).toBe("No tienes reservas próximas.");
+    expect(vacio.body.respuesta).toBe("No veo reservas próximas a tu nombre. Si quieres, puedo ayudarte a agendar una.");
 
     const manana = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
     await api().post("/api/reservas").set(bearer(d.tokenCliente)).send({ dia: manana, hora: "11:00", cupo: 3 });
 
     const res = await enviar(d.tokenCliente, "mis reservas");
-    incluye(res.body.respuesta, `${manana} a las 11:00 para 3 persona(s)`);
+    incluye(res.body.respuesta, `${manana} a las 11:00, para 3 personas`);
+  });
+
+  test("el chat recopila datos, confirma y guarda la reserva pendiente", async () => {
+    const fecha = mananaLocal();
+    const inicio = await enviar(d.tokenCliente, "quiero reservar");
+    expect(inicio.body.intencion).toBe("crear_reserva");
+    incluye(inicio.body.respuesta, "fecha");
+
+    const fechaHora = await enviar(d.tokenCliente, "mañana a las 12:00");
+    incluye(fechaHora.body.respuesta, "personas vienen");
+
+    const confirmacion = await enviar(d.tokenCliente, "4");
+    incluye(confirmacion.body.respuesta, "ocasión especial");
+
+    const ocasion = await enviar(d.tokenCliente, "cumpleaños");
+    incluye(ocasion.body.respuesta, "nota adicional");
+
+    const notas = await enviar(d.tokenCliente, "Necesitamos una silla para bebé");
+    incluye(notas.body.respuesta, "¿Te la reservo?");
+
+    const guardada = await enviar(d.tokenCliente, "sí");
+    incluye(guardada.body.respuesta, "confirmará pronto");
+    const reservas = await api().get("/api/reservas/mis-reservas").set(bearer(d.tokenCliente));
+    expect(reservas.body).toHaveLength(1);
+    expect(reservas.body[0].dia.slice(0, 10)).toBe(fecha);
+    expect(reservas.body[0].hora).toBe("12:00");
+    expect(reservas.body[0].cupo).toBe(4);
+    expect(reservas.body[0].ocasion).toBe("cumpleaños");
+    expect(reservas.body[0].detalles).toBe("Necesitamos una silla para bebé");
+    expect(reservas.body[0].estado_reserva).toBe("pendiente");
+  });
+
+  test("guarda la reserva aunque el cliente no tenga ocasión ni notas", async () => {
+    await enviar(d.tokenCliente, "quiero reservar");
+    await enviar(d.tokenCliente, "mañana a las 12:00");
+    incluye((await enviar(d.tokenCliente, "2")).body.respuesta, "ocasión especial");
+    incluye((await enviar(d.tokenCliente, "ninguna")).body.respuesta, "nota adicional");
+    incluye((await enviar(d.tokenCliente, "no")).body.respuesta, "¿Te la reservo?");
+    await enviar(d.tokenCliente, "sí");
+
+    const reservas = await api().get("/api/reservas/mis-reservas").set(bearer(d.tokenCliente));
+    expect(reservas.body).toHaveLength(1);
+    expect(reservas.body[0].ocasion).toBe("Sin ocasión");
+    expect(reservas.body[0].detalles).toBe("");
+  });
+
+  test("rechaza reservas del chat que exceden la capacidad del horario", async () => {
+    const fecha = mananaLocal();
+    await api().post("/api/reservas").set(bearer(d.tokenCliente)).send({
+      dia: fecha,
+      hora: "12:00",
+      cupo: 20,
+    });
+
+    const inicio = await enviar(d.tokenCliente, "quiero reservar");
+    const fechaHora = await enviar(d.tokenCliente, `${fecha} a las 12:00`);
+    const cupo = await enviar(d.tokenCliente, "15");
+    incluye(cupo.body.respuesta, "ocasión especial");
+    const ocasion = await enviar(d.tokenCliente, "reunión");
+    incluye(ocasion.body.respuesta, "nota adicional");
+    const respuesta = await enviar(d.tokenCliente, "no");
+    expect(inicio.status).toBe(200);
+    expect(fechaHora.status).toBe(200);
+    incluye(respuesta.body.respuesta, "solo quedan 10");
+    expect((await api().get("/api/reservas/mis-reservas").set(bearer(d.tokenCliente))).body).toHaveLength(1);
+  });
+
+  test("valida entradas de fecha, hora y cantidad durante la reserva", async () => {
+    const pasado = new Date(`${hoyLocal()}T00:00:00.000Z`);
+    pasado.setUTCDate(pasado.getUTCDate() - 1);
+    const fechaPasada = pasado.toISOString().slice(0, 10);
+    const inicio = await enviar(d.tokenCliente, "quiero reservar");
+    incluye(inicio.body.respuesta, "fecha");
+
+    const numeroTemprano = await enviar(d.tokenCliente, "3");
+    incluye(numeroTemprano.body.respuesta, "fecha");
+    expect((await api().get("/api/reservas/mis-reservas").set(bearer(d.tokenCliente))).body).toHaveLength(0);
+
+    const fechaInvalida = await enviar(d.tokenCliente, "31/02/2026");
+    incluye(fechaInvalida.body.respuesta, "fecha");
+
+    const fechaAntigua = await enviar(d.tokenCliente, fechaPasada);
+    incluye(fechaAntigua.body.respuesta, "ya pasó");
+
+    const horaInvalida = await enviar(d.tokenCliente, `${mananaLocal()} a las 25:00`);
+    incluye(horaInvalida.body.respuesta, "hora");
+    const horaValida = await enviar(d.tokenCliente, "12:00");
+    incluye(horaValida.body.respuesta, "personas vienen");
+
+    const textoCantidad = await enviar(d.tokenCliente, "varias");
+    incluye(textoCantidad.body.respuesta, "personas vienen");
+    const cantidadDecimal = await enviar(d.tokenCliente, "3.5");
+    incluye(cantidadDecimal.body.respuesta, "personas vienen");
+    const cantidadCero = await enviar(d.tokenCliente, "0");
+    incluye(cantidadCero.body.respuesta, "número entero");
+    const cantidadNegativa = await enviar(d.tokenCliente, "-1");
+    incluye(cantidadNegativa.body.respuesta, "número entero");
+    const cantidadNegativaConTexto = await enviar(d.tokenCliente, "-1 personas");
+    incluye(cantidadNegativaConTexto.body.respuesta, "número entero");
+    const cantidadSobreLimite = await enviar(d.tokenCliente, "31");
+    incluye(cantidadSobreLimite.body.respuesta, "hasta 30");
+
+    const cantidadMaxima = await enviar(d.tokenCliente, "30");
+    incluye(cantidadMaxima.body.respuesta, "ocasión especial");
+    incluye((await enviar(d.tokenCliente, "ninguna")).body.respuesta, "nota adicional");
+    incluye((await enviar(d.tokenCliente, "no")).body.respuesta, "¿Te la reservo?");
+    await enviar(d.tokenCliente, "no");
+    expect((await api().get("/api/reservas/mis-reservas").set(bearer(d.tokenCliente))).body).toHaveLength(0);
+  });
+
+  test("el chat rechaza horas fuera de atención y horas que ya pasaron", async (t) => {
+    t.mock.timers.enable({ apis: ["Date"], now: new Date("2026-11-13T15:00:00Z") });
+    await enviar(d.tokenCliente, "quiero reservar");
+
+    const fueraDeHorario = await enviar(d.tokenCliente, "mañana a las 08:00");
+    incluye(fueraDeHorario.body.respuesta, "fuera de atención");
+
+    const horaPasada = await enviar(d.tokenCliente, "hoy a las 09:59");
+    incluye(horaPasada.body.respuesta, "ya pasó");
+
+    const horaFutura = await enviar(d.tokenCliente, "10:30");
+    incluye(horaFutura.body.respuesta, "personas vienen");
+    expect((await api().get("/api/reservas/mis-reservas").set(bearer(d.tokenCliente))).body).toHaveLength(0);
+  });
+
+  test("el cliente puede cancelar por chat y el admin ve el estado cancelado", async () => {
+    const reserva = await api()
+      .post("/api/reservas")
+      .set(bearer(d.tokenCliente))
+      .send({ dia: mananaLocal(), hora: "12:00", cupo: 2 });
+    expect(reserva.status).toBe(201);
+
+    const pregunta = await enviar(d.tokenCliente, "quiero cancelar mi reserva");
+    expect(pregunta.body.intencion).toBe("cancelar_reserva");
+    incluye(pregunta.body.respuesta, "¿Quieres cancelar");
+
+    const confirmacion = await enviar(d.tokenCliente, "sí");
+    incluye(confirmacion.body.respuesta, "Cancelé tu reserva");
+
+    const canceladas = await api().get("/api/reservas?estado=cancelada").set(bearer(d.tokenAdmin));
+    expect(canceladas.body).toHaveLength(1);
+    expect(canceladas.body[0].estado_reserva).toBe("cancelada");
+  });
+
+  test("el chat permite modificar una reserva y confirmar los cambios", async () => {
+    const fecha = mananaLocal();
+    await api()
+      .post("/api/reservas")
+      .set(bearer(d.tokenCliente))
+      .send({ dia: fecha, hora: "10:00", cupo: 2 });
+
+    const inicio = await enviar(d.tokenCliente, "editar mi reserva");
+    incluye(inicio.body.respuesta, "Dime qué quieres cambiar");
+
+    const fueraDeHorario = await enviar(d.tokenCliente, "mañana a las 23:00 para 4 personas");
+    incluye(fueraDeHorario.body.respuesta, "fuera de atención");
+
+    const cambios = await enviar(d.tokenCliente, "mañana a las 12:00 para 4 personas");
+    incluye(cambios.body.respuesta, "¿Los guardamos?");
+
+    const confirmacion = await enviar(d.tokenCliente, "sí");
+    incluye(confirmacion.body.respuesta, "Actualicé tu reserva");
+
+    const reservas = await api().get("/api/reservas/mis-reservas").set(bearer(d.tokenCliente));
+    expect(reservas.body).toHaveLength(1);
+    expect(reservas.body[0].dia.slice(0, 10)).toBe(fecha);
+    expect(reservas.body[0].hora).toBe("12:00");
+    expect(reservas.body[0].cupo).toBe(4);
+  });
+
+  test("el chat reconoce distintas formas de pedir una cancelación", async () => {
+    for (const [indice, frase] of ["cancela la reserva", "quiero cancelarla", "cancelar"].entries()) {
+      await api()
+        .post("/api/reservas")
+        .set(bearer(d.tokenCliente))
+        .send({ dia: mananaLocal(), hora: `${12 + indice}:00`, cupo: 2 });
+
+      const pregunta = await enviar(d.tokenCliente, frase);
+      expect(pregunta.body.intencion).toBe("cancelar_reserva");
+      incluye(pregunta.body.respuesta, "¿Quieres cancelar");
+
+      const confirmacion = await enviar(d.tokenCliente, "sí");
+      incluye(confirmacion.body.respuesta, "Cancelé tu reserva");
+    }
+  });
+
+  test("el visitante debe iniciar sesión para agendar desde el chat", async () => {
+    const respuesta = await api().post("/api/chat/mensaje").send({ mensaje: "quiero reservar" });
+    expect(respuesta.status).toBe(200);
+    incluye(respuesta.body.respuesta, "inicia sesión");
+    expect(respuesta.body.conversacion_id).toBe(null);
   });
 
   test("sin coincidencias responde con la intención desconocida", async () => {
     const res = await enviar(d.tokenCliente, "xyz abc");
     expect(res.body.intencion).toBe("desconocida");
-    incluye(res.body.respuesta, "no entendí");
+    incluye(res.body.respuesta, "entendí bien");
   });
 
   test("sin intenciones cargadas usa una respuesta por defecto", async () => {
@@ -102,7 +300,7 @@ describe("Chatbot: conversaciones", () => {
     incluye(menu.body.respuesta, "Huevos: $20.000");
 
     const pedido = await visitante("como va mi pedido");
-    incluye(pedido.body.respuesta, "Inicia sesión");
+    incluye(pedido.body.respuesta, "inicia sesión");
 
     const horario = await visitante("a que hora abren");
     expect(horario.body.intencion).toBe("horario");
