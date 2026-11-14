@@ -13,7 +13,7 @@ const TOPICS = ["/topic/cocina"];
 // como elementos dominantes, y relleno sólido en vez de borde cuando algo va
 // tarde — un borde no se ve a esa distancia.
 export default function Cocina() {
-  const { pedir } = useAuth();
+  const { pedir, user } = useAuth();
   const [items, setItems] = useState([]);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
@@ -72,7 +72,7 @@ export default function Cocina() {
 
   return (
     <Pantalla>
-      <Cabecera titulo="Cocina" />
+      <Cabecera titulo="Cocina" atras={user?.rol === "ADMIN" ? "/admin" : undefined} />
       <Aviso onReintentar={cargar}>{error}</Aviso>
 
       {cargando ? (

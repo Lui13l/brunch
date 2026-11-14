@@ -126,7 +126,7 @@ export default function Caja() {
               type="number"
               required
               min="0"
-              step="100"
+              step="1"
               autoFocus
               value={abriendo.baseInicial}
               onChange={(e) => setAbriendo({ ...abriendo, baseInicial: e.target.value })}
@@ -185,7 +185,7 @@ export default function Caja() {
               type="number"
               required
               min="1"
-              step="100"
+              step="1"
               value={movimiento.monto}
               onChange={(e) => setMovimiento({ ...movimiento, monto: e.target.value })}
             />
@@ -227,7 +227,7 @@ export default function Caja() {
                     type="number"
                     required
                     min="0"
-                    step="100"
+                    step="1"
                     autoFocus={metodo === "EFECTIVO"}
                     value={escrito}
                     onChange={(e) =>

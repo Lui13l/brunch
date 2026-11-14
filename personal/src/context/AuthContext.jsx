@@ -5,6 +5,7 @@ import { SesionContext } from "./sesion";
 // cada quien inicia sesión en su dispositivo.
 const USER_KEY = "brunch_staff_user";
 const TOKEN_KEY = "brunch_staff_token";
+const VERIFICAR_CADA_MS = 5 * 60_000;
 
 const tokenExpirado = (token) => {
   try {
@@ -115,6 +116,50 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
 
+  // Lo guardado en el navegador puede estar viejo (cambió el rol, se desactivó
+  // la cuenta, se cerró la sesión desde otro lado). Se le pregunta al servidor
+  // al abrir la app, al volver a la pestaña y cada pocos minutos.
+  const [verificando, setVerificando] = useState(() => Boolean(sesion.token));
+
+  const verificarSesion = useCallback(async () => {
+    const actual = tokenRef.current;
+    if (!actual) return;
+    try {
+      const res = await fetch("/api/usuarios/yo", { headers: { Authorization: `Bearer ${actual}` } });
+      if (tokenRef.current !== actual) return; // entró otra sesión mientras tanto
+      if (res.status === 401) {
+        logout("Tu sesión expiró o fue cerrada. Vuelve a entrar.");
+        return;
+      }
+      if (!res.ok) return; // servidor caído: no es motivo para cerrar la sesión
+      const usuario = await res.json();
+      if (usuario.rol === "USUARIO") {
+        logout("Esta cuenta ya no es del personal del restaurante.");
+        return;
+      }
+      // Solo se reemplaza si algo cambió, para no redibujar toda la app cada vez.
+      setSesion((previa) =>
+        previa.token === actual && JSON.stringify(previa.user) !== JSON.stringify(usuario)
+          ? { ...previa, user: usuario }
+          : previa,
+      );
+    } catch {
+      // Sin red: se conserva la sesión; el próximo intento volverá a preguntar.
+    }
+  }, [logout]);
+
+  useEffect(() => {
+    verificarSesion().finally(() => setVerificando(false));
+
+    const alVolver = () => document.visibilityState === "visible" && verificarSesion();
+    document.addEventListener("visibilitychange", alVolver);
+    const reloj = setInterval(verificarSesion, VERIFICAR_CADA_MS);
+    return () => {
+      document.removeEventListener("visibilitychange", alVolver);
+      clearInterval(reloj);
+    };
+  }, [verificarSesion]);
+
   // Inyecta el token y cierra sesión si el servidor dice que ya no vale.
   const authFetch = useCallback(
     async (url, options = {}) => {
@@ -141,8 +186,8 @@ export const AuthProvider = ({ children }) => {
   );
 
   const value = useMemo(
-    () => ({ user, token, motivo, login, entrarConToken, logout, authFetch, pedir }),
-    [user, token, motivo, login, entrarConToken, logout, authFetch, pedir],
+    () => ({ user, token, motivo, verificando, login, entrarConToken, logout, authFetch, pedir }),
+    [user, token, motivo, verificando, login, entrarConToken, logout, authFetch, pedir],
   );
 
   return <SesionContext.Provider value={value}>{children}</SesionContext.Provider>;

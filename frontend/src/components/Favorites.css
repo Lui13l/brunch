@@ -10,34 +10,39 @@
   background-color: var(--mantequilla);
 }
 
-.fav-encabezado {
-  display: flex;
-  gap: 1.5rem;
-  align-items: flex-end;
-  justify-content: space-between;
-}
-
 .fav-encabezado .bajada {
   margin-top: 0.7rem;
 }
 
+.fav-carrusel {
+  position: relative;
+}
+
+/* Una flecha a cada costado del aro, centradas en vertical. La capa no
+   intercepta clics; solo los botones. */
 .fav-flechas {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
   display: flex;
-  flex-shrink: 0;
-  gap: 0.6rem;
+  align-items: center;
+  justify-content: space-between;
+  pointer-events: none;
 }
 
 .fav-flecha {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
+  width: 52px;
+  height: 52px;
   color: var(--espresso);
-  background-color: transparent;
-  border: 1.5px solid rgba(57, 25, 3, 0.28);
+  background-color: var(--crema-alta);
+  border: 1.5px solid rgba(57, 25, 3, 0.16);
   border-radius: 50%;
+  box-shadow: var(--sombra-1);
   cursor: pointer;
+  pointer-events: auto;
   transition:
     background-color var(--rapido) ease,
     border-color var(--rapido) ease,
@@ -208,6 +213,15 @@
   .fav-escena {
     -webkit-mask-image: none;
     mask-image: none;
+  }
+
+  .fav-flechas {
+    padding-inline: 0.5rem;
+  }
+
+  .fav-flecha {
+    width: 44px;
+    height: 44px;
   }
 
   .fav-desc {

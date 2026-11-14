@@ -122,19 +122,21 @@ const Favorites = () => {
     <section className="favorites-section">
       <div className="contenedor">
         <div className="fav-encabezado">
-          <div>
-            <h2 className="titulo-seccion">Los favoritos de la casa</h2>
-            <p className="bajada">Toca un plato para ver de qué está hecho.</p>
-          </div>
-          <div className="fav-flechas">
-            <button type="button" className="fav-flecha" onClick={() => mover(-1)} aria-label="Plato anterior">
-              <ArrowLeft size={20} strokeWidth={1.8} aria-hidden="true" />
-            </button>
-            <button type="button" className="fav-flecha" onClick={() => mover(1)} aria-label="Plato siguiente">
-              <ArrowRight size={20} strokeWidth={1.8} aria-hidden="true" />
-            </button>
-          </div>
+          <h2 className="titulo-seccion">Los favoritos de la casa</h2>
+          <p className="bajada">Toca un plato para ver de qué está hecho.</p>
         </div>
+      </div>
+
+      <div className="fav-carrusel">
+      {/* Las flechas van a los costados del aro, fuera de la escena: dentro
+          quedarían bajo la máscara que desvanece los bordes. */}
+      <div className="contenedor fav-flechas">
+        <button type="button" className="fav-flecha" onClick={() => mover(-1)} aria-label="Plato anterior">
+          <ArrowLeft size={22} strokeWidth={1.8} aria-hidden="true" />
+        </button>
+        <button type="button" className="fav-flecha" onClick={() => mover(1)} aria-label="Plato siguiente">
+          <ArrowRight size={22} strokeWidth={1.8} aria-hidden="true" />
+        </button>
       </div>
 
       <div
@@ -186,6 +188,7 @@ const Favorites = () => {
             ))}
           </ul>
         </div>
+      </div>
       </div>
 
       <div className="contenedor fav-pie">

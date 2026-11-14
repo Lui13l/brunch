@@ -17,7 +17,7 @@ const TOPICS = ["/topic/salon"];
 // a por ella. Si se usara también para "alguno listo" dejaría de ser una orden
 // y pasaría a ser ruido.
 export default function Mesas() {
-  const { pedir } = useAuth();
+  const { pedir, user } = useAuth();
   const navigate = useNavigate();
   const [mesas, setMesas] = useState([]);
   const [comandas, setComandas] = useState([]);
@@ -78,7 +78,7 @@ export default function Mesas() {
 
   return (
     <Pantalla>
-      <Cabecera titulo="Salón" />
+      <Cabecera titulo="Salón" atras={user?.rol === "ADMIN" ? "/admin" : undefined} />
       <Aviso onReintentar={cargar}>{error}</Aviso>
 
       {listas.map((aviso) => (

@@ -2,11 +2,15 @@ import { ChevronLeft, LogOut } from "lucide-react";
 import { Link, Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/sesion";
 import { INICIO_POR_ROL, NOMBRE_ROL } from "../lib/formato";
+import { Cargando } from "./ui";
 
 export function RutaProtegida({ roles, children }) {
-  const { user } = useAuth();
+  const { user, verificando } = useAuth();
   const location = useLocation();
 
+  // Hasta que el servidor confirme la sesión guardada no se pinta nada: el rol
+  // del navegador puede estar viejo.
+  if (verificando) return <Cargando texto="Comprobando tu sesión" />;
   if (!user) return <Navigate to="/login" state={{ desde: location.pathname }} replace />;
   if (roles && !roles.includes(user.rol)) return <Navigate to={INICIO_POR_ROL[user.rol] ?? "/login"} replace />;
   return children;
