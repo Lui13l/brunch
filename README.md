@@ -103,14 +103,22 @@ Levanta los tres proyectos (ver [Cómo ejecutarlo](#cómo-ejecutarlo)). Para ver
 7. **Auditoría:** cada una de esas acciones aparece con tu nombre.
 8. **Abrir comandas:** se abre la app del personal (5174) con tu sesión de admin ya iniciada.
 
+**Pedido web en cocina**
+1. Con el pedido de la web del paso 4, en el panel de admin aprueba su pago o confírmalo.
+2. En la app del personal, **Cocina** muestra un contenedor "Domicilio #XXXXXX" con sus platos, al lado de los de las mesas.
+3. Marca un plato *Empezar*: el pedido pasa solo a *Preparando*. Al marcar todos *Listo*, el panel de pedidos dice "Listo para despachar".
+
 **App del personal (http://localhost:5174)**
 1. Como admin, en **Personal**, crea un mesero y una cocina con correos `@e2e.brunch.test`. En **Mesas**, crea la mesa 900. En **Insumos**, crea `[E2E] Harina` con stock 100. En **Recetas**, asígnala a `[E2E] Plato`.
-2. **Navegador A, mesero:** abre la mesa 900, agrega `[E2E] Plato` y envíalo a cocina.
+2. **Navegador A, mesero:** abre la mesa 900. En la carta busca `[E2E] Plato` con el buscador, agrégalo y envíalo a cocina. Si a su receta le falta insumo, sale con la etiqueta *Agotado*, pero se puede agregar.
 3. **Navegador B, cocina:** el plato llega solo, con sonido. Márcalo *Empezar* y luego *Listo*.
-4. **Navegador A:** aparece el aviso "Mesa 900 completa". Entrega el plato y cobra.
-5. Como admin:
-   - En **Caja**, si no hay una caja abierta de verdad, ábrela, cobra y ciérrala. Si alguien del restaurante tiene una caja abierta, sáltate este paso.
-   - **Reportes** muestra la venta y el consumo de harina.
+4. **Navegador A:** aparece el aviso "Mesa 900 completa". Entrega el plato y cobra: elige el método y confirma. Desde la carta también hay un botón **Cerrar mesa**.
+5. **Juntar mesas:** crea la mesa 901. En **Salón** toca *Juntar mesas*, elige la 900 y la 901 y abre una sola cuenta. Las dos se ven ocupadas ("Con 901") y se liberan juntas al cobrar. Desde la cuenta, el botón *Mesas* suma o suelta mesas.
+6. Como admin:
+   - En **Caja**, si no hay una caja abierta de verdad, ábrela, cobra y ciérrala. Si alguien del restaurante tiene una caja abierta, sáltate este paso. Registra una entrada por transferencia: sube lo esperado en transferencias, no lo del cajón.
+   - **Insumos** se actualiza solo cuando un plato con receta sale a cocina.
+   - **Reportes** muestra la venta y el consumo de harina, con gráficas de barras (ventas por día, por método de pago, platos más vendidos y consumo).
+   - En **Cocina** y **Salón** hay una flecha para volver al panel.
    - Si desactivas al mesero en **Personal**, su sesión se cierra al instante.
 
 ### 3. Limpiar lo que creaste

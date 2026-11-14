@@ -19,6 +19,8 @@ npm run dev            # http://localhost:3000
 | `npm run seed` | Carga roles, admin, el menú de Brunch & Co. e intenciones del chatbot. Se puede repetir sin duplicar nada |
 | `npm test` | Tests de la API sobre una MongoDB en memoria (no toca Atlas). Corre los archivos de uno en uno: cada uno levanta su propio `mongod` |
 | `npm run lint` | ESLint del backend (`eslint.config.js`) |
+| `npm run chat:sincronizar` | Lleva a la base las intenciones y palabras clave del chatbot que falten respecto a `src/data/intenciones.js`. No borra ni pisa lo editado. Sin `-- --confirmar` solo muestra lo que cambiaría |
+| `npm run e2e:limpiar` | Cuenta (o borra, con `-- --confirmar`) los datos de prueba e2e de la base compartida |
 
 La primera vez que se ejecuta `npm test` se descarga el binario de MongoDB (~1,3 GB). Cada prueba necesita además unos 500 MB libres en disco. Si ya tienes MongoDB instalado puedes evitarlo así:
 `MONGOMS_SYSTEM_BINARY="C:/Program Files/MongoDB/Server/8.3/bin/mongod.exe" npm test`
@@ -110,6 +112,12 @@ Todas las rutas empiezan por `/api`. Las respuestas incluyen `id` además de `_i
 
 Flujo de estados (`Order.TRANSICIONES`): `pendiente → confirmado → preparando → en_camino → entregado`. Se puede cancelar desde cualquier estado anterior a `en_camino`. Al entregar o cancelar, el domiciliario vuelve a quedar `disponible`.
 
+**Paso por la cocina.** Al confirmarse (lo confirma el admin o se aprueba su pago), los platos del pedido entran a la pantalla de cocina y descuentan inventario por receta, igual que los de una mesa:
+- Cada plato lleva `estado_cocina`: `PENDIENTE → PREPARANDO → LISTO` (o `CANCELADO`).
+- Cuando la cocina toca el primer plato, el pedido pasa solo a `preparando`. `en_camino` sigue siendo manual: es cuando sale el domiciliario.
+- Cancelar un pedido devuelve el inventario de los platos que no habían salido de cocina.
+- Confirmar y cancelar usan una transacción (necesitan replica set, como Atlas).
+
 ### Pagos
 | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|
@@ -156,7 +164,8 @@ Las reservas deben ser futuras y estar dentro del horario de atención: lunes a 
 **Cómo funciona:**
 - **Conversación:** si no se envía `conversacion_id`, el mensaje sigue la última conversación activa del usuario, o abre una nueva.
 - **Visitantes:** sin sesión el bot responde igual (menú, horario, pagos…). `{nombre}` se omite y `{ultimo_pedido}` / `{mis_reservas}` piden iniciar sesión.
-- **Detección:** el texto se compara con las `palabras_clave` de cada intención activa, sin tener en cuenta mayúsculas ni tildes. Gana la que más palabras coinciden, así que "hacer un pedido" gana a "pedido". Si ninguna coincide se usa la intención `desconocida`.
+- **Detección:** el texto se compara palabra por palabra con las `palabras_clave` de cada intención activa. No importan mayúsculas, tildes ni plurales ("reservas" = "reserva"), y se tolera un error de escritura en palabras de 5 letras o más ("resevar", "horaro"). Gana la que más palabras coinciden, así que "hacer un pedido" gana a "pedido"; una coincidencia exacta le gana a una aproximada. Si ninguna coincide se usa la intención `desconocida`.
+- **Validaciones:** `conversacion_id` debe ser un id válido (400 si no), se quitan los caracteres de control del mensaje y no se agendan reservas a más de 90 días.
 - **Respuesta:** si la intención tiene varias respuestas, se elige una al azar.
 - **Reservas:** un usuario con sesión puede indicar fecha (`DD/MM/AAAA` o mañana), hora y cantidad (puede responder con un número solo cuando el bot pregunta cuántas personas). El bot valida horario de atención, fechas y horas pasadas, y el límite de 30 personas; pregunta y guarda la ocasión y las notas adicionales antes de confirmar. La reserva se guarda como pendiente. También puede editar o cancelar sus reservas pendientes o confirmadas desde el chat. Los visitantes deben iniciar sesión.
 - **Variables:** una respuesta puede incluir variables que se rellenan con datos reales:
@@ -167,8 +176,11 @@ Las reservas deben ser futuras y estar dentro del horario de atención: lunes a 
 | `{menu}` | Productos activos agrupados por categoría, con precio |
 | `{ultimo_pedido}` | Productos, total y estado del último pedido |
 | `{mis_reservas}` | Reservas próximas pendientes o confirmadas |
+| `{reservas_hoy}` | **Solo admin:** reservas pendientes y confirmadas de hoy, con hora, personas y nombre. Un cliente recibe solo las suyas |
+| `{pedidos_pendientes}` | **Solo admin:** cuántos pedidos web activos hay en cada estado. Un cliente recibe su último pedido |
+| `{ventas_hoy}` | **Solo admin:** cuentas cobradas hoy en el salón y su total. Un cliente recibe "Esa información es solo para el equipo del restaurante." |
 
-Las intenciones iniciales están en [src/data/intenciones.js](src/data/intenciones.js). Volver a ejecutar el seed solo crea las que falten y no sobrescribe las que el admin haya editado.
+Las intenciones iniciales están en [src/data/intenciones.js](src/data/intenciones.js). Volver a ejecutar el seed solo crea las que falten y no sobrescribe las que el admin haya editado. Para llevar a una base ya sembrada las palabras clave nuevas, usa `npm run chat:sincronizar`.
 
 ## Salón y administración (app `personal`)
 
@@ -179,12 +191,15 @@ La app del personal ([../personal](../personal)) usa estas rutas. Responden en c
 | Ruta | Quién | Qué hace |
 |---|---|---|
 | `POST /api/usuarios/login` | público | Login del personal: `{email, password}` → usuario plano + `token` |
-| `GET /api/mesas`, `GET /api/salon/menu` | mesero, cocina, admin | Mesas activas (con `comandaAbiertaId`) y carta del salón |
-| `/api/comandas` | mesero, admin | Abrir cuenta, agregar, editar y quitar platos en borrador, `enviar` a cocina (descuenta inventario por receta), `cancelar`, `entregar`, `cerrar` (cobro) |
-| `/api/cocina` | cocina, admin | `GET /pendientes` y `PATCH /items/:id {estado: PREPARANDO\|LISTO}` |
+| `GET /api/mesas` | mesero, cocina, admin | Mesas activas con `comandaAbiertaId`, `grupo` (números de las mesas que comparten su cuenta) y `principal` |
+| `GET /api/salon/menu` | mesero, cocina, admin | Carta del salón. Cada plato trae `agotado` y `faltan` (insumos de su receta que no alcanzan para una unidad). Es un aviso: se puede vender igual |
+| `/api/comandas` | mesero, admin | Abrir cuenta (`mesasExtra: [id]` junta hasta 6 mesas más), agregar, editar y quitar platos en borrador, `enviar` a cocina (descuenta inventario por receta), `cancelar`, `entregar`, `cerrar` (cobro) |
+| `PATCH /api/comandas/:id/mesas` | mesero, admin | `{mesasExtra: [id]}` reemplaza las mesas juntadas a una cuenta abierta |
+| `POST /api/comandas/:id/anular` | mesero, admin | Cierra sin cobrar una cuenta sin platos servidos (vacía, solo borradores o todo cancelado). No cuenta como venta |
+| `/api/cocina` | cocina, admin | `GET /pendientes` (platos de mesas **y de pedidos web**, cada uno con su `contenedor {tipo, id, titulo}`) y `PATCH /items/:id {estado: PREPARANDO\|LISTO}` |
 | `/api/admin/mesas`, `/api/admin/menu` | admin | Mesas y carta (`disponible`, `visibleWeb`, `visibleSalon`) |
 | `/api/admin/insumos`, `/api/admin/recetas` | admin | Inventario (ajustes y movimientos) y recetas por plato |
-| `/api/admin/caja` | admin | Abrir y cerrar caja, entradas y salidas, cuadre, historial |
+| `/api/admin/caja` | admin | Abrir y cerrar caja, entradas y salidas (`metodo`: EFECTIVO, TARJETA o TRANSFERENCIA; por defecto efectivo), cuadre, historial |
 | `/api/admin/reportes/ventas\|consumo` | admin | `?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` (por defecto, hoy) |
 | `/api/admin/personal` | admin | Crear meseros y cocina, cambiar rol, activar o desactivar, poner contraseña |
 | `/api/admin/pedidos` | admin | Pedidos web (`?activos=true`, `?estado=`, fechas) y `PATCH /:id/estado` |
@@ -192,6 +207,8 @@ La app del personal ([../personal](../personal)) usa estas rutas. Responden en c
 
 Reglas importantes:
 - Una mesa solo puede tener una cuenta abierta, y solo puede haber una caja abierta (índices únicos parciales).
+- Una cuenta puede ocupar varias mesas (`mesas_extra`). Una mesa juntada no se puede abrir aparte ni juntar a otra cuenta; al cobrar se liberan todas.
+- En caja, solo los movimientos en efectivo cambian lo esperado en el cajón. Los de tarjeta y transferencia suman a lo que debe cuadrar contra el datáfono o el banco.
 - Enviar a cocina nunca se bloquea por falta de stock. El stock queda en negativo y se avisa con `faltantes`.
 - Enviar, cancelar y cobrar usan **transacciones**, que necesitan un replica set. Atlas ya lo es; un MongoDB local suelto no.
 - Cobrar con platos todavía en cocina exige `forzar: true` (solo admin): esos platos pasan a `CANCELADO`, se devuelve su inventario y desaparecen de la pantalla de cocina. No se cobran.
@@ -210,6 +227,18 @@ Temas:
 | `/topic/cocina` | cocina, admin |
 | `/topic/mesero/{id}/comandas` | ese mesero o un admin |
 | `/topic/admin/caja`, `/topic/admin/pedidos`, `/topic/admin/pedidos/estado`, `/topic/admin/inventario` | admin |
+
+Avisos que no son un documento completo (llevan `tipo`):
+
+| Tema | `tipo` | Cuándo |
+|---|---|---|
+| `/topic/salon` | `mesaCompleta` | La cocina terminó todo lo de una mesa |
+| `/topic/salon` | `carta` | Cambió el inventario: la carta del salón puede tener otros platos agotados |
+| `/topic/salon` | `mesas` | Se creó, editó o borró una mesa |
+| `/topic/admin/inventario` | `inventario` | Hubo un movimiento de inventario |
+| `/topic/cocina` | `pedidoWeb` | Un pedido web entró a cocina o se canceló |
+
+`/topic/admin/pedidos/estado` trae `{id, estado, siguientes, cocina}`; `cocina` es `{total, listos, completo}` o `null` si el pedido aún no entra a cocina.
 
 Códigos de cierre:
 - **4401**: la sesión no vale (token inválido, logout o cuenta desactivada).

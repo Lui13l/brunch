@@ -62,13 +62,17 @@ Recorrido de una petición: `routes/` → middleware → `controllers/` → `ser
 - **Contrato con la app del personal:** sus respuestas pasan por [utils/serializar.js](backend/src/utils/serializar.js). Usan camelCase, ids como texto, roles en mayúscula (`ADMIN`, `MESERO`, `COCINA`, `USUARIO`) y fechas en hora de Bogotá sin `Z`.
 - **Hora:** las fechas de negocio se calculan con [utils/tiempo.js](backend/src/utils/tiempo.js) en `ZONA_HORARIA` (America/Bogota). No uses `new Date()` a secas para decidir "hoy".
 - **Dinero:** usa [utils/dinero.js](backend/src/utils/dinero.js). Los precios y totales se calculan en el servidor, nunca se aceptan del cliente.
-- **Transacciones:** enviar a cocina, cancelar y cobrar usan `conTransaccion` ([utils/transaccion.js](backend/src/utils/transaccion.js)). Necesitan un replica set: Atlas lo es, un MongoDB local suelto no.
+- **Inventario por receta:** `consumirPorReceta` y `devolverConsumosDe` ([services/inventario.js](backend/src/services/inventario.js)) sirven a las mesas y a los pedidos web. Después de cada movimiento se llama `avisarInventario()` fuera de la transacción.
+- **Pedidos web en cocina:** [services/cocinaWeb.js](backend/src/services/cocinaWeb.js). Entran al confirmarse, desde `aplicarEstado` en `services/pedidos.js`. `enviado_cocina_en` es el candado para no enviarlos dos veces. La cola de cocina (`cocinaController`) une comandas y pedidos; cada plato lleva su `contenedor`.
+- **Mesas juntas:** una cuenta ocupa `mesa_id` más `mesas_extra`. Antes de asignar mesas se llama `reclamarMesas` (`services/comandas.js`) dentro de una transacción.
+- **Caja:** cada movimiento manual lleva `metodo`. Solo el efectivo cambia lo esperado en el cajón (`services/caja.js#calcularCuadre`).
+- **Transacciones:** abrir cuenta, enviar a cocina, cancelar, cobrar y confirmar o cancelar un pedido web usan `conTransaccion` ([utils/transaccion.js](backend/src/utils/transaccion.js)). Necesitan un replica set: Atlas lo es, un MongoDB local suelto no.
 - **Estados con reglas:**
   - Pedidos: `Order.TRANSICIONES`, `pendiente → confirmado → preparando → en_camino → entregado` (o `cancelado`).
   - Reservas: `pendiente → confirmada → finalizada` (o `cancelada`). Solo en horario de atención y con un máximo de 30 personas por horario.
   - Los cambios de estado son condicionales: si dos peticiones chocan, una recibe 409.
 - **Tiempo real:** el WebSocket está en `/ws` ([ws/](backend/src/ws/)). Usa temas como `/topic/salon` y `/topic/cocina`. Las suscripciones viven en memoria, así que el backend corre en **una sola instancia**.
-- **Chatbot:** [services/chatbot.js](backend/src/services/chatbot.js) y [controllers/chatController.js](backend/src/controllers/chatController.js). Detecta intenciones por palabras clave guardadas en la base (`ChatIntent`); las iniciales están en `data/intenciones.js`. Con sesión puede crear, editar y cancelar reservas. Sin sesión responde, pero no guarda la conversación.
+- **Chatbot:** [services/chatbot.js](backend/src/services/chatbot.js) y [controllers/chatController.js](backend/src/controllers/chatController.js). Detecta intenciones por palabras clave guardadas en la base (`ChatIntent`); las iniciales están en `data/intenciones.js`. Compara palabra por palabra, sin plurales y tolerando un error de escritura. Con sesión puede crear, editar y cancelar reservas. Sin sesión responde, pero no guarda la conversación. Las variables `{reservas_hoy}`, `{pedidos_pendientes}` y `{ventas_hoy}` solo dan datos del negocio a un admin. Si agregas palabras clave en `data/intenciones.js`, la base se actualiza con `npm run chat:sincronizar` (lo corre una persona).
 - **Pruebas:** `node:test` + `supertest` en [backend/tests/](backend/tests/), con un MongoDB en memoria por archivo. Los ayudantes están en `tests/helpers.js`.
 
 La lista completa de endpoints está en [backend/README.md](backend/README.md). Si cambias un endpoint, actualiza esa tabla.
@@ -99,7 +103,11 @@ La lista completa de endpoints está en [backend/README.md](backend/README.md). 
 - **Tema:** Tailwind 4, con el tema en el bloque `@theme` de [personal/src/index.css](personal/src/index.css). Comparte el espresso y la crema de la web, con la fuente Archivo. Los nombres `rio` y `rio-hondo` se conservaron por compatibilidad, pero son el espresso de marca. El foco de los campos usa `caramelo`. Los colores de estado (`espera`, `tibio`, `brasa`, `listo`) indican cuánto lleva esperando algo.
 - **Conexión con el backend:** Vite hace de proxy de `/api` y `/ws` hacia el backend (`API_TARGET`, por defecto `http://localhost:3000`). Por eso no hay CORS en desarrollo.
 - **Inicio por rol:** cada rol entra a una pantalla distinta (`INICIO_POR_ROL` en `lib/formato.js`). Mesero va a `/mesas`, cocina a `/cocina` y admin a `/admin`.
-- **Avisos en vivo:** llegan por WebSocket con `hooks/useWebSocket.js`.
+- **Avisos en vivo:** llegan por WebSocket con `hooks/useWebSocket.js`. Algunos mensajes de `/topic/salon` solo llevan `tipo` (`carta`, `mesas`, `mesaCompleta`): cada pantalla ignora los que no le sirven.
+- **Sesión:** `context/AuthContext.jsx` confirma la sesión guardada con `GET /api/usuarios/yo` al abrir, al volver a la pestaña y cada 5 minutos. Mientras `verificando` es true, `RutaProtegida` no pinta la pantalla.
+- **Comandas:** `pages/Comanda.jsx` tiene tres vistas (cuenta, carta, cobro); la carta, el cobro y la hoja de mesas están en `components/comanda/`.
+- **Gráficas:** `components/Barras.jsx`, sin librerías. Una serie, un color (`caramelo`); el texto nunca lleva el color de la barra.
+- **ESLint** no ve el uso de un componente desestructurado en un `map` (`({ Icono }) => <Icono />`): usa `opcion.Icono`.
 - **Código de cierre del WebSocket:** con 4401 (la sesión ya no vale) o 4403 (cambió el rol), la app no reconecta y pide volver a entrar.
 
 ## Navegar el código con CodeGraph
