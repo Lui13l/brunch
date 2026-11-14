@@ -1,29 +1,23 @@
 @import "tailwindcss";
 
-/* Identidad propia del salón, distinta de la web pública: esto es una
-   herramienta de trabajo, no un escaparate. El cliente nunca la ve.
-
-   Principio que ordena toda la paleta: el color codifica TIEMPO Y ESTADO,
-   nunca decora. Si algo está coloreado es porque significa algo. El color de
-   marca aparece solo en el encabezado y en la entrada. */
+/* La app de trabajo comparte la identidad de espresso y crema de la web.
+   Los colores de estado siguen indicando espera, alerta y platos listos. */
 @theme {
-  /* Superficie de trabajo: un verde-gris frío, como una mesa de preparación.
-     Deliberadamente no es la crema cálida de cafetería. */
-  --color-sala: #eef2f1;
-  --color-mantel: #ffffff;
-  --color-filete: #d7e0dd;
+  --color-sala: #faf6ef;
+  --color-mantel: #fffdf9;
+  --color-filete: #e6dacb;
 
-  /* La tinta es petróleo oscuro, un color elegido, no un negro aguado. */
-  --color-tinta: #06211f;
-  --color-tinta-2: #5a6e6b;
+  --color-tinta: #2b1a10;
+  --color-tinta-2: #6b584a;
 
-  /* El mar, que es la categoría más grande de la carta. Solo para la marca. */
-  --color-rio: #0c6b62;
-  --color-rio-hondo: #084b45;
+  /* Estos nombres se conservan para las clases existentes; son el espresso de marca. */
+  --color-rio: #391903;
+  --color-rio-hondo: #5a2a08;
+  --color-caramelo: #a8642f;
 
   /* Escala de calor. Mide cuánto lleva esperando algo. */
-  --color-espera: #e4eae8;
-  --color-tibio: #e9a209;
+  --color-espera: #f3e9da;
+  --color-tibio: #f4b942;
   --color-brasa: #c62f1a;
   --color-listo: #16794a;
 
@@ -54,7 +48,7 @@ body {
 
 /* Foco visible y del color de la marca: se opera con teclado en la caja. */
 :where(button, a, input, select, textarea):focus-visible {
-  outline: 3px solid var(--color-rio);
+  outline: 3px solid var(--color-caramelo);
   outline-offset: 2px;
 }
 

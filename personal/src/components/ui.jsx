@@ -107,7 +107,7 @@ export function RangoFechas({ rango, onCambiar }) {
 // --- Formularios ---
 
 const CONTROL =
-  "min-h-12 w-full rounded-lg border border-filete bg-mantel px-3 text-[17px] text-tinta outline-none focus:border-rio";
+  "min-h-12 w-full rounded-lg border border-filete bg-mantel px-3 text-[17px] text-tinta outline-none focus:border-caramelo";
 
 export function Campo({ etiqueta, ayuda, className = "", ...props }) {
   return (
