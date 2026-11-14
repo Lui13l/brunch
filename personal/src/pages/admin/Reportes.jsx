@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { Aviso, Boton, Cargando, RangoFechas, Vacio } from "../../components/ui";
+import { BarrasHorizontales, Columnas } from "../../components/Barras";
 import { useAuth } from "../../context/sesion";
-import { cantidad, ETIQUETA_PAGO, hoyISO, pesos } from "../../lib/formato";
+import { cantidad, diaCorto, ETIQUETA_PAGO, hoyISO, pesos, pesosCompactos } from "../../lib/formato";
 
 const PESTANAS = [
   { clave: "ventas", texto: "Ventas" },
@@ -84,8 +85,21 @@ function Bloque({ titulo, children }) {
   return (
     <section className="mt-4">
       <h3 className="mb-2 text-lg font-extrabold tracking-[-0.02em] text-tinta">{titulo}</h3>
-      <div className="overflow-hidden rounded-xl border border-filete bg-white">{children}</div>
+      <div className="rounded-xl border border-filete bg-white">{children}</div>
     </section>
+  );
+}
+
+// La gráfica muestra la forma; la tabla, cada número. Va plegada para no
+// repetir lo mismo dos veces en pantalla.
+function Tabla({ children }) {
+  return (
+    <details className="border-t border-filete">
+      <summary className="flex min-h-12 cursor-pointer items-center px-3 text-[15px] font-semibold text-tinta-2">
+        Ver en tabla
+      </summary>
+      <div className="border-t border-filete">{children}</div>
+    </details>
   );
 }
 
@@ -101,10 +115,15 @@ function Fila({ izquierda, centro, derecha, resaltar }) {
   );
 }
 
+const cuentas = (n) => `${n} ${n === 1 ? "cuenta" : "cuentas"}`;
+const MAS_VENDIDOS = 10;
+
 function Ventas({ datos }) {
   const { resumen, porDia, porMetodoPago, porPlato } = datos;
 
   if (resumen.comandas === 0) return <Vacio>No hay cuentas cobradas en este rango.</Vacio>;
+
+  const platos = [...porPlato].sort((a, b) => b.cantidad - a.cantidad);
 
   return (
     <>
@@ -115,30 +134,74 @@ function Ventas({ datos }) {
         <Tarjeta titulo="Ticket promedio" valor={pesos(resumen.ticketPromedio)} />
       </div>
 
-      <Bloque titulo="Por método de pago">
-        {porMetodoPago.map((m) => (
-          <Fila
-            key={m.metodoPago}
-            izquierda={ETIQUETA_PAGO[m.metodoPago] ?? m.metodoPago}
-            centro={`${m.comandas} cuenta(s)`}
-            derecha={pesos(m.total)}
-          />
-        ))}
-      </Bloque>
-
-      <Bloque titulo="Platos más vendidos">
-        {porPlato.map((p) => (
-          <Fila key={p.nombre} izquierda={p.nombre} centro={`×${p.cantidad}`} derecha={pesos(p.total)} />
-        ))}
-      </Bloque>
-
       {porDia.length > 1 && (
-        <Bloque titulo="Por día">
-          {porDia.map((d) => (
-            <Fila key={d.fecha} izquierda={d.fecha} centro={`${d.comandas} cuenta(s)`} derecha={pesos(d.total)} />
-          ))}
+        <Bloque titulo="Ventas por día">
+          <div className="p-3 pt-8">
+            <Columnas
+              titulo="Ventas por día"
+              formatoEje={pesosCompactos}
+              columnas={porDia.map((d) => ({
+                clave: d.fecha,
+                etiqueta: diaCorto(d.fecha),
+                etiquetaCorta: porDia.length > 10 ? d.fecha.slice(8) : diaCorto(d.fecha),
+                valor: d.total,
+                texto: pesos(d.total),
+                extra: cuentas(d.comandas),
+              }))}
+            />
+          </div>
+          <Tabla>
+            {porDia.map((d) => (
+              <Fila key={d.fecha} izquierda={d.fecha} centro={cuentas(d.comandas)} derecha={pesos(d.total)} />
+            ))}
+          </Tabla>
         </Bloque>
       )}
+
+      <Bloque titulo="Ventas por método de pago">
+        <div className="p-2">
+          <BarrasHorizontales
+            titulo="Ventas por método de pago"
+            filas={porMetodoPago.map((m) => ({
+              clave: m.metodoPago,
+              etiqueta: ETIQUETA_PAGO[m.metodoPago] ?? m.metodoPago,
+              valor: m.total,
+              texto: pesos(m.total),
+              extra: cuentas(m.comandas),
+            }))}
+          />
+        </div>
+        <Tabla>
+          {porMetodoPago.map((m) => (
+            <Fila
+              key={m.metodoPago}
+              izquierda={ETIQUETA_PAGO[m.metodoPago] ?? m.metodoPago}
+              centro={cuentas(m.comandas)}
+              derecha={pesos(m.total)}
+            />
+          ))}
+        </Tabla>
+      </Bloque>
+
+      <Bloque titulo={platos.length > MAS_VENDIDOS ? `Los ${MAS_VENDIDOS} platos más vendidos` : "Platos más vendidos"}>
+        <div className="p-2">
+          <BarrasHorizontales
+            titulo="Platos más vendidos, por unidades"
+            filas={platos.slice(0, MAS_VENDIDOS).map((p) => ({
+              clave: p.nombre,
+              etiqueta: p.nombre,
+              valor: p.cantidad,
+              texto: `${p.cantidad} und`,
+              extra: `Vendido: ${pesos(p.total)}`,
+            }))}
+          />
+        </div>
+        <Tabla>
+          {platos.map((p) => (
+            <Fila key={p.nombre} izquierda={p.nombre} centro={`×${p.cantidad}`} derecha={pesos(p.total)} />
+          ))}
+        </Tabla>
+      </Bloque>
     </>
   );
 }
@@ -146,8 +209,35 @@ function Ventas({ datos }) {
 function Consumo({ datos }) {
   if (datos.insumos.length === 0) return <Vacio>No hubo movimientos de inventario en este rango.</Vacio>;
 
+  // Cada insumo tiene su unidad (g, ml, und), así que las barras no comparan
+  // cantidades entre sí: muestran qué parte de lo que había se gastó.
+  const conGasto = datos.insumos
+    .filter((i) => i.neto > 0)
+    .map((i) => {
+      const habia = i.stockActual + i.neto;
+      return { ...i, parte: habia > 0 ? Math.min(i.neto / habia, 1) : 1 };
+    })
+    .sort((a, b) => b.parte - a.parte);
+
   return (
     <Bloque titulo="Consumo por insumo">
+      {conGasto.length > 0 && (
+        <div className="p-2">
+          <p className="px-2 pb-1 text-[13px] text-tinta-2">Parte de las existencias que se gastó en este rango.</p>
+          <BarrasHorizontales
+            titulo="Parte de las existencias gastada, por insumo"
+            filas={conGasto.map((i) => ({
+              clave: i.insumoId,
+              etiqueta: i.nombre,
+              valor: i.parte,
+              texto: `${Math.round(i.parte * 100)} %`,
+              extra: `Gastado ${cantidad(i.neto)} ${i.unidad}, quedan ${cantidad(i.stockActual)} ${i.unidad}`,
+              nota: i.stockActual < 0 ? "Stock en negativo" : i.bajoMinimo ? "Bajo el mínimo" : null,
+            }))}
+          />
+        </div>
+      )}
+      <Tabla>
       {datos.insumos.map((i) => (
         <div key={i.insumoId} className="border-b border-filete px-3 py-2 last:border-0">
           <div className="flex items-baseline justify-between gap-3">
@@ -168,6 +258,7 @@ function Consumo({ datos }) {
           </p>
         </div>
       ))}
+      </Tabla>
     </Bloque>
   );
 }

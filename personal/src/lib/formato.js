@@ -185,3 +185,16 @@ export const sinTildes = (texto) =>
     .normalize("NFD")
     .replace(/[̀-ͯ]/g, "")
     .toLowerCase();
+
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+
+// "2026-11-07" -> "7 nov"
+export const diaCorto = (fecha) => `${Number(fecha.slice(8, 10))} ${MESES[Number(fecha.slice(5, 7)) - 1]}`;
+
+// Dinero para los ejes de las gráficas: $0, $500 K, $1,2 M.
+export const pesosCompactos = (valor) => {
+  const n = Number(valor ?? 0);
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toLocaleString("es-CO", { maximumFractionDigits: 1 })} M`;
+  if (n >= 1_000) return `$${(n / 1_000).toLocaleString("es-CO", { maximumFractionDigits: 0 })} K`;
+  return `$${n}`;
+};
