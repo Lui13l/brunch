@@ -114,7 +114,7 @@ describe("Pedidos web para el admin", () => {
     expect(p.estado).toBe("pendiente");
     expect(p.siguientes).toEqual(["confirmado", "cancelado"]);
     expect(p.total).toBe(40000);
-    expect(p.items[0]).toEqual({ menuItemId: String(d.huevos._id), nombre: "Huevos", cantidad: 2, precioUnitario: 20000, subtotal: 40000 });
+    expect(p.items[0]).toEqual({ menuItemId: String(d.huevos._id), nombre: "Huevos", cantidad: 2, precioUnitario: 20000, subtotal: 40000, estadoCocina: null });
     expect(p.cliente.nombre).toBe("Ana");
     expect(p.direccion).toBe("Calle 1 # 2-3");
     expect(p.observaciones).toBe("timbre roto");

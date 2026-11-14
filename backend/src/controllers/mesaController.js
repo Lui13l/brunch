@@ -4,6 +4,10 @@ const { HttpError } = require("../utils/http");
 const { textoOpcional } = require("../utils/validar");
 const { toMesa } = require("../utils/serializar");
 const { registrar, SERVICIO } = require("../services/auditoria");
+const { publicar, TOPICS } = require("../ws/hub");
+
+// El salón y la cocina vuelven a pedir las mesas cuando se crea, edita o borra una.
+const avisarMesas = () => publicar(TOPICS.salon, { tipo: "mesas" });
 
 const mesaSchema = z.object({
   numero: z.coerce
@@ -22,15 +26,29 @@ const mesaSchema = z.object({
   activa: z.boolean({ error: "'activa' debe ser verdadero o falso" }).default(true),
 });
 
-// mesa_id -> id de su comanda abierta
+// id de mesa -> { comandaId, grupo, principal } de su cuenta abierta. Una
+// cuenta puede ocupar varias mesas (la principal y las que se le juntaron).
 const comandasAbiertas = async () => {
-  const abiertas = await Comanda.find({ estado: "ABIERTA" }).select("mesa_id").lean();
-  return new Map(abiertas.map((c) => [String(c.mesa_id), c._id]));
+  const abiertas = await Comanda.find({ estado: "ABIERTA" })
+    .select("mesa_id mesas_extra")
+    .populate("mesa_id", "numero")
+    .populate("mesas_extra", "numero")
+    .lean();
+  const porMesa = new Map();
+  for (const c of abiertas) {
+    const mesas = [c.mesa_id, ...(c.mesas_extra ?? [])].filter(Boolean);
+    const grupo = mesas.length > 1 ? mesas.map((m) => m.numero) : [];
+    mesas.forEach((m, i) => porMesa.set(String(m._id), { comandaId: c._id, grupo, principal: i === 0 }));
+  }
+  return porMesa;
 };
 
 const serializarTodas = async (mesas) => {
   const abiertas = await comandasAbiertas();
-  return mesas.map((m) => toMesa(m, abiertas.get(String(m._id))));
+  return mesas.map((m) => {
+    const cuenta = abiertas.get(String(m._id));
+    return toMesa(m, cuenta?.comandaId, cuenta);
+  });
 };
 
 const buscarMesa = async (id) => {
@@ -41,6 +59,9 @@ const buscarMesa = async (id) => {
 
 const duplicada = (err, numero) =>
   err.code === 11000 ? new HttpError(409, `Ya existe la mesa ${numero}`) : err;
+
+// Cuentas (abiertas o no) en las que participa una mesa, sola o juntada.
+const deLaMesa = (mesaId) => ({ $or: [{ mesa_id: mesaId }, { mesas_extra: mesaId }] });
 
 // Salón: solo mesas activas.
 const listar = async (req, res) => {
@@ -60,13 +81,14 @@ const crear = async (req, res) => {
     throw duplicada(err, datos.numero);
   }
   await registrar(req.usuario, "CREAR_MESA", `Creó la mesa ${mesa.numero}`, SERVICIO.COMANDAS);
+  avisarMesas();
   res.json(toMesa(mesa));
 };
 
 const editar = async (req, res) => {
   const datos = req.valid.body;
   const previa = await buscarMesa(req.valid.params.id);
-  const abierta = await Comanda.exists({ mesa_id: previa._id, estado: "ABIERTA" });
+  const abierta = await Comanda.exists({ ...deLaMesa(previa._id), estado: "ABIERTA" });
   if (!datos.activa && abierta) {
     throw new HttpError(409, `La mesa ${previa.numero} tiene una cuenta abierta: ciérrala antes de desactivarla`);
   }
@@ -78,12 +100,13 @@ const editar = async (req, res) => {
     throw duplicada(err, datos.numero);
   }
   await registrar(req.usuario, "EDITAR_MESA", `Editó la mesa ${previa.numero}`, SERVICIO.COMANDAS);
+  avisarMesas();
   res.json(toMesa(previa, abierta?._id));
 };
 
 const eliminar = async (req, res) => {
   const mesa = await buscarMesa(req.valid.params.id);
-  const comandas = await Comanda.countDocuments({ mesa_id: mesa._id });
+  const comandas = await Comanda.countDocuments(deLaMesa(mesa._id));
   if (comandas > 0) {
     throw new HttpError(
       409,
@@ -92,6 +115,7 @@ const eliminar = async (req, res) => {
   }
   await mesa.deleteOne();
   await registrar(req.usuario, "ELIMINAR_MESA", `Eliminó la mesa ${mesa.numero}`, SERVICIO.COMANDAS);
+  avisarMesas();
   res.status(204).end();
 };
 

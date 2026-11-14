@@ -47,13 +47,17 @@ const toCategoriaSalon = (c, items, faltantes = new Map()) => ({
   }),
 });
 
-const toMesa = (m, comandaAbiertaId = null) => ({
+// `grupo`: números de todas las mesas que comparten su cuenta (vacío si la
+// mesa va sola). `principal`: false si esta mesa está juntada a otra.
+const toMesa = (m, comandaAbiertaId = null, { grupo = [], principal = true } = {}) => ({
   id: id(m),
   numero: m.numero,
   nombre: o(m.nombre),
   capacidad: m.capacidad ?? 4,
   activa: m.activa !== false,
   comandaAbiertaId: comandaAbiertaId ? String(comandaAbiertaId) : null,
+  grupo,
+  principal,
 });
 
 const toAuditLog = (a) => ({
@@ -96,6 +100,7 @@ const toMovimiento = (m, insumo) => ({
   motivo: o(m.motivo),
   comandaId: id(m.comanda_id),
   comandaItemId: id(m.comanda_item_id),
+  pedidoId: id(m.pedido_id),
   usuarioId: id(m.usuario_id),
   fecha: fechaLocal(m.fecha),
 });
@@ -125,6 +130,8 @@ const toComanda = (c) => {
     id: id(c),
     mesaId: id(c.mesa_id),
     mesaNumero: c.mesa_id?.numero ?? null,
+    // Mesas juntadas a esta cuenta (c.mesas_extra puede venir poblado con { numero }).
+    mesasExtra: (c.mesas_extra ?? []).map((m) => ({ id: id(m), numero: m?.numero ?? null })),
     meseroId: id(c.mesero_id),
     estado: c.estado,
     comensales: c.comensales ?? null,
@@ -169,6 +176,36 @@ const toArqueo = (a) => ({
 
 const siguientesEstados = (estado) => TRANSICIONES[estado] ?? [];
 
+// Cuántos platos de un pedido web lleva lista la cocina. null si el pedido
+// todavía no ha entrado (no está confirmado).
+const resumenCocina = (p) => {
+  if (!p.enviado_cocina_en) return null;
+  const vivos = (p.items ?? []).filter((i) => i.estado_cocina && i.estado_cocina !== "CANCELADO");
+  const listos = vivos.filter((i) => i.estado_cocina === "LISTO").length;
+  return { total: vivos.length, listos, completo: vivos.length > 0 && listos === vivos.length };
+};
+
+// Plato de un pedido web tal como lo ve la pantalla de cocina: la misma forma
+// que el de una mesa (toComandaItem), con su contenedor "Domicilio #XXXXXX".
+const toPlatoPedidoCocina = (p, i) => ({
+  id: id(i),
+  menuItemId: id(i.menu_item_id),
+  nombre: i.nombre,
+  precioUnitario: num(i.precio_unitario),
+  cantidad: i.cantidad,
+  subtotal: num(i.subtotal),
+  notas: o(p.observaciones),
+  estado: i.estado_cocina,
+  faltoStock: Boolean(i.falto_stock),
+  fechaCreacion: fechaLocal(p.fecha_inicio ?? p.createdAt),
+  fechaEnvio: fechaLocal(i.fecha_envio),
+  fechaListo: fechaLocal(i.fecha_listo),
+  comandaId: null,
+  pedidoId: id(p),
+  mesa: null,
+  contenedor: { tipo: "domicilio", id: `pedido-${id(p)}`, titulo: `Domicilio #${id(p).slice(-6).toUpperCase()}` },
+});
+
 // Pedido web para la pantalla del admin. p.usuario_id puede venir poblado;
 // si no, se usa el cliente que se pasa aparte.
 const toPedidoAdmin = (p, cliente) => {
@@ -185,7 +222,9 @@ const toPedidoAdmin = (p, cliente) => {
       cantidad: i.cantidad,
       precioUnitario: num(i.precio_unitario),
       subtotal: num(i.subtotal),
+      estadoCocina: i.estado_cocina ?? null,
     })),
+    cocina: resumenCocina(p),
     direccion: o(p.direccion_pedido),
     observaciones: o(p.observaciones),
     fechaInicio: fechaLocal(p.fecha_inicio ?? p.createdAt),
@@ -197,6 +236,8 @@ const toPedidoAdmin = (p, cliente) => {
 };
 
 module.exports = {
+  resumenCocina,
+  toPlatoPedidoCocina,
   toPedidoAdmin,
   siguientesEstados,
   toArqueo,

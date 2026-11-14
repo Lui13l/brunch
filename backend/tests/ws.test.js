@@ -154,7 +154,13 @@ describe("WebSocket", () => {
 
     await api().patch(`/api/pedidos/${pedido._id}/estado`).set(bearer(d.tokenAdmin)).send({ estado: "confirmado" });
     const cambio = await ws.esperar((x) => x.topic === "/topic/admin/pedidos/estado");
-    expect(cambio.data).toEqual({ id: String(pedido._id), estado: "confirmado", siguientes: ["preparando", "cancelado"] });
+    // Al confirmarse, el pedido entra a cocina: el aviso trae su avance.
+    expect(cambio.data).toEqual({
+      id: String(pedido._id),
+      estado: "confirmado",
+      siguientes: ["preparando", "cancelado"],
+      cocina: { total: 1, listos: 0, completo: false },
+    });
     ws.close();
   });
 

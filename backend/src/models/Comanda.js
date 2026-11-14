@@ -27,6 +27,9 @@ const itemSchema = new mongoose.Schema({
 const comandaSchema = new mongoose.Schema(
   {
     mesa_id: { type: mongoose.Schema.Types.ObjectId, ref: "Mesa", required: true },
+    // Mesas juntadas a esta cuenta: un grupo grande ocupa varias mesas físicas
+    // y paga una sola cuenta. Se liberan todas al cerrar.
+    mesas_extra: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: "Mesa" }], default: [] },
     mesero_id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     estado: { type: String, enum: ESTADOS_COMANDA, default: "ABIERTA" },
     comensales: { type: Number, min: 1, max: 100, default: null },

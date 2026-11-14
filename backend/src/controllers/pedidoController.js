@@ -83,7 +83,7 @@ const obtener = async (req, res) => {
 
 const cambiarEstado = async (req, res) => {
   const pedido = await buscarPedido(req.params.id);
-  await aplicarEstado(pedido, req.body?.estado);
+  await aplicarEstado(pedido, req.body?.estado, req.usuario._id);
   res.json(pedido);
 };
 
@@ -93,7 +93,7 @@ const cancelar = async (req, res) => {
   if (!["pendiente", "confirmado"].includes(pedido.estado)) {
     throw new HttpError(400, "Solo se pueden cancelar pedidos pendientes o confirmados");
   }
-  await aplicarEstado(pedido, "cancelado");
+  await aplicarEstado(pedido, "cancelado", req.usuario._id);
   res.json(pedido);
 };
 

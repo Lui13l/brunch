@@ -204,6 +204,16 @@ function TarjetaPedido({ pedido: p, nuevo, ocupado, onEstado }) {
         <span className="font-extrabold text-tinta tabular-nums">{codigoCorto(p.id)}</span>
         <Estado valor={p.estado} etiquetas={ETIQUETA_PEDIDO} colores={COLOR_PEDIDO} />
         {nuevo && <span className="rounded bg-brasa px-2 py-0.5 text-[13px] font-bold text-white">Nuevo</span>}
+        {/* Avance en cocina: solo mientras el pedido se está preparando. */}
+        {p.cocina && ["confirmado", "preparando"].includes(p.estado) && (
+          <span
+            className={`rounded px-2 py-0.5 text-[13px] font-bold ${
+              p.cocina.completo ? "bg-listo text-white" : "bg-espera text-tinta"
+            }`}
+          >
+            {p.cocina.completo ? "Listo para despachar" : `En cocina: ${p.cocina.listos} de ${p.cocina.total} listos`}
+          </span>
+        )}
         {espera !== null && (
           <span className={`ml-auto text-sm font-bold tabular-nums ${PIEL_ESPERA[nivelDeEspera(espera)].reloj}`}>
             {espera} min

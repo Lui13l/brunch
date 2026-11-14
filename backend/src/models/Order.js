@@ -10,6 +10,9 @@ const TRANSICIONES = Object.freeze({
   cancelado: [],
 });
 const ACTIVOS = ["pendiente", "confirmado", "preparando", "en_camino"];
+// Estados del pedido en los que sus platos pueden estar en la cocina.
+const CON_COCINA = ["confirmado", "preparando"];
+const ESTADOS_COCINA = ["PENDIENTE", "PREPARANDO", "LISTO", "CANCELADO"];
 
 const orderItemSchema = new mongoose.Schema(
   {
@@ -42,10 +45,22 @@ const orderItemSchema = new mongoose.Schema(
       required: true,
       min: 0,
     },
-  },
-  {
-    _id: false,
+
+    // Paso por la cocina. null = todavía no se ha enviado (el pedido no está
+    // confirmado). Los mismos estados que los platos de una mesa.
+    estado_cocina: {
+      type: String,
+      enum: [...ESTADOS_COCINA, null],
+      default: null,
+    },
+
+    falto_stock: { type: Boolean, default: false },
+    inventario_aplicado: { type: Boolean, default: false },
+    fecha_envio: { type: Date, default: null },
+    fecha_listo: { type: Date, default: null },
   }
+  // Cada plato tiene _id: la cocina lo marca por ese id. Los pedidos antiguos
+  // (sin _id en sus platos) lo reciben cuando entran a cocina.
 );
 
 const orderSchema = new mongoose.Schema(
@@ -107,6 +122,13 @@ const orderSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "DeliveryPerson",
     },
+
+    // Cuándo entraron sus platos a cocina (al confirmarse). Sirve de candado:
+    // un pedido solo se envía una vez.
+    enviado_cocina_en: {
+      type: Date,
+      default: null,
+    },
   },
   {
     collection: "orders",
@@ -114,8 +136,13 @@ const orderSchema = new mongoose.Schema(
   }
 );
 
+orderSchema.index({ estado: 1, "items.estado_cocina": 1 });
+orderSchema.index({ "items._id": 1 });
+
 const Order = mongoose.model("Order", orderSchema);
 Order.TRANSICIONES = TRANSICIONES;
 Order.ACTIVOS = ACTIVOS;
+Order.CON_COCINA = CON_COCINA;
+Order.ESTADOS_COCINA = ESTADOS_COCINA;
 
 module.exports = Order;

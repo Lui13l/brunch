@@ -17,6 +17,9 @@ const movimientoSchema = new mongoose.Schema(
     motivo: { type: String, default: null },
     comanda_id: { type: mongoose.Schema.Types.ObjectId, ref: "Comanda", default: null },
     comanda_item_id: { type: mongoose.Schema.Types.ObjectId, default: null },
+    // Los pedidos web también consumen inventario cuando entran a cocina.
+    pedido_id: { type: mongoose.Schema.Types.ObjectId, ref: "Order", default: null },
+    pedido_item_id: { type: mongoose.Schema.Types.ObjectId, default: null },
     usuario_id: { type: mongoose.Schema.Types.ObjectId, ref: "User", default: null },
     fecha: { type: Date, default: Date.now },
   },
@@ -25,6 +28,7 @@ const movimientoSchema = new mongoose.Schema(
 
 movimientoSchema.index({ insumo_id: 1, fecha: -1 });
 movimientoSchema.index({ comanda_item_id: 1 });
+movimientoSchema.index({ pedido_item_id: 1 });
 movimientoSchema.index({ fecha: 1 });
 
 const MovimientoInventario = mongoose.model("MovimientoInventario", movimientoSchema);

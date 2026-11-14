@@ -288,3 +288,124 @@ describe("Cierre forzado con platos en cocina", () => {
     expect(tarde.status).toBe(409);
   });
 });
+
+describe("Mesas juntas", () => {
+  let mesa2;
+  let mesa3;
+  beforeEach(async () => {
+    mesa2 = (await api().post("/api/admin/mesas").set(admin()).send({ numero: 2 })).body;
+    mesa3 = (await api().post("/api/admin/mesas").set(admin()).send({ numero: 3 })).body;
+  });
+
+  const abrirJuntas = (extras) =>
+    api().post("/api/comandas").set(m()).send({ mesaId: mesa.id, mesasExtra: extras });
+  const mesas = async () => (await api().get("/api/mesas").set(m())).body;
+
+  test("un grupo abre una sola cuenta que ocupa varias mesas", async () => {
+    const res = await abrirJuntas([mesa2.id, mesa3.id]);
+    expect(res.status).toBe(200);
+    expect(res.body.mesaNumero).toBe(1);
+    expect(res.body.mesasExtra).toEqual([{ id: mesa2.id, numero: 2 }, { id: mesa3.id, numero: 3 }]);
+    expect(await Comanda.countDocuments({ estado: "ABIERTA" })).toBe(1);
+
+    const lista = await mesas();
+    for (const fila of lista) {
+      expect(fila.comandaAbiertaId).toBe(res.body.id);
+      expect(fila.grupo).toEqual([1, 2, 3]);
+    }
+    expect(lista.map((x) => x.principal)).toEqual([true, false, false]);
+  });
+
+  test("una mesa sola no trae grupo", async () => {
+    await abrir();
+    const [primera, segunda] = await mesas();
+    expect(primera.grupo).toEqual([]);
+    expect(primera.principal).toBe(true);
+    expect(segunda.comandaAbiertaId).toBe(null);
+  });
+
+  test("una mesa juntada no se puede abrir aparte ni juntar a otra cuenta", async () => {
+    await abrirJuntas([mesa2.id]);
+
+    const aparte = await api().post("/api/comandas").set(m()).send({ mesaId: mesa2.id });
+    expect(aparte.status).toBe(409);
+    expect(aparte.text).toBe("La mesa 2 está junta con otra cuenta abierta");
+
+    const otra = await api().post("/api/comandas").set(m()).send({ mesaId: mesa3.id, mesasExtra: [mesa2.id] });
+    expect(otra.status).toBe(409);
+    expect(await Comanda.countDocuments({ estado: "ABIERTA" })).toBe(1);
+
+    const conPrincipal = await api().post("/api/comandas").set(m()).send({ mesaId: mesa3.id, mesasExtra: [mesa.id] });
+    expect(conPrincipal.status).toBe(409);
+    expect(conPrincipal.text).toBe("La mesa 1 ya tiene una cuenta abierta");
+  });
+
+  test("dos cuentas reclamando la misma mesa a la vez: solo una se la queda", async () => {
+    const [a, b] = await Promise.all([
+      api().post("/api/comandas").set(m()).send({ mesaId: mesa.id, mesasExtra: [mesa3.id] }),
+      api().post("/api/comandas").set(m()).send({ mesaId: mesa2.id, mesasExtra: [mesa3.id] }),
+    ]);
+    expect([a.status, b.status].sort()).toEqual([200, 409]);
+    expect(await Comanda.countDocuments({ estado: "ABIERTA", mesas_extra: mesa3.id })).toBe(1);
+  });
+
+  test("a una cuenta abierta se le juntan y se le sueltan mesas", async () => {
+    const { body: comanda } = await abrir();
+    const junta = await api().patch(`/api/comandas/${comanda.id}/mesas`).set(m()).send({ mesasExtra: [mesa2.id] });
+    expect(junta.status).toBe(200);
+    expect(junta.body.mesasExtra).toEqual([{ id: mesa2.id, numero: 2 }]);
+
+    // La principal no puede figurar como extra de sí misma: se ignora.
+    const conPrincipal = await api().patch(`/api/comandas/${comanda.id}/mesas`).set(m())
+      .send({ mesasExtra: [mesa.id, mesa3.id] });
+    expect(conPrincipal.body.mesasExtra).toEqual([{ id: mesa3.id, numero: 3 }]);
+    expect((await mesas()).find((x) => x.numero === 2).comandaAbiertaId).toBe(null);
+
+    const suelta = await api().patch(`/api/comandas/${comanda.id}/mesas`).set(m()).send({ mesasExtra: [] });
+    expect(suelta.body.mesasExtra).toEqual([]);
+    expect((await mesas()).find((x) => x.numero === 3).comandaAbiertaId).toBe(null);
+  });
+
+  test("no se junta una mesa inexistente o fuera de servicio, ni más de 6", async () => {
+    await api().put(`/api/admin/mesas/${mesa3.id}`).set(admin()).send({ numero: 3, activa: false });
+    const inactiva = await abrirJuntas([mesa3.id]);
+    expect(inactiva.status).toBe(409);
+    expect(inactiva.text).toBe("La mesa 3 está fuera de servicio");
+
+    const fantasma = await abrirJuntas(["507f1f77bcf86cd799439011"]);
+    expect(fantasma.status).toBe(404);
+
+    const muchas = await abrirJuntas(Array(7).fill(mesa2.id));
+    expect(muchas.status).toBe(400);
+    expect(muchas.text).toBe("No se pueden juntar más de 6 mesas a una cuenta");
+    expect(await Comanda.countDocuments()).toBe(0);
+  });
+
+  test("al cobrar se liberan todas, y una mesa juntada no se desactiva ni se borra", async () => {
+    const { body: comanda } = await abrirJuntas([mesa2.id]);
+
+    const desactivar = await api().put(`/api/admin/mesas/${mesa2.id}`).set(admin()).send({ numero: 2, activa: false });
+    expect(desactivar.status).toBe(409);
+
+    await agregar(comanda.id, CAFE());
+    const { body: enviado } = await enviar(comanda.id);
+    await api().patch(`/api/cocina/items/${enviado.comanda.items[0].id}`).set(k()).send({ estado: "LISTO" });
+    const cocina = await api().get("/api/cocina/pendientes").set(k());
+    expect(cocina.body).toHaveLength(0);
+
+    const cobro = await api().post(`/api/comandas/${comanda.id}/cerrar`).set(m()).send({ metodoPago: "EFECTIVO" });
+    expect(cobro.status).toBe(200);
+    for (const fila of await mesas()) expect(fila.comandaAbiertaId).toBe(null);
+
+    const borrar = await api().delete(`/api/admin/mesas/${mesa2.id}`).set(admin());
+    expect(borrar.status).toBe(409);
+  });
+
+  test("la cocina ve el grupo en el contenedor", async () => {
+    const { body: comanda } = await abrirJuntas([mesa2.id]);
+    await agregar(comanda.id, CAFE());
+    await enviar(comanda.id);
+    const [plato] = (await api().get("/api/cocina/pendientes").set(k())).body;
+    expect(plato.contenedor).toEqual({ tipo: "mesa", id: `comanda-${comanda.id}`, titulo: "Mesas 1 + 2" });
+  });
+});

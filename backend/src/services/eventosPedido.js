@@ -1,7 +1,7 @@
 // Avisos en vivo de los pedidos web para administración y para el cliente.
 // Son efectos secundarios: nunca cambian ni rompen la respuesta de la web.
 const { publicar, TOPICS } = require("../ws/hub");
-const { toPedidoAdmin, siguientesEstados } = require("../utils/serializar");
+const { toPedidoAdmin, siguientesEstados, resumenCocina } = require("../utils/serializar");
 
 const seguro = (fn) => {
   try {
@@ -19,7 +19,8 @@ const estado = (pedido) =>
   seguro(() => {
     const id = String(pedido._id);
     const siguientes = siguientesEstados(pedido.estado);
-    publicar(TOPICS.adminPedidosEstado, { id, estado: pedido.estado, siguientes });
+    // `cocina` dice cuántos platos lleva listos la cocina (null si aún no entra).
+    publicar(TOPICS.adminPedidosEstado, { id, estado: pedido.estado, siguientes, cocina: resumenCocina(pedido) });
     const usuarioId = pedido.usuario_id?._id ?? pedido.usuario_id;
     if (usuarioId) publicar(TOPICS.usuario(String(usuarioId)), { id, estado: pedido.estado });
   });

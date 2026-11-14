@@ -1,5 +1,5 @@
 const { Payment, Order } = require("../models");
-const eventosPedido = require("../services/eventosPedido");
+const { aplicarEstado } = require("../services/pedidos");
 const { HttpError, pick } = require("../utils/http");
 const { verificarDueno } = require("../middleware/auth");
 const { conTransaccion } = require("../utils/transaccion");
@@ -63,10 +63,17 @@ const cambiarEstado = async (req, res) => {
   }
 
   if (estado === "aprobado") {
-    const r = await Order.updateOne({ _id: pago.pedido_id, estado: "pendiente" }, { estado: "confirmado" });
-    if (r.modifiedCount > 0) {
-      const pedido = await Order.findById(pago.pedido_id).lean();
-      if (pedido) eventosPedido.estado(pedido);
+    // Confirmar manda los platos a cocina y descuenta inventario (ver
+    // services/pedidos.js). Si el admin ya lo había confirmado a mano, no hay
+    // nada que hacer.
+    const pedido = await Order.findOne({ _id: pago.pedido_id, estado: "pendiente" });
+    if (pedido) {
+      try {
+        await aplicarEstado(pedido, "confirmado", req.usuario._id);
+      } catch (err) {
+        // 409: alguien lo cambió justo ahora. El pago ya quedó aprobado.
+        if (err.status !== 409) throw err;
+      }
     }
   }
 

@@ -4,8 +4,14 @@ const { objectId, textoOpcional } = require("../utils/validar");
 
 // Validación de las rutas del salón y la cocina (mismos mensajes que la API anterior).
 
+// Mesas que se juntan a la principal para un grupo grande.
+const mesasExtra = z
+  .array(objectId, { error: "Las mesas juntas deben ser una lista" })
+  .max(6, "No se pueden juntar más de 6 mesas a una cuenta");
+
 const abrirSchema = z.object({
   mesaId: objectId,
+  mesasExtra: mesasExtra.default([]),
   comensales: z.coerce
     .number({ error: "El número de comensales debe ser un número" })
     .int("El número de comensales debe ser entero")
@@ -41,4 +47,6 @@ const estadoCocinaSchema = z.object({
 
 const itemParams = z.object({ id: objectId, itemId: objectId });
 
-module.exports = { abrirSchema, agregarItemSchema, editarItemSchema, cerrarSchema, estadoCocinaSchema, itemParams };
+const mesasSchema = z.object({ mesasExtra });
+
+module.exports = { mesasSchema, abrirSchema, agregarItemSchema, editarItemSchema, cerrarSchema, estadoCocinaSchema, itemParams };

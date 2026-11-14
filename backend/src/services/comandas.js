@@ -1,9 +1,9 @@
 const mongoose = require("mongoose");
-const { Comanda, RecetaItem, MovimientoInventario } = require("../models");
+const { Comanda, Mesa } = require("../models");
 const { HttpError } = require("../utils/http");
-const { redondear2, redondear3 } = require("../utils/dinero");
+const { redondear2 } = require("../utils/dinero");
 const { codigoCorto } = require("../utils/codigo");
-const { aplicarMovimiento, ordenarPorInsumo } = require("./inventario");
+const { consumirPorReceta, devolverConsumosDe } = require("./inventario");
 const { publicar, TOPICS } = require("../ws/hub");
 
 // Reglas de negocio de las comandas del salón. Las funciones que reciben una
@@ -14,9 +14,42 @@ const { EN_COCINA } = Comanda;
 const mismo = (a, b) => String(a) === String(b);
 
 const cargar = async (id) => {
-  const comanda = await Comanda.findById(id).populate("mesa_id", "numero").lean();
+  const comanda = await Comanda.findById(id).populate("mesa_id", "numero").populate("mesas_extra", "numero").lean();
   if (!comanda) throw new HttpError(404, "Comanda no encontrada");
   return comanda;
+};
+
+/**
+ * Comprueba que unas mesas existen, están en servicio y no las ocupa otra
+ * cuenta abierta (ni como mesa principal ni juntada a otra). Va dentro de una
+ * transacción.
+ *
+ * Tocar `reclamada_en` es el candado: si dos cuentas reclaman la misma mesa a
+ * la vez, sus transacciones chocan en ese documento, una se reintenta y
+ * entonces ya ve la mesa ocupada.
+ *
+ * @param exceptoComandaId La cuenta que las reclama (al cambiar sus mesas).
+ */
+const reclamarMesas = async (session, mesaIds, exceptoComandaId = null) => {
+  const ids = [...new Set(mesaIds.map(String))];
+  await Mesa.updateMany({ _id: { $in: ids } }, { $set: { reclamada_en: new Date() } }, { session });
+  const mesas = await Mesa.find({ _id: { $in: ids } }).session(session).lean();
+  if (mesas.length !== ids.length) throw new HttpError(404, "Mesa no encontrada");
+  const numero = (id) => mesas.find((m) => mismo(m._id, id))?.numero;
+
+  const inactiva = mesas.find((m) => !m.activa);
+  if (inactiva) throw new HttpError(409, `La mesa ${inactiva.numero} está fuera de servicio`);
+
+  const filtro = { estado: "ABIERTA", $or: [{ mesa_id: { $in: ids } }, { mesas_extra: { $in: ids } }] };
+  if (exceptoComandaId) filtro._id = { $ne: exceptoComandaId };
+  const otra = await Comanda.findOne(filtro).session(session).lean();
+  if (!otra) return mesas;
+
+  if (ids.includes(String(otra.mesa_id))) {
+    throw new HttpError(409, `La mesa ${numero(otra.mesa_id)} ya tiene una cuenta abierta`);
+  }
+  const junta = otra.mesas_extra.find((m) => ids.includes(String(m)));
+  throw new HttpError(409, `La mesa ${numero(junta)} está junta con otra cuenta abierta`);
 };
 
 const exigirAbierta = (comanda) => {
@@ -70,37 +103,12 @@ const enviar = async (session, { comandaId, usuarioId }) => {
   }
 
   const items = comanda.items.filter((i) => mismo(i.lote_envio, lote));
-  const menuIds = [...new Set(items.map((i) => i.menu_item_id).filter(Boolean).map(String))];
-  const recetas = await RecetaItem.find({ menu_item_id: { $in: menuIds } }).session(session).lean();
-
-  const consumos = [];
-  for (const item of items) {
-    for (const linea of recetas.filter((r) => mismo(r.menu_item_id, item.menu_item_id))) {
-      consumos.push({
-        insumoId: linea.insumo_id,
-        comandaItemId: item._id,
-        cantidad: redondear3(linea.cantidad * item.cantidad),
-      });
-    }
-  }
-
-  const faltantesPorInsumo = new Map();
-  const itemsConFaltante = new Set();
-  for (const consumo of ordenarPorInsumo(consumos)) {
-    const insumo = await aplicarMovimiento(session, {
-      insumoId: consumo.insumoId,
-      tipo: "CONSUMO",
-      cantidad: -consumo.cantidad,
-      motivo: `Comanda ${codigoCorto(comandaId)}`,
-      comandaId: comanda._id,
-      comandaItemId: consumo.comandaItemId,
-      usuarioId,
-    });
-    if (insumo.stock < 0) {
-      faltantesPorInsumo.set(String(insumo._id), { insumo: insumo.nombre, unidad: insumo.unidad, stock: insumo.stock });
-      itemsConFaltante.add(String(consumo.comandaItemId));
-    }
-  }
+  const { faltantes, itemsConFaltante, sinReceta } = await consumirPorReceta(session, {
+    lineas: items.map((i) => ({ itemId: i._id, menuItemId: i.menu_item_id, cantidad: i.cantidad, nombre: i.nombre_item })),
+    motivo: `Comanda ${codigoCorto(comandaId)}`,
+    comandaId: comanda._id,
+    usuarioId,
+  });
 
   if (itemsConFaltante.size > 0) {
     await Comanda.updateOne(
@@ -113,32 +121,15 @@ const enviar = async (session, { comandaId, usuarioId }) => {
     );
   }
 
-  const conReceta = new Set(recetas.map((r) => String(r.menu_item_id)));
-  const sinReceta = [...new Set(items.filter((i) => !conReceta.has(String(i.menu_item_id))).map((i) => i.nombre_item))];
-  return { faltantes: [...faltantesPorInsumo.values()], sinReceta };
+  return { faltantes, sinReceta };
 };
 
 /**
  * Devuelve al inventario lo que realmente consumieron unos platos (leído del
  * libro de movimientos, no de la receta actual, que pudo cambiar).
  */
-const devolverConsumos = async (session, { comandaId, itemIds, usuarioId, motivo }) => {
-  if (itemIds.length === 0) return;
-  const consumos = await MovimientoInventario.find({ comanda_item_id: { $in: itemIds }, tipo: "CONSUMO" })
-    .session(session)
-    .lean();
-  for (const mov of ordenarPorInsumo(consumos.map((c) => ({ ...c, insumoId: c.insumo_id })))) {
-    await aplicarMovimiento(session, {
-      insumoId: mov.insumo_id,
-      tipo: "DEVOLUCION",
-      cantidad: -mov.cantidad,
-      motivo,
-      comandaId,
-      comandaItemId: mov.comanda_item_id,
-      usuarioId,
-    });
-  }
-};
+const devolverConsumos = (session, { comandaId, itemIds, usuarioId, motivo }) =>
+  devolverConsumosDe(session, { campo: "comanda_item_id", itemIds, usuarioId, motivo, comandaId });
 
 // Cuando el último plato de una mesa sale de cocina, el mesero puede llevarlo
 // todo de una vez. Los borradores no cuentan: la cocina ya terminó lo enviado.
@@ -159,6 +150,7 @@ const avisarSiLaMesaEstaCompleta = (comanda) => {
 module.exports = {
   mismo,
   cargar,
+  reclamarMesas,
   exigirAbierta,
   diagnosticarItem,
   calcularTotal,

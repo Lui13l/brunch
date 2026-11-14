@@ -1,4 +1,4 @@
-const { Comanda, Mesa, MenuItem } = require("../models");
+const { Comanda, MenuItem } = require("../models");
 const { HttpError } = require("../utils/http");
 const { toComanda } = require("../utils/serializar");
 const { conTransaccion } = require("../utils/transaccion");
@@ -9,6 +9,7 @@ const { registrar, SERVICIO } = require("../services/auditoria");
 const {
   mismo,
   cargar,
+  reclamarMesas,
   exigirAbierta,
   diagnosticarItem,
   calcularTotal,
@@ -27,29 +28,76 @@ const NO_EDITABLE = () => "El plato ya se envió a cocina: cancélalo en vez de 
 
 const responder = async (res, id) => res.json(toComanda(await cargar(id)));
 
+// "mesa 4" o "mesas 4 + 5 + 6", para los mensajes y la auditoría.
+const nombreDeMesas = (json) =>
+  json.mesasExtra.length > 0
+    ? `mesas ${[json.mesaNumero, ...json.mesasExtra.map((m) => m.numero)].join(" + ")}`
+    : `mesa ${json.mesaNumero}`;
+
 const abrir = async (req, res) => {
-  const { mesaId, comensales, notas } = req.valid.body;
-  const mesa = await Mesa.findById(mesaId).lean();
-  if (!mesa) throw new HttpError(404, "Mesa no encontrada");
-  if (!mesa.activa) throw new HttpError(409, `La mesa ${mesa.numero} está fuera de servicio`);
+  const { mesaId, mesasExtra, comensales, notas } = req.valid.body;
+  const extras = [...new Set(mesasExtra)].filter((id) => id !== mesaId);
 
   let creada;
   try {
-    creada = await Comanda.create({ mesa_id: mesa._id, mesero_id: req.usuario._id, comensales: comensales ?? null, notas });
+    creada = await conTransaccion(async (session) => {
+      await reclamarMesas(session, [mesaId, ...extras]);
+      const [comanda] = await Comanda.create(
+        [{ mesa_id: mesaId, mesas_extra: extras, mesero_id: req.usuario._id, comensales: comensales ?? null, notas }],
+        { session }
+      );
+      return comanda;
+    });
   } catch (err) {
-    // Lo impide un índice único parcial: si dos meseros abren la misma mesa a la vez, uno llega aquí.
-    if (err.code === 11000) throw new HttpError(409, `La mesa ${mesa.numero} ya tiene una cuenta abierta`);
+    // Red de seguridad: el índice único parcial de mesa_id.
+    if (err.code === 11000) throw new HttpError(409, "Esa mesa ya tiene una cuenta abierta");
     throw err;
   }
   const json = toComanda(await cargar(creada._id));
   publicar(TOPICS.salon, json);
+  if (extras.length > 0) {
+    await registrar(req.usuario, "AGRUPAR_MESAS", `Abrió una cuenta para las ${nombreDeMesas(json)}`, SERVICIO.COMANDAS);
+  }
+  res.json(json);
+};
+
+// Junta mesas a una cuenta abierta o las suelta: `mesasExtra` reemplaza la
+// lista entera. La mesa principal no cambia.
+const cambiarMesas = async (req, res) => {
+  const { id } = req.valid.params;
+  const comanda = await cargar(id);
+  exigirAbierta(comanda);
+  const principal = String(comanda.mesa_id?._id ?? comanda.mesa_id);
+  const extras = [...new Set(req.valid.body.mesasExtra)].filter((m) => m !== principal);
+
+  await conTransaccion(async (session) => {
+    if (extras.length > 0) await reclamarMesas(session, extras, comanda._id);
+    const r = await Comanda.updateOne({ _id: id, estado: "ABIERTA" }, { $set: { mesas_extra: extras } }, { session });
+    if (r.matchedCount === 0) exigirAbierta(await cargar(id));
+  });
+
+  const json = toComanda(await cargar(id));
+  publicar(TOPICS.salon, json);
+  publicar(TOPICS.cocina, json);
+  await registrar(
+    req.usuario,
+    "AGRUPAR_MESAS",
+    extras.length > 0
+      ? `La comanda ${codigoCorto(id)} ahora ocupa las ${nombreDeMesas(json)}`
+      : `La comanda ${codigoCorto(id)} volvió a ocupar solo la mesa ${json.mesaNumero}`,
+    SERVICIO.COMANDAS
+  );
   res.json(json);
 };
 
 const listar = async (req, res) => {
   const filtro = { estado: "ABIERTA" };
   if (req.query.mias === "true") filtro.mesero_id = req.usuario._id;
-  const comandas = await Comanda.find(filtro).populate("mesa_id", "numero").sort({ fecha_apertura: 1 }).lean();
+  const comandas = await Comanda.find(filtro)
+    .populate("mesa_id", "numero")
+    .populate("mesas_extra", "numero")
+    .sort({ fecha_apertura: 1 })
+    .lean();
   res.json(comandas.map(toComanda));
 };
 
@@ -266,7 +314,7 @@ const cerrar = async (req, res) => {
   await registrar(
     req.usuario,
     "CERRAR_COMANDA",
-    `Cerró la comanda ${codigoCorto(id)} (mesa ${json.mesaNumero}) por ${total} en ${metodoPago}` +
+    `Cerró la comanda ${codigoCorto(id)} (${nombreDeMesas(json)}) por ${total} en ${metodoPago}` +
       `${cancelados ? ` cancelando ${cancelados} plato(s) en cocina` : ""}${sinCaja ? " (sin caja abierta)" : ""}`,
     SERVICIO.COMANDAS
   );
@@ -275,6 +323,7 @@ const cerrar = async (req, res) => {
 
 module.exports = {
   abrir,
+  cambiarMesas,
   listar,
   detalle,
   agregarItem,

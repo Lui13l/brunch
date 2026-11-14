@@ -45,7 +45,7 @@ const cambiarEstado = async (req, res) => {
   const pedido = await Order.findById(req.valid.params.id);
   if (!pedido) throw new HttpError(404, "Pedido no encontrado");
   const anterior = pedido.estado;
-  await aplicarEstado(pedido, req.valid.body.estado);
+  await aplicarEstado(pedido, req.valid.body.estado, req.usuario._id);
   await registrar(
     req.usuario,
     "CAMBIAR_ESTADO_PEDIDO",

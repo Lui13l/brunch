@@ -107,6 +107,14 @@ export default function AdminPedidos() {
               <div className="adm-tarjeta-cabeza">
                 <span className="adm-tarjeta-titulo">Pedido {codigo(p.id)}</span>
                 <Chip tono={e.tono}>{e.texto}</Chip>
+                {/* Avance en cocina: solo mientras el pedido se está preparando. */}
+                {p.cocina && ["confirmado", "preparando"].includes(p.estado) && (
+                  <Chip tono={p.cocina.completo ? "ok" : "proceso"}>
+                    {p.cocina.completo
+                      ? "Cocina: listo para despachar"
+                      : `Cocina: ${p.cocina.listos} de ${p.cocina.total} listos`}
+                  </Chip>
+                )}
               </div>
               <p className="adm-tarjeta-meta">Llegó el {fechaHora(p.fechaInicio)}</p>
               <p style={{ marginTop: "0.6rem" }}>

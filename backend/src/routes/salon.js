@@ -21,6 +21,7 @@ comandas.use(enTexto, auth, requireRole(ROL.MESERO, ROL.ADMIN));
 comandas.get("/", c.listar);
 comandas.post("/", validar(esquemas.abrirSchema), c.abrir);
 comandas.get("/:id", validar(idParams, "params"), c.detalle);
+comandas.patch("/:id/mesas", validar(idParams, "params"), validar(esquemas.mesasSchema), c.cambiarMesas);
 comandas.post("/:id/items", validar(idParams, "params"), validar(esquemas.agregarItemSchema), c.agregarItem);
 comandas.patch("/:id/items/:itemId", validar(esquemas.itemParams, "params"), validar(esquemas.editarItemSchema), c.editarItem);
 comandas.delete("/:id/items/:itemId", validar(esquemas.itemParams, "params"), c.quitarItem);

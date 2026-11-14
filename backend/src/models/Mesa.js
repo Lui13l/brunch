@@ -7,6 +7,10 @@ const mesaSchema = new mongoose.Schema(
     nombre: { type: String, trim: true, maxlength: 60, default: null },
     capacidad: { type: Number, min: 1, max: 100, default: 4 },
     activa: { type: Boolean, default: true },
+    // Se toca cada vez que una cuenta reclama la mesa (al abrirla o al juntarla
+    // con otra). No se muestra: sirve de candado para que dos cuentas no se
+    // queden con la misma mesa a la vez (ver services/comandas.js#reclamarMesas).
+    reclamada_en: { type: Date, default: null },
   },
   { collection: "mesas", timestamps: true }
 );
