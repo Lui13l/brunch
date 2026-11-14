@@ -13,6 +13,13 @@ const {
 } = require("../services/reservas");
 
 const MAX_LARGO_MENSAJE = 500;
+// Hasta cuántos días por delante se puede reservar desde el chat.
+const MAX_DIAS_RESERVA = 90;
+const OBJECT_ID = /^[a-f\d]{24}$/i;
+
+// Quita caracteres de control (saltos raros, nulos) que no son texto de una persona.
+// eslint-disable-next-line no-control-regex
+const limpiarMensaje = (valor) => valor.replace(/[\u0000-\u0008\u000b-\u001f\u007f]/g, " ").trim();
 const CLAVE_RESERVA_CHAT = "reserva_chat";
 const CLAVE_CANCELACION_CHAT = "reserva_cancelacion";
 const CLAVE_EDICION_CHAT = "reserva_edicion";
@@ -174,6 +181,15 @@ const procesarReservaChat = async (mensaje, usuario, datosContexto) => {
   if (reserva.dia && new Date(`${reserva.dia}T00:00:00.000Z`) < new Date(`${hoyLocal()}T00:00:00.000Z`)) {
     reserva.dia = null;
     return { intencion, respuesta: "Uy, ese día ya pasó. ¿Qué otra fecha te queda bien? Puedes decir «mañana» o escribirla como 25/12/2026.", reserva };
+  }
+
+  if (reserva.dia && reserva.dia > sumarDias(hoyLocal(), MAX_DIAS_RESERVA)) {
+    reserva.dia = null;
+    return {
+      intencion,
+      respuesta: `Por ahora recibimos reservas con máximo ${MAX_DIAS_RESERVA} días de anticipación. ¿Qué otra fecha te queda bien?`,
+      reserva,
+    };
   }
 
   if (reserva.dia && reserva.hora) {
@@ -582,8 +598,12 @@ const obtenerConversacion = async (req, conversacionId) => {
 };
 
 const enviarMensaje = async (req, res) => {
-  const mensaje = typeof req.body?.mensaje === "string" ? req.body.mensaje.trim() : "";
+  const mensaje = typeof req.body?.mensaje === "string" ? limpiarMensaje(req.body.mensaje) : "";
   if (!mensaje) throw new HttpError(400, "El mensaje es obligatorio");
+  const conversacionId = req.body?.conversacion_id;
+  if (conversacionId != null && !(typeof conversacionId === "string" && OBJECT_ID.test(conversacionId))) {
+    throw new HttpError(400, "El identificador de la conversación no es válido");
+  }
   if (mensaje.length > MAX_LARGO_MENSAJE) {
     throw new HttpError(400, `El mensaje no puede superar ${MAX_LARGO_MENSAJE} caracteres`);
   }

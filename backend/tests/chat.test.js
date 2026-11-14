@@ -1,7 +1,8 @@
 const { describe, test, before, after, beforeEach } = require("node:test");
 const { conectar, desconectar, limpiar, api, datosBase, bearer, expect } = require("./helpers");
-const { ChatIntent } = require("../src/models");
-const { normalizar } = require("../src/services/chatbot");
+const { ChatIntent, Comanda, Mesa, Reservation, User } = require("../src/models");
+const { sincronizarIntenciones } = require("../scripts/sincronizarIntenciones");
+const { normalizar, detectarIntencion } = require("../src/services/chatbot");
 const INTENCIONES = require("../src/data/intenciones");
 const { hoyLocal } = require("../src/utils/tiempo");
 
@@ -401,5 +402,152 @@ describe("Chatbot: administración de intenciones", () => {
     const saludo = await ChatIntent.findOne({ nombre: "saludo" });
     const borrar = await api().delete(`/api/chat/intenciones/${saludo.id}`).set(bearer(d.tokenAdmin));
     expect(borrar.status).toBe(204);
+  });
+});
+
+describe("Chatbot: entiende plurales, errores de escritura y frases sueltas", () => {
+  // Se mide la detección sola: por el chat, una frase de reserva deja la
+  // conversación dentro de ese flujo y los mensajes siguientes ya no cuentan.
+  const intencionDe = async (mensaje) => (await detectarIntencion(mensaje)).nombre;
+
+  test("una palabra suelta o en plural ya no es desconocida", async () => {
+    // "reserva" sola se entiende como querer hacer una; "mis reservas" las consulta.
+    expect(await intencionDe("reserva")).toBe("crear_reserva");
+    expect(await intencionDe("mis reservas")).toBe("mis_reservas");
+    expect(await intencionDe("menus")).toBe("menu");
+    expect(await intencionDe("menu porfa")).toBe("menu");
+    expect(await intencionDe("horarios")).toBe("horario");
+  });
+
+  test("tolera un error de dedo en palabras largas, no en las cortas", async () => {
+    expect(await intencionDe("orario de atencion")).toBe("desconocida"); // cambia la primera letra
+    expect(await intencionDe("cual es el horaro")).toBe("horario");
+    expect(await intencionDe("ubicasion")).toBe("ubicacion");
+    expect(await intencionDe("grasias")).toBe("agradecimiento");
+    // "mesa" y "pago" son cortas: una letra distinta es otra palabra.
+    expect(await intencionDe("misa")).toBe("desconocida");
+    expect(await intencionDe("xyz abc")).toBe("desconocida");
+  });
+
+  test("las distintas formas de pedir una reserva abren el flujo de reserva", async () => {
+    for (const frase of ["resevar mesa", "quiero reservar para 4", "¿Cómo hago una reserva?", "quiero apartar una mesa"]) {
+      // Las dos intenciones llevan al mismo flujo de reserva.
+      expect(["crear_reserva", "hacer_reserva"].includes(await intencionDe(frase))).toBe(true);
+    }
+    // Y por el chat, la frase con error de escritura de verdad abre la reserva.
+    const res = await enviar(d.tokenCliente, "resevar mesa");
+    expect(res.body.intencion).toBe("crear_reserva");
+    incluye(res.body.respuesta, "¿");
+  });
+
+  test("una coincidencia exacta le gana a una aproximada", async () => {
+    // "pedido" es exacta para estado_pedido; no debe confundirse con "pedir".
+    expect(await intencionDe("pedido")).toBe("estado_pedido");
+    expect(await intencionDe("quiero pedir")).toBe("hacer_pedido");
+  });
+});
+
+describe("Chatbot: permisos de consulta", () => {
+  const hoy = () => new Date(`${hoyLocal()}T00:00:00.000Z`);
+
+  beforeEach(async () => {
+    const otro = await User.create({ nombre: "Beto", correo: "beto@test.com", password: "secreta1", rol_id: "cliente" });
+    await Reservation.create([
+      { usuario_id: otro._id, dia: hoy(), hora: "10:30", cupo: 4, estado_reserva: "confirmada" },
+      { usuario_id: d.cliente.id, dia: hoy(), hora: "12:00", cupo: 2, estado_reserva: "pendiente" },
+    ]);
+    await api().post("/api/pedidos").set(bearer(d.tokenCliente))
+      .send({ items: [{ menu_item_id: String(d.cafe._id), cantidad: 1 }] });
+    const mesa = await Mesa.create({ numero: 1 });
+    const admin = await User.findOne({ correo: "admin@test.com" });
+    await Comanda.create({ mesa_id: mesa._id, mesero_id: admin._id, estado: "CERRADA", total: 45000, metodo_pago: "EFECTIVO", fecha_cierre: new Date() });
+  });
+
+  test("el admin consulta las reservas, los pedidos y las ventas del día", async () => {
+    const reservas = await enviar(d.tokenAdmin, "reservas de hoy");
+    expect(reservas.body.intencion).toBe("admin_reservas_hoy");
+    incluye(reservas.body.respuesta, "Hoy hay 2 reservas para 6 personas");
+    incluye(reservas.body.respuesta, "10:30, 4 personas, Beto (confirmada)");
+
+    const pedidos = await enviar(d.tokenAdmin, "cuantos pedidos hay");
+    expect(pedidos.body.intencion).toBe("admin_pedidos_pendientes");
+    incluye(pedidos.body.respuesta, "Hay 1 pedido web activo");
+    incluye(pedidos.body.respuesta, "1 pendiente de confirmación");
+
+    const ventas = await enviar(d.tokenAdmin, "ventas de hoy");
+    expect(ventas.body.intencion).toBe("admin_ventas_hoy");
+    incluye(ventas.body.respuesta, "1 cuenta en el salón por $45.000");
+  });
+
+  test("un cliente nunca recibe datos de otras personas", async () => {
+    const reservas = await enviar(d.tokenCliente, "reservas de hoy");
+    expect(reservas.body.respuesta.includes("Beto")).toBe(false);
+    expect(reservas.body.respuesta.includes("10:30")).toBe(false);
+    incluye(reservas.body.respuesta, "12:00"); // solo la suya
+
+    const pedidos = await enviar(d.tokenCliente, "pedidos pendientes");
+    incluye(pedidos.body.respuesta, "Tu último pedido");
+
+    const ventas = await enviar(d.tokenCliente, "ventas de hoy");
+    expect(ventas.body.respuesta).toBe("Esa información es solo para el equipo del restaurante.");
+  });
+
+  test("un visitante sin sesión tampoco: se le pide iniciar sesión", async () => {
+    const reservas = await api().post("/api/chat/mensaje").send({ mensaje: "reservas de hoy" });
+    incluye(reservas.body.respuesta, "inicia sesión");
+    const ventas = await api().post("/api/chat/mensaje").send({ mensaje: "cuanto vendimos" });
+    expect(ventas.body.respuesta).toBe("Esa información es solo para el equipo del restaurante.");
+  });
+});
+
+describe("Chatbot: validaciones nuevas", () => {
+  test("rechaza un identificador de conversación mal formado", async () => {
+    for (const malo of ["abc", { $ne: null }, 123]) {
+      const res = await enviar(d.tokenCliente, "hola", malo);
+      expect(res.status).toBe(400);
+      expect(res.body.mensaje).toBe("El identificador de la conversación no es válido");
+    }
+  });
+
+  test("limpia los caracteres de control del mensaje", async () => {
+    const res = await enviar(d.tokenCliente, "ho\u0000la\u0007 menu");
+    expect(res.status).toBe(200);
+    expect(res.body.intencion).toBe("menu");
+    const soloControl = await enviar(d.tokenCliente, "\u0000\u0001");
+    expect(soloControl.status).toBe(400);
+  });
+
+  test("no agenda reservas a más de 90 días", async () => {
+    const lejos = new Date(`${hoyLocal()}T00:00:00.000Z`);
+    lejos.setUTCDate(lejos.getUTCDate() + 120);
+    const [anio, mes, dia] = lejos.toISOString().slice(0, 10).split("-");
+    await enviar(d.tokenCliente, "quiero reservar");
+    const res = await enviar(d.tokenCliente, `el ${dia}/${mes}/${anio}`);
+    incluye(res.body.respuesta, "máximo 90 días de anticipación");
+  });
+});
+
+describe("Chatbot: sincronizar intenciones con la base", () => {
+  test("agrega lo que falta sin pisar lo que el admin editó", async () => {
+    // Estado de una base antigua: falta una intención y otra tiene menos palabras clave y una respuesta editada.
+    await ChatIntent.deleteOne({ nombre: "admin_ventas_hoy" });
+    await ChatIntent.updateOne(
+      { nombre: "crear_reserva" },
+      { $set: { palabras_clave: ["reservar", "palabra del admin"], respuestas: [{ tipo: "texto", respuesta: "Texto editado por el admin" }] } }
+    );
+
+    const simulacion = await sincronizarIntenciones();
+    expect(simulacion.map((c) => c.intencion).sort()).toEqual(["admin_ventas_hoy", "crear_reserva"]);
+    expect(await ChatIntent.countDocuments({ nombre: "admin_ventas_hoy" })).toBe(0); // la simulación no escribe
+
+    await sincronizarIntenciones({ confirmar: true });
+    expect(await ChatIntent.countDocuments({ nombre: "admin_ventas_hoy" })).toBe(1);
+    const reserva = await ChatIntent.findOne({ nombre: "crear_reserva" }).lean();
+    expect(reserva.palabras_clave.includes("palabra del admin")).toBe(true);
+    expect(reserva.palabras_clave.includes("una reserva")).toBe(true);
+    expect(reserva.respuestas[0].respuesta).toBe("Texto editado por el admin");
+
+    // Ya al día: no queda nada pendiente.
+    expect(await sincronizarIntenciones()).toEqual([]);
   });
 });

@@ -1,5 +1,7 @@
 // Intenciones iniciales del chatbot que carga "npm run seed".
 // Las respuestas pueden usar {nombre}, {menu}, {ultimo_pedido} y {mis_reservas}.
+// {reservas_hoy}, {pedidos_pendientes} y {ventas_hoy} son consultas del negocio:
+// solo un admin con sesión recibe esos datos (ver services/chatbot.js).
 // Se pueden editar después desde /api/chat/intenciones sin tocar código.
 const texto = (respuesta) => ({ tipo: "texto", respuesta });
 
@@ -36,7 +38,20 @@ module.exports = [
   {
     nombre: "crear_reserva",
     descripcion: "Quiere agendar una reserva desde el chatbot",
-    palabras_clave: ["reservar una mesa", "quiero reservar", "hacer una reserva", "agendar una reserva", "reservar"],
+    palabras_clave: [
+      "reservar una mesa",
+      "quiero reservar",
+      "hacer una reserva",
+      "agendar una reserva",
+      "reservar",
+      "una reserva",
+      "hago una reserva",
+      "como reservo",
+      "reservo",
+      "apartar",
+      "apartar mesa",
+      "mesa para",
+    ],
     respuestas: [texto("¡Claro! Te ayudo a organizar tu visita. Cuéntame qué día y a qué hora te gustaría venir, y cuántas personas serán.")],
   },
   {
@@ -86,6 +101,24 @@ module.exports = [
     descripcion: "Pregunta por sus reservas",
     palabras_clave: ["mis reservas", "mi reserva", "reservas", "tengo reserva"],
     respuestas: [texto("{mis_reservas}")],
+  },
+  {
+    nombre: "admin_reservas_hoy",
+    descripcion: "El equipo pregunta por las reservas del día (solo admin)",
+    palabras_clave: ["reservas de hoy", "reservas para hoy", "reservas hoy", "cuantas reservas hay"],
+    respuestas: [texto("{reservas_hoy}")],
+  },
+  {
+    nombre: "admin_pedidos_pendientes",
+    descripcion: "El equipo pregunta por los pedidos web activos (solo admin)",
+    palabras_clave: ["pedidos pendientes", "pedidos por confirmar", "pedidos activos", "cuantos pedidos hay"],
+    respuestas: [texto("{pedidos_pendientes}")],
+  },
+  {
+    nombre: "admin_ventas_hoy",
+    descripcion: "El equipo pregunta por las ventas del día (solo admin)",
+    palabras_clave: ["ventas de hoy", "ventas del dia", "ventas hoy", "cuanto se ha vendido", "cuanto vendimos"],
+    respuestas: [texto("{ventas_hoy}")],
   },
   {
     nombre: "metodos_pago",
