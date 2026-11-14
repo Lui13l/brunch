@@ -2,6 +2,10 @@
 
 Este archivo es para asistentes de IA (Claude Code, Codex, Cursor, Copilot, Gemini…) que trabajen en este repo. Las personas deben empezar por el [README.md](README.md).
 
+## Trabajo en curso
+
+Si existe [HANDOVER.md](HANDOVER.md) en la raíz, léelo primero: dice qué está hecho, qué sigue y qué decisiones ya se tomaron. Actualízalo antes de que termine tu sesión (por límite de tokens o de tiempo) y al cerrar cada fase, para que quien siga no tenga que reconstruir el contexto.
+
 ## Qué es
 
 Brunch & Co. es la web de un restaurante de brunch en Neiva (Colombia). Es un proyecto de equipo con tres aplicaciones en un mismo repo:
