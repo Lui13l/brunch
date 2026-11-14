@@ -321,8 +321,33 @@ const cerrar = async (req, res) => {
   res.json(json);
 };
 
+// Cierra una cuenta sin cobrar: la mesa se abrió por error o el cliente se fue
+// antes de pedir. Solo vale si no se ha servido nada: lo que quede en borrador
+// se descarta, y lo ya enviado a cocina debe estar cancelado.
+const anular = async (req, res) => {
+  const { id } = req.valid.params;
+  const comanda = await cargar(id);
+  exigirAbierta(comanda);
+  const servidos = comanda.items.filter((i) => !["BORRADOR", "CANCELADO"].includes(i.estado)).length;
+  if (servidos > 0) {
+    throw new HttpError(409, `La cuenta tiene ${servidos} plato(s) enviados: cóbrala o cancélalos antes de cerrarla`);
+  }
+
+  const r = await Comanda.updateOne(
+    { _id: id, estado: "ABIERTA", "items.estado": { $nin: ["PENDIENTE", "PREPARANDO", "LISTO", "ENTREGADO"] } },
+    { $set: { estado: "ANULADA", total: 0, fecha_cierre: new Date() }, $pull: { items: { estado: "BORRADOR" } } }
+  );
+  if (r.modifiedCount === 0) throw new HttpError(409, "La cuenta cambió mientras tanto. Vuelve a intentarlo.");
+
+  const json = toComanda(await cargar(id));
+  publicar(TOPICS.salon, json);
+  await registrar(req.usuario, "ANULAR_COMANDA", `Cerró sin cobrar la comanda ${codigoCorto(id)} (${nombreDeMesas(json)})`, SERVICIO.COMANDAS);
+  res.json(json);
+};
+
 module.exports = {
   abrir,
+  anular,
   cambiarMesas,
   listar,
   detalle,

@@ -178,3 +178,10 @@ export function tituloDeMesas(comanda) {
   const numeros = [comanda?.mesaNumero, ...(comanda?.mesasExtra ?? []).map((m) => m.numero)].filter((n) => n != null);
   return numeros.length > 1 ? `Mesas ${numeros.join(" + ")}` : `Mesa ${numeros[0] ?? ""}`;
 }
+
+// "Café con Leche" -> "cafe con leche": para buscar sin fijarse en tildes ni mayúsculas.
+export const sinTildes = (texto) =>
+  String(texto ?? "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase();

@@ -169,7 +169,7 @@ function Contenedor({ contenedor, onMarcar, ocupado }) {
           {contenedor.platos.map((plato) => {
             const enMarcha = plato.estado === "PREPARANDO";
             return (
-              <li key={plato.id} className={`border-b py-3 ${tarde ? "border-white/30" : "border-filete"}`}>
+              <li key={plato.id} className={`border-b py-3 last:border-0 last:pb-0 ${tarde ? "border-white/30" : "border-filete"}`}>
                 <div className="flex items-start gap-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-2xl leading-tight font-bold tracking-[-0.02em]">

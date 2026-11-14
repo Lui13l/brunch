@@ -28,6 +28,7 @@ comandas.delete("/:id/items/:itemId", validar(esquemas.itemParams, "params"), c.
 comandas.post("/:id/items/:itemId/cancelar", validar(esquemas.itemParams, "params"), c.cancelarItem);
 comandas.post("/:id/items/:itemId/entregar", validar(esquemas.itemParams, "params"), c.entregarItem);
 comandas.post("/:id/enviar", validar(idParams, "params"), c.enviarACocina);
+comandas.post("/:id/anular", validar(idParams, "params"), c.anular);
 comandas.post("/:id/cerrar", validar(idParams, "params"), validar(esquemas.cerrarSchema), c.cerrar);
 router.use("/comandas", comandas);
 

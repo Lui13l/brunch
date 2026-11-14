@@ -409,3 +409,33 @@ describe("Mesas juntas", () => {
     expect(plato.contenedor).toEqual({ tipo: "mesa", id: `comanda-${comanda.id}`, titulo: "Mesas 1 + 2" });
   });
 });
+
+describe("Cerrar una mesa sin cobrar", () => {
+  test("una cuenta vacía o solo con borradores se anula y libera la mesa", async () => {
+    const { body: comanda } = await abrir();
+    await agregar(comanda.id, CAFE());
+    const res = await api().post(`/api/comandas/${comanda.id}/anular`).set(m());
+    expect(res.status).toBe(200);
+    expect(res.body.estado).toBe("ANULADA");
+    expect(res.body.items).toEqual([]);
+    const mesas = await api().get("/api/mesas").set(m());
+    expect(mesas.body[0].comandaAbiertaId).toBe(null);
+    // No cuenta como venta.
+    const ventas = await api().get("/api/admin/reportes/ventas").set(admin());
+    expect(ventas.body.resumen.comandas).toBe(0);
+  });
+
+  test("con platos enviados no se anula; con todo cancelado sí", async () => {
+    const { body: comanda } = await abrir();
+    await agregar(comanda.id, HUEVOS());
+    const { body: enviado } = await enviar(comanda.id);
+    const no = await api().post(`/api/comandas/${comanda.id}/anular`).set(m());
+    expect(no.status).toBe(409);
+    expect(no.text).toBe("La cuenta tiene 1 plato(s) enviados: cóbrala o cancélalos antes de cerrarla");
+
+    await api().post(`/api/comandas/${comanda.id}/items/${enviado.comanda.items[0].id}/cancelar`).set(m());
+    const si = await api().post(`/api/comandas/${comanda.id}/anular`).set(m());
+    expect(si.status).toBe(200);
+    expect(await stock()).toBe(100);
+  });
+});
