@@ -172,3 +172,9 @@ export function resumenDeMesa(comanda) {
   const estado = listos > 0 && enCocina === 0 ? "completa" : listos > 0 ? "parcial" : "ocupada";
   return { estado, listos, enCocina, total };
 }
+
+// "Mesa 4" o, si la cuenta junta varias mesas, "Mesas 4 + 5 + 6".
+export function tituloDeMesas(comanda) {
+  const numeros = [comanda?.mesaNumero, ...(comanda?.mesasExtra ?? []).map((m) => m.numero)].filter((n) => n != null);
+  return numeros.length > 1 ? `Mesas ${numeros.join(" + ")}` : `Mesa ${numeros[0] ?? ""}`;
+}

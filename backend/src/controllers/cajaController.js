@@ -7,6 +7,9 @@ const { registrar, SERVICIO } = require("../services/auditoria");
 const { codigoCorto } = require("../utils/codigo");
 const { calcularCuadre, conUsuarios, estadoDe, estadoActual, publicarCaja } = require("../services/caja");
 
+const METODOS = ["EFECTIVO", "TARJETA", "TRANSFERENCIA"];
+const NOMBRE_METODO = { EFECTIVO: "en efectivo", TARJETA: "con tarjeta", TRANSFERENCIA: "por transferencia" };
+
 const abrirSchema = z.object({ baseInicial: dinero("La base inicial"), notas: textoOpcional("Las notas") });
 
 const movimientoSchema = z.object({
@@ -14,6 +17,9 @@ const movimientoSchema = z.object({
   // Un movimiento sin explicar es justo lo que después nadie sabe justificar.
   concepto: texto("El concepto"),
   monto: dinero("El monto", { minimo: 0.01 }),
+  metodo: z
+    .enum(METODOS, { error: "El método debe ser EFECTIVO, TARJETA o TRANSFERENCIA" })
+    .default("EFECTIVO"),
 });
 
 const cerrarSchema = z.object({
@@ -92,10 +98,10 @@ const cerrar = async (req, res) => {
 };
 
 const registrarMovimiento = async (req, res) => {
-  const { tipo, concepto, monto } = req.valid.body;
+  const { tipo, concepto, monto, metodo } = req.valid.body;
   const arqueo = await Arqueo.findOneAndUpdate(
     { estado: "ABIERTO" },
-    { $push: { movimientos: { tipo, concepto, monto, usuario_id: req.usuario._id } } },
+    { $push: { movimientos: { tipo, concepto, monto, metodo, usuario_id: req.usuario._id } } },
     { returnDocument: "after", runValidators: true }
   );
   if (!arqueo) throw new HttpError(409, SIN_CAJA);
@@ -103,7 +109,7 @@ const registrarMovimiento = async (req, res) => {
   await registrar(
     req.usuario,
     tipo === "INGRESO" ? "INGRESO_CAJA" : "EGRESO_CAJA",
-    `${tipo === "INGRESO" ? "Entrada" : "Salida"} de ${pesos(monto)} en caja: ${concepto}`,
+    `${tipo === "INGRESO" ? "Entrada" : "Salida"} de ${pesos(monto)} ${NOMBRE_METODO[metodo]} en caja: ${concepto}`,
     SERVICIO.CAJA
   );
   await enviar(res, arqueo._id);

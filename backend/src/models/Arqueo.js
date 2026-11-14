@@ -1,9 +1,16 @@
 const mongoose = require("mongoose");
 
-// Entrada o salida de efectivo de la caja que no es una venta (cambio, compras
-// menores...). No se borra: se anula, para que el arqueo conserve su historia.
+const METODOS = ["EFECTIVO", "TARJETA", "TRANSFERENCIA"];
+
+// Entrada o salida de dinero de la caja que no es una venta (cambio, compras
+// menores, un abono por transferencia...). No se borra: se anula, para que el
+// arqueo conserve su historia.
 const movimientoCajaSchema = new mongoose.Schema({
   tipo: { type: String, required: true, enum: ["INGRESO", "EGRESO"] },
+  // Por dónde entró o salió el dinero. Solo el efectivo pasa por el cajón; lo
+  // demás cuadra contra el datáfono o el banco. Los movimientos anteriores a
+  // este campo eran todos de efectivo.
+  metodo: { type: String, enum: METODOS, default: "EFECTIVO" },
   concepto: { type: String, required: true, trim: true, maxlength: 255 },
   monto: {
     type: Number,

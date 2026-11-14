@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
-import { Check, X } from "lucide-react";
+import { Check, Link2, X } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/sesion";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { Cabecera, Pantalla } from "../components/Layout";
-import { Aviso, Cargando } from "../components/ui";
+import { Aviso, Boton, Cargando } from "../components/ui";
 import { sonarMesaLista } from "../lib/aviso";
-import { minutosDesde, pesos, resumenDeMesa } from "../lib/formato";
+import { minutosDesde, pesos, resumenDeMesa, tituloDeMesas } from "../lib/formato";
 
 const TOPICS = ["/topic/salon"];
 
@@ -25,6 +25,9 @@ export default function Mesas() {
   const [cargando, setCargando] = useState(true);
   const [abriendo, setAbriendo] = useState(null);
   const [listas, setListas] = useState([]);
+  // Modo "juntar mesas": ids de las mesas libres elegidas para un grupo, en el
+  // orden en que se tocaron (la primera es la principal). null = modo normal.
+  const [juntando, setJuntando] = useState(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -71,7 +74,32 @@ export default function Mesas() {
     }
   };
 
-  const porMesa = new Map(comandas.map((c) => [c.mesaId, c]));
+  // Abre una sola cuenta para todas las mesas elegidas.
+  const abrirJuntas = async () => {
+    const [principal, ...extras] = juntando;
+    setAbriendo(principal);
+    try {
+      const comanda = await pedir("/api/comandas", {
+        method: "POST",
+        body: JSON.stringify({ mesaId: principal, mesasExtra: extras }),
+      });
+      navigate(`/comanda/${comanda.id}`);
+    } catch (err) {
+      setError(err.message);
+      setJuntando(null);
+      cargar();
+    } finally {
+      setAbriendo(null);
+    }
+  };
+
+  const alternar = (mesa) =>
+    setJuntando((elegidas) =>
+      elegidas.includes(mesa.id) ? elegidas.filter((id) => id !== mesa.id) : [...elegidas, mesa.id],
+    );
+
+  // Una cuenta ocupa su mesa principal y las que se le hayan juntado.
+  const porMesa = new Map(comandas.flatMap((c) => [c.mesaId, ...(c.mesasExtra ?? []).map((m) => m.id)].map((id) => [id, c])));
   const completas = comandas.filter((c) => resumenDeMesa(c).estado === "completa");
 
   // El aviso emergente desaparece solo; el estado persistente vive en la
@@ -80,8 +108,28 @@ export default function Mesas() {
 
   return (
     <Pantalla>
-      <Cabecera titulo="Salón" atras={user?.rol === "ADMIN" ? "/admin" : undefined} />
+      <Cabecera
+        titulo="Salón"
+        atras={user?.rol === "ADMIN" ? "/admin" : undefined}
+        acciones={
+          !juntando && (
+            <button
+              onClick={() => setJuntando([])}
+              className="flex min-h-10 shrink-0 items-center gap-2 rounded-lg bg-white/15 px-3 text-[15px] font-bold text-white active:bg-white/25"
+            >
+              <Link2 size={18} aria-hidden />
+              Juntar mesas
+            </button>
+          )
+        }
+      />
       <Aviso onReintentar={cargar}>{error}</Aviso>
+
+      {juntando && (
+        <p className="bg-tibio px-4 py-3 text-lg font-bold text-tinta">
+          Toca las mesas libres del grupo. Se abrirá una sola cuenta para todas.
+        </p>
+      )}
 
       {listas.map((aviso) => (
         <MesaListaAviso
@@ -99,7 +147,7 @@ export default function Mesas() {
         <p className="flex items-center gap-2 bg-listo px-4 py-3 text-lg font-bold text-white">
           <Check size={22} strokeWidth={3} />
           {completas.length === 1
-            ? `Mesa ${completas[0].mesaNumero} lista para llevar`
+            ? `${tituloDeMesas(completas[0])} lista para llevar`
             : `${completas.length} mesas listas para llevar`}
         </p>
       )}
@@ -114,10 +162,23 @@ export default function Mesas() {
               mesa={mesa}
               comanda={porMesa.get(mesa.id)}
               ocupado={abriendo === mesa.id}
-              onAbrir={() => abrir(mesa)}
+              eligiendo={Boolean(juntando)}
+              orden={juntando ? juntando.indexOf(mesa.id) + 1 : 0}
+              onAbrir={() => (juntando ? alternar(mesa) : abrir(mesa))}
               onEntrar={(id) => navigate(`/comanda/${id}`)}
             />
           ))}
+        </div>
+      )}
+
+      {juntando && (
+        <div className="fixed inset-x-0 bottom-0 z-10 flex gap-2 border-t border-filete bg-mantel px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
+          <Boton variante="secundario" className="flex-1" onClick={() => setJuntando(null)}>
+            Cancelar
+          </Boton>
+          <Boton className="flex-[2]" disabled={juntando.length < 2} cargando={abriendo !== null} onClick={abrirJuntas}>
+            {juntando.length < 2 ? "Elige al menos 2 mesas" : `Abrir juntas (${juntando.length})`}
+          </Boton>
         </div>
       )}
     </Pantalla>
@@ -152,24 +213,40 @@ function MesaListaAviso({ aviso, onIr, onCerrar }) {
   );
 }
 
-function Baldosa({ mesa, comanda, ocupado, onAbrir, onEntrar }) {
+// `eligiendo`: modo "juntar mesas". Solo las libres se pueden tocar; las
+// elegidas muestran su orden (la 1 es la mesa principal de la cuenta).
+function Baldosa({ mesa, comanda, ocupado, eligiendo, orden, onAbrir, onEntrar }) {
   const { estado, listos, total } = resumenDeMesa(comanda);
   const completa = estado === "completa";
+  const elegida = orden > 0;
+  // Las otras mesas con las que comparte la cuenta: "Con 5 y 6".
+  const companeras = (mesa.grupo ?? []).filter((n) => n !== mesa.numero);
 
-  const piel = completa ? "bg-listo text-white" : comanda ? "bg-tinta text-white" : "bg-mantel text-tinta";
-  const tenue = comanda ? "text-white/70" : "text-tinta-2";
+  const piel = elegida
+    ? "bg-tibio text-tinta"
+    : completa
+      ? "bg-listo text-white"
+      : comanda
+        ? "bg-tinta text-white"
+        : "bg-mantel text-tinta";
+  const tenue = comanda && !elegida ? "text-white/70" : "text-tinta-2";
 
   return (
     <button
-      disabled={ocupado}
+      disabled={ocupado || (eligiendo && Boolean(comanda))}
+      aria-pressed={eligiendo ? elegida : undefined}
       onClick={() => (comanda ? onEntrar(comanda.id) : onAbrir())}
       className={`flex min-h-36 flex-col justify-between rounded-2xl p-4 text-left transition active:scale-[0.98] disabled:opacity-60 ${piel} ${
-        comanda ? "" : "border border-filete"
-      }`}
+        comanda || elegida ? "" : "border border-filete"
+      } ${eligiendo && comanda ? "disabled:opacity-35" : ""}`}
     >
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-5xl leading-none font-extrabold tracking-[-0.04em]">{mesa.numero}</span>
-        {completa ? (
+        {elegida ? (
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-tinta text-base font-extrabold text-white">
+            {orden}
+          </span>
+        ) : completa ? (
           <Check size={26} strokeWidth={3} className="shrink-0" />
         ) : (
           <span className={`text-sm font-semibold ${tenue}`}>{mesa.capacidad}p</span>
@@ -178,6 +255,12 @@ function Baldosa({ mesa, comanda, ocupado, onAbrir, onEntrar }) {
 
       {comanda ? (
         <div>
+          {companeras.length > 0 && (
+            <p className={`mb-1.5 flex items-center gap-1 text-sm font-bold ${tenue}`}>
+              <Link2 size={14} aria-hidden />
+              Con {companeras.join(" y ")}
+            </p>
+          )}
           <p className="text-2xl leading-none font-extrabold tracking-[-0.02em]">{pesos(comanda.total)}</p>
           {completa ? (
             <p className="mt-1 text-[15px] font-extrabold">Todo listo</p>
@@ -197,7 +280,9 @@ function Baldosa({ mesa, comanda, ocupado, onAbrir, onEntrar }) {
           )}
         </div>
       ) : (
-        <p className="text-sm font-semibold text-tinta-2">Toca para abrir</p>
+        <p className="text-sm font-semibold text-tinta-2">
+          {elegida ? (orden === 1 ? "Mesa principal" : "En el grupo") : eligiendo ? "Toca para sumarla" : "Toca para abrir"}
+        </p>
       )}
     </button>
   );

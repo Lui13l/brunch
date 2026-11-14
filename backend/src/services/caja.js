@@ -31,18 +31,28 @@ const calcularCuadre = async (arqueo, hastaFijo) => {
     porMetodo[clave] += Number(venta.total ?? 0);
   }
 
-  const vigentes = (arqueo.movimientos ?? []).filter((m) => !m.anulado);
-  const suma = (tipo) => vigentes.filter((m) => m.tipo === tipo).reduce((s, m) => s + Number(m.monto), 0);
-  const ingresos = suma("INGRESO");
-  const egresos = suma("EGRESO");
+  // Entradas y salidas manuales, por método. Un movimiento sin método es de
+  // efectivo (así eran todos antes de que existiera el campo).
+  const movimientos = Object.fromEntries(METODOS.map((m) => [m, { ingresos: 0, egresos: 0 }]));
+  for (const mov of arqueo.movimientos ?? []) {
+    if (mov.anulado) continue;
+    const metodo = METODOS.includes(mov.metodo) ? mov.metodo : "EFECTIVO";
+    movimientos[metodo][mov.tipo === "INGRESO" ? "ingresos" : "egresos"] += Number(mov.monto);
+  }
+  for (const m of METODOS) {
+    movimientos[m] = { ingresos: redondear2(movimientos[m].ingresos), egresos: redondear2(movimientos[m].egresos) };
+  }
+  const neto = (m) => movimientos[m].ingresos - movimientos[m].egresos;
+  const ingresos = METODOS.reduce((s, m) => s + movimientos[m].ingresos, 0);
+  const egresos = METODOS.reduce((s, m) => s + movimientos[m].egresos, 0);
   const base = Number(arqueo.base_inicial);
 
-  // Solo el efectivo arrastra la base y los movimientos: tarjeta y transferencia
-  // no pasan por el cajón.
+  // Solo el efectivo arrastra la base: es lo único que hay físicamente en el
+  // cajón. Tarjeta y transferencia suman sus ventas y sus propios movimientos.
   const calculado = {
-    EFECTIVO: redondear2(base + porMetodo.EFECTIVO + ingresos - egresos),
-    TARJETA: redondear2(porMetodo.TARJETA),
-    TRANSFERENCIA: redondear2(porMetodo.TRANSFERENCIA),
+    EFECTIVO: redondear2(base + porMetodo.EFECTIVO + neto("EFECTIVO")),
+    TARJETA: redondear2(porMetodo.TARJETA + neto("TARJETA")),
+    TRANSFERENCIA: redondear2(porMetodo.TRANSFERENCIA + neto("TRANSFERENCIA")),
   };
 
   const congelado = arqueo.estado === "CERRADO" && arqueo.esperado_efectivo != null;
@@ -70,8 +80,10 @@ const calcularCuadre = async (arqueo, hastaFijo) => {
       SIN_REGISTRAR: redondear2(porMetodo[SIN_METODO]),
     },
     comandas: ventas.length,
+    // Totales de todos los métodos; el detalle por método va en `movimientos`.
     ingresos: redondear2(ingresos),
     egresos: redondear2(egresos),
+    movimientos,
     esperado,
     contado,
     // Positiva = sobra dinero; negativa = falta.

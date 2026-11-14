@@ -87,6 +87,36 @@ describe("Caja", () => {
     expect(cuadre.esperado).toEqual({ EFECTIVO: 70000, TARJETA: 5000, TRANSFERENCIA: 0 });
   });
 
+  test("cada movimiento lleva su método y solo el efectivo toca el cajón", async () => {
+    await abrirCaja(50000);
+    await cobrar("TRANSFERENCIA", 1); // 5000
+    const mov = (tipo, monto, metodo) =>
+      api().post("/api/admin/caja/movimientos").set(admin())
+        .send({ tipo, concepto: "Prueba", monto, ...(metodo ? { metodo } : {}) });
+
+    // Un monto cualquiera (antes la pantalla solo aceptaba los terminados en 1).
+    const abono = await mov("INGRESO", 25000, "TRANSFERENCIA");
+    expect(abono.status).toBe(200);
+    expect(abono.body.arqueo.movimientos[0].metodo).toBe("TRANSFERENCIA");
+    await mov("EGRESO", 2000, "TARJETA");
+    // Sin método cuenta como efectivo, igual que los movimientos antiguos.
+    const { body } = await mov("EGRESO", 3500);
+    expect(body.arqueo.movimientos[0].metodo).toBe("EFECTIVO");
+
+    expect(body.cuadre.movimientos).toEqual({
+      EFECTIVO: { ingresos: 0, egresos: 3500 },
+      TARJETA: { ingresos: 0, egresos: 2000 },
+      TRANSFERENCIA: { ingresos: 25000, egresos: 0 },
+    });
+    expect(body.cuadre.ingresos).toBe(25000);
+    expect(body.cuadre.egresos).toBe(5500);
+    expect(body.cuadre.esperado).toEqual({ EFECTIVO: 46500, TARJETA: -2000, TRANSFERENCIA: 30000 });
+
+    const malo = await mov("INGRESO", 1000, "CHEQUE");
+    expect(malo.status).toBe(400);
+    expect(malo.text).toBe("El método debe ser EFECTIVO, TARJETA o TRANSFERENCIA");
+  });
+
   test("cerrar congela lo esperado; recalculado delata cambios posteriores", async () => {
     await abrirCaja(50000);
     await cobrar("EFECTIVO", 1);

@@ -155,6 +155,7 @@ const toMovimientoCaja = (m, arqueoId) => ({
   tipo: m.tipo,
   concepto: m.concepto,
   monto: num(m.monto),
+  metodo: m.metodo ?? "EFECTIVO",
   usuarioId: id(m.usuario_id),
   anulado: Boolean(m.anulado),
   fecha: fechaLocal(m.fecha),

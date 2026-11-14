@@ -80,14 +80,14 @@ export default function Caja() {
             <Boton
               variante="secundario"
               className="flex flex-1 items-center justify-center gap-2"
-              onClick={() => setMovimiento({ tipo: "INGRESO", concepto: "", monto: "" })}
+              onClick={() => setMovimiento({ tipo: "INGRESO", metodo: "EFECTIVO", concepto: "", monto: "" })}
             >
               <ArrowDownLeft size={18} /> Entrada
             </Boton>
             <Boton
               variante="secundario"
               className="flex flex-1 items-center justify-center gap-2"
-              onClick={() => setMovimiento({ tipo: "EGRESO", concepto: "", monto: "" })}
+              onClick={() => setMovimiento({ tipo: "EGRESO", metodo: "EFECTIVO", concepto: "", monto: "" })}
             >
               <ArrowUpRight size={18} /> Salida
             </Boton>
@@ -158,6 +158,7 @@ export default function Caja() {
                 tipo: movimiento.tipo,
                 concepto: movimiento.concepto,
                 monto: Number(movimiento.monto),
+                metodo: movimiento.metodo,
               });
               if (ok) setMovimiento(null);
             }}
@@ -167,10 +168,37 @@ export default function Caja() {
               value={movimiento.tipo}
               onChange={(e) => setMovimiento({ ...movimiento, tipo: e.target.value })}
               opciones={[
-                { valor: "INGRESO", texto: "Entrada — entra dinero al cajón" },
-                { valor: "EGRESO", texto: "Salida — sale dinero del cajón" },
+                { valor: "INGRESO", texto: "Entrada de dinero" },
+                { valor: "EGRESO", texto: "Salida de dinero" },
               ]}
             />
+            <fieldset>
+              <legend className="mb-1 block text-sm font-semibold text-tinta-2">¿Por dónde?</legend>
+              <div className="grid grid-cols-3 gap-2">
+                {METODOS.map((metodo) => (
+                  <button
+                    key={metodo}
+                    type="button"
+                    aria-pressed={movimiento.metodo === metodo}
+                    onClick={() => setMovimiento({ ...movimiento, metodo })}
+                    className={`min-h-12 rounded-lg px-2 text-[15px] font-bold transition ${
+                      movimiento.metodo === metodo
+                        ? "bg-tinta text-white"
+                        : "border border-filete bg-mantel text-tinta active:bg-sala"
+                    }`}
+                  >
+                    {ETIQUETA_PAGO[metodo]}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-1 text-[13px] text-tinta-2">
+                {movimiento.metodo === "EFECTIVO"
+                  ? "Cambia lo que debería haber en el cajón."
+                  : `No toca el cajón: suma a lo que debe cuadrar ${
+                      movimiento.metodo === "TARJETA" ? "contra el datáfono" : "contra el banco"
+                    }.`}
+              </p>
+            </fieldset>
             <Campo
               etiqueta="Concepto"
               required
@@ -276,6 +304,17 @@ function SinCaja({ onAbrir }) {
 
 function Resumen({ cuadre, arqueo }) {
   const sinMetodo = cuadre.ventas.SIN_REGISTRAR;
+  // Entradas y salidas manuales de cada método (el servidor las separa).
+  const de = (metodo) => cuadre.movimientos?.[metodo] ?? { ingresos: 0, egresos: 0 };
+  const efectivo = de("EFECTIVO");
+  const desglose = (metodo) => {
+    const { ingresos, egresos } = de(metodo);
+    return (
+      `Ventas ${pesos(cuadre.ventas[metodo])}` +
+      (ingresos > 0 ? ` + entradas ${pesos(ingresos)}` : "") +
+      (egresos > 0 ? ` − salidas ${pesos(egresos)}` : "")
+    );
+  };
 
   return (
     <>
@@ -288,8 +327,8 @@ function Resumen({ cuadre, arqueo }) {
         </p>
         <p className="mt-3 text-[15px] text-white/70">
           Base {pesos(cuadre.baseInicial)} + ventas en efectivo {pesos(cuadre.ventas.EFECTIVO)}
-          {cuadre.ingresos > 0 && ` + entradas ${pesos(cuadre.ingresos)}`}
-          {cuadre.egresos > 0 && ` − salidas ${pesos(cuadre.egresos)}`}
+          {efectivo.ingresos > 0 && ` + entradas ${pesos(efectivo.ingresos)}`}
+          {efectivo.egresos > 0 && ` − salidas ${pesos(efectivo.egresos)}`}
         </p>
         <p className="mt-2 text-[13px] text-white/50">
           Abierta desde {arqueo.fechaApertura?.replace("T", " ").slice(0, 16)}, {cuadre.comandas}{" "}
@@ -298,8 +337,18 @@ function Resumen({ cuadre, arqueo }) {
       </div>
 
       <div className="mt-3 grid grid-cols-2 gap-2">
-        <Tarjeta titulo="Tarjeta" valor={cuadre.esperado.TARJETA} nota="Cuadra contra el datáfono" />
-        <Tarjeta titulo="Transferencias" valor={cuadre.esperado.TRANSFERENCIA} nota="Cuadra contra el banco" />
+        <Tarjeta
+          titulo="Tarjeta"
+          valor={cuadre.esperado.TARJETA}
+          nota="Cuadra contra el datáfono"
+          detalle={desglose("TARJETA")}
+        />
+        <Tarjeta
+          titulo="Transferencias"
+          valor={cuadre.esperado.TRANSFERENCIA}
+          nota="Cuadra contra el banco"
+          detalle={desglose("TRANSFERENCIA")}
+        />
       </div>
 
       {sinMetodo > 0 && (
@@ -312,11 +361,12 @@ function Resumen({ cuadre, arqueo }) {
   );
 }
 
-function Tarjeta({ titulo, valor, nota }) {
+function Tarjeta({ titulo, valor, nota, detalle }) {
   return (
     <div className="rounded-xl bg-mantel p-3">
       <p className="text-sm font-semibold text-tinta-2">{titulo}</p>
       <p className="text-2xl font-extrabold tracking-[-0.02em] text-tinta">{pesos(valor)}</p>
+      {detalle && <p className="mt-0.5 text-[13px] font-semibold text-tinta">{detalle}</p>}
       <p className="mt-0.5 text-[13px] text-tinta-2">{nota}</p>
     </div>
   );
@@ -346,7 +396,7 @@ function Movimientos({ movimientos, onAnular, ocupado }) {
             <div className="min-w-0 flex-1">
               <p className={`truncate font-medium text-tinta ${m.anulado ? "line-through" : ""}`}>{m.concepto}</p>
               <p className="text-xs text-tinta-2">
-                {m.fecha?.replace("T", " ").slice(0, 16)}
+                {ETIQUETA_PAGO[m.metodo] ?? "Efectivo"}, {m.fecha?.replace("T", " ").slice(0, 16)}
                 {m.anulado && ", anulado"}
               </p>
             </div>
