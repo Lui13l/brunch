@@ -3,9 +3,11 @@ import { useState } from "react";
 import { Aviso, Boton, Campo, Cargando, Casilla, Hoja, Selector, Vacio } from "../../components/ui";
 import { useAuth } from "../../context/sesion";
 import { useRecurso } from "../../hooks/useRecurso";
+import { useWebSocket } from "../../hooks/useWebSocket";
 import { cantidad, UNIDADES } from "../../lib/formato";
 
 const VACIO = { nombre: "", unidad: "UND", stock: "", stockMinimo: "0", activo: true };
+const TOPICS = ["/topic/admin/inventario"];
 
 export default function Insumos() {
   const { pedir } = useAuth();
@@ -82,6 +84,19 @@ export default function Insumos() {
       setHistorial(null);
     }
   };
+
+  // Cada plato que sale a cocina descuenta su receta: la lista (y el libro que
+  // esté abierto) se actualizan solos, sin recargar la página.
+  useWebSocket("/ws", TOPICS, async () => {
+    recargar();
+    if (!historial?.movimientos) return;
+    try {
+      const movimientos = await pedir(`/api/admin/insumos/${historial.insumo.id}/movimientos`);
+      setHistorial((abierto) => (abierto?.insumo.id === historial.insumo.id ? { ...abierto, movimientos } : abierto));
+    } catch {
+      // El libro abierto se queda como estaba; la lista ya se recargó.
+    }
+  });
 
   if (cargando) return <Cargando />;
 

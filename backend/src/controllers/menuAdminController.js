@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 const { z } = require("zod");
-const { MenuItem, Category } = require("../models");
+const { MenuItem, Category, RecetaItem } = require("../models");
 const { HttpError } = require("../utils/http");
 const { objectId, texto, textoOpcional } = require("../utils/validar");
 const { toPlato, toCategoriaSalon, toAuditLog } = require("../utils/serializar");
@@ -95,12 +95,30 @@ const auditoria = async (req, res) => {
   res.json((await listarAuditoria({ servicio: SERVICIO.MENU })).map(toAuditLog));
 };
 
+// Insumos que no alcanzan para preparar UNA unidad de cada plato, según su
+// receta y el stock actual. Un plato sin receta nunca figura como agotado.
+const insumosFaltantes = async (items) => {
+  const recetas = await RecetaItem.find({ menu_item_id: { $in: items.map((i) => i._id) } })
+    .populate("insumo_id", "nombre stock")
+    .lean();
+  const faltantes = new Map();
+  for (const linea of recetas) {
+    const insumo = linea.insumo_id;
+    if (!insumo || Number(insumo.stock ?? 0) >= Number(linea.cantidad)) continue;
+    const clave = String(linea.menu_item_id);
+    if (!faltantes.has(clave)) faltantes.set(clave, []);
+    faltantes.get(clave).push(insumo.nombre);
+  }
+  return faltantes;
+};
+
 // Carta del salón: lo que el mesero puede vender; sin categorías vacías.
 const menuSalon = async (req, res) => {
   const [categorias, items] = await Promise.all([
     Category.find().sort({ orden: 1, nombre: 1 }).lean(),
     MenuItem.find({ activo: true, visible_salon: { $ne: false } }).sort({ orden: 1, nombre: 1 }).lean(),
   ]);
+  const faltantes = await insumosFaltantes(items);
   const porCategoria = new Map();
   for (const item of items) {
     const k = String(item.categoria_id);
@@ -110,7 +128,7 @@ const menuSalon = async (req, res) => {
   res.json(
     categorias
       .filter((c) => porCategoria.has(String(c._id)))
-      .map((c) => toCategoriaSalon(c, porCategoria.get(String(c._id))))
+      .map((c) => toCategoriaSalon(c, porCategoria.get(String(c._id)), faltantes))
   );
 };
 

@@ -47,6 +47,8 @@ export default function Mesas() {
   // completa. Ese aviso lo decide el servidor, que es quien sabe si todavía
   // queda algo suyo en el fuego.
   useWebSocket("/ws", TOPICS, (_topic, mensaje) => {
+    // Cambió el inventario (platos agotados): eso es asunto de la carta, no del salón.
+    if (mensaje?.tipo === "carta") return;
     if (mensaje?.tipo === "mesaCompleta") {
       sonarMesaLista();
       setListas((previas) =>

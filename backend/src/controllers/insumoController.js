@@ -5,7 +5,7 @@ const { texto, textoOpcional, cantidad } = require("../utils/validar");
 const { toInsumo, toMovimiento } = require("../utils/serializar");
 const { conTransaccion } = require("../utils/transaccion");
 const { redondear3 } = require("../utils/dinero");
-const { aplicarMovimiento } = require("../services/inventario");
+const { aplicarMovimiento, avisarInventario } = require("../services/inventario");
 const { registrar, SERVICIO } = require("../services/auditoria");
 
 const crearInsumoSchema = z.object({
@@ -62,6 +62,7 @@ const crear = async (req, res) => {
   });
 
   await registrar(req.usuario, "CREAR_INSUMO", `Creó el insumo "${insumo.nombre}"`, SERVICIO.INVENTARIO);
+  avisarInventario();
   res.json(toInsumo(insumo));
 };
 
@@ -71,6 +72,7 @@ const editar = async (req, res) => {
   Object.assign(insumo, datos, { stock_minimo: stockMinimo });
   await insumo.save();
   await registrar(req.usuario, "EDITAR_INSUMO", `Editó el insumo "${insumo.nombre}"`, SERVICIO.INVENTARIO);
+  avisarInventario();
   res.json(toInsumo(insumo));
 };
 
@@ -89,6 +91,7 @@ const eliminar = async (req, res) => {
   }
   await insumo.deleteOne();
   await registrar(req.usuario, "ELIMINAR_INSUMO", `Eliminó el insumo "${insumo.nombre}"`, SERVICIO.INVENTARIO);
+  avisarInventario();
   res.status(204).end();
 };
 
@@ -107,6 +110,7 @@ const ajustar = async (req, res) => {
     `${tipo} de ${signo}${delta} ${previo.unidad} en "${previo.nombre}"${motivo ? `: ${motivo}` : ""}`,
     SERVICIO.INVENTARIO
   );
+  avisarInventario();
   res.json(toInsumo(insumo));
 };
 

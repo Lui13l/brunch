@@ -16,6 +16,7 @@ const {
   devolverConsumos,
   avisarSiLaMesaEstaCompleta,
 } = require("../services/comandas");
+const { avisarInventario } = require("../services/inventario");
 const { publicar, TOPICS } = require("../ws/hub");
 
 // Cuentas de las mesas (app del personal). Las reglas de negocio viven en
@@ -136,6 +137,7 @@ const enviarACocina = async (req, res) => {
   const json = toComanda(await cargar(id));
   publicar(TOPICS.cocina, json);
   if (faltantes.length > 0) publicar(TOPICS.adminInventario, { comandaId: json.id, faltantes });
+  avisarInventario();
   await registrar(
     req.usuario,
     "ENVIAR_COCINA",
@@ -177,6 +179,7 @@ const cancelarItem = async (req, res) => {
   const comanda = await cargar(id);
   const json = toComanda(comanda);
   publicar(TOPICS.cocina, json);
+  avisarInventario();
   // Cancelar el último plato pendiente también deja la mesa lista para llevar.
   avisarSiLaMesaEstaCompleta(comanda);
   await registrar(req.usuario, "CANCELAR_PLATO", `Canceló un plato de la comanda ${codigoCorto(id)}`, SERVICIO.COMANDAS);
@@ -254,7 +257,10 @@ const cerrar = async (req, res) => {
 
   const json = toComanda(await cargar(id));
   publicar(TOPICS.salon, json);
-  if (cancelados > 0) publicar(TOPICS.cocina, json);
+  if (cancelados > 0) {
+    publicar(TOPICS.cocina, json);
+    avisarInventario();
+  }
   // El cobro cambia lo esperado en caja: se avisa para que el arqueo se actualice.
   publicarCaja();
   await registrar(

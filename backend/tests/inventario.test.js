@@ -141,3 +141,42 @@ describe("Recetas", () => {
     expect(receta.body.plato.disponible).toBe(false);
   });
 });
+
+describe("Platos agotados en la carta del salón", () => {
+  const carta = async () => {
+    const res = await api().get("/api/salon/menu").set(admin());
+    return res.body.flatMap((c) => c.items);
+  };
+
+  test("un plato figura agotado cuando un insumo no alcanza para una unidad", async () => {
+    const { body: harina } = await crearInsumo({ stock: 50 });
+    await api().put(`/api/admin/recetas/${d.huevos._id}`).set(admin())
+      .send({ items: [{ insumoId: harina.id, cantidad: 80 }] });
+
+    const antes = await carta();
+    const huevos = antes.find((p) => p.nombre === "Huevos");
+    expect(huevos.agotado).toBe(true);
+    expect(huevos.faltan).toEqual(["Harina"]);
+    // Sin receta no se puede saber: no figura como agotado.
+    const cafe = antes.find((p) => p.nombre === "Café");
+    expect(cafe.agotado).toBe(false);
+    expect(cafe.faltan).toEqual([]);
+
+    // Al reponer, vuelve a estar disponible.
+    await api().post(`/api/admin/insumos/${harina.id}/ajuste`).set(admin()).send({ cantidad: 30, tipo: "COMPRA" });
+    const despues = await carta();
+    expect(despues.find((p) => p.nombre === "Huevos").agotado).toBe(false);
+  });
+
+  test("agotado es solo un aviso: el plato se puede agregar igual", async () => {
+    const { body: harina } = await crearInsumo({ stock: 0 });
+    await api().put(`/api/admin/recetas/${d.huevos._id}`).set(admin())
+      .send({ items: [{ insumoId: harina.id, cantidad: 80 }] });
+    const { body: mesa } = await api().post("/api/admin/mesas").set(admin()).send({ numero: 1 });
+    const { body: comanda } = await api().post("/api/comandas").set(admin()).send({ mesaId: mesa.id });
+    const res = await api().post(`/api/comandas/${comanda.id}/items`).set(admin())
+      .send({ menuItemId: String(d.huevos._id), cantidad: 1 });
+    expect(res.status).toBe(200);
+    expect(res.body.items).toHaveLength(1);
+  });
+});

@@ -1,6 +1,7 @@
 const { Insumo, MovimientoInventario } = require("../models");
 const { HttpError } = require("../utils/http");
 const { redondear3 } = require("../utils/dinero");
+const { publicar, TOPICS } = require("../ws/hub");
 
 /**
  * Aplica un movimiento de inventario dentro de una transacción (session).
@@ -42,4 +43,13 @@ const aplicarMovimiento = async (session, { insumoId, tipo, cantidad, motivo, co
 const ordenarPorInsumo = (consumos) =>
   [...consumos].sort((a, b) => String(a.insumoId).localeCompare(String(b.insumoId)));
 
-module.exports = { aplicarMovimiento, ordenarPorInsumo };
+// Avisa a las pantallas que el inventario cambió: la de insumos se recarga y
+// las cuentas abiertas vuelven a pedir la carta (un plato pudo quedar agotado
+// o volver a estar disponible). Se llama después del commit, nunca dentro de
+// la transacción.
+const avisarInventario = () => {
+  publicar(TOPICS.adminInventario, { tipo: "inventario" });
+  publicar(TOPICS.salon, { tipo: "carta" });
+};
+
+module.exports = { aplicarMovimiento, ordenarPorInsumo, avisarInventario };

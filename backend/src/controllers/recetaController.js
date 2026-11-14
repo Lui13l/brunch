@@ -5,6 +5,7 @@ const { objectId, cantidad } = require("../utils/validar");
 const { toPlato, toRecetaItem } = require("../utils/serializar");
 const { conTransaccion } = require("../utils/transaccion");
 const { registrar, SERVICIO } = require("../services/auditoria");
+const { avisarInventario } = require("../services/inventario");
 
 const recetaSchema = z.object({
   items: z
@@ -61,6 +62,8 @@ const guardar = async (req, res) => {
     `Definió la receta de "${plato.nombre}" con ${items.length} insumo(s)`,
     SERVICIO.INVENTARIO
   );
+  // Con otra receta, el plato puede pasar a agotado (o dejar de estarlo).
+  avisarInventario();
   res.json(receta.map(toRecetaItem));
 };
 

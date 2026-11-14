@@ -36,10 +36,15 @@ const toPlato = (m) => ({
   orden: m.orden ?? 0,
 });
 
-const toCategoriaSalon = (c, items) => ({
+// `faltantes`: Map de id de plato -> nombres de los insumos que no alcanzan
+// para preparar una unidad. Un plato agotado se sigue pudiendo vender: es un aviso.
+const toCategoriaSalon = (c, items, faltantes = new Map()) => ({
   id: id(c),
   nombre: c.nombre,
-  items: items.map(toPlato),
+  items: items.map((m) => {
+    const faltan = faltantes.get(String(m._id)) ?? [];
+    return { ...toPlato(m), agotado: faltan.length > 0, faltan };
+  }),
 });
 
 const toMesa = (m, comandaAbiertaId = null) => ({
