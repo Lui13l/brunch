@@ -15,6 +15,9 @@
   --color-rio: #391903;
   --color-rio-hondo: #5a2a08;
   --color-caramelo: #a8642f;
+  /* Solo para el periodo comparado en las gráficas. Se eligió con el caramelo:
+     los dos se distinguen también con daltonismo y contrastan con el fondo. */
+  --color-comparado: #4a78b0;
 
   /* Escala de calor. Mide cuánto lleva esperando algo. */
   --color-espera: #f3e9da;
@@ -125,6 +128,15 @@ body {
   }
   to {
     clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Los puntos de la gráfica aparecen uno tras otro, creciendo. Se anima
+   `scale`, que no pisa el desplazamiento que los centra en su lugar. */
+@keyframes punto-entra {
+  from {
+    opacity: 0;
+    scale: 0.3;
   }
 }
 

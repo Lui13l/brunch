@@ -1,8 +1,10 @@
+import { Minus, TrendingDown, TrendingUp } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { Aviso, Boton, Cargando, RangoFechas, Vacio } from "../../components/ui";
-import { BarrasHorizontales, Linea } from "../../components/Barras";
+import { Aviso, Boton, Cargando, RangoFechas, Selector, Vacio } from "../../components/ui";
+import { BarrasHorizontales, SerieTiempo } from "../../components/Barras";
 import { useAuth } from "../../context/sesion";
 import { cantidad, diaCorto, ETIQUETA_PAGO, hoyISO, pesos, pesosCompactos } from "../../lib/formato";
+import { acumular, diasEntre, mediaMovil, mesesAnteriores, rangoComparado, textoVariacion, variacion } from "../../lib/series";
 
 const PESTANAS = [
   { clave: "ventas", texto: "Ventas" },
@@ -13,6 +15,9 @@ export default function Reportes() {
   const { pedir } = useAuth();
   const [pestana, setPestana] = useState("ventas");
   const [rango, setRango] = useState({ desde: hoyISO(), hasta: hoyISO() });
+  // Cómo se está leyendo la gráfica de ventas en el tiempo. Vive aquí porque el
+  // informe se vuelve a montar con cada rango y la elección no debe perderse.
+  const [analisis, setAnalisis] = useState({ vista: "dia", linea: "puntos", comparar: "" });
   // El resultado guarda de qué informe es: los dos tienen forma distinta y
   // pintar uno con los datos del otro reventaba al cambiar de pestaña. También
   // descarta una respuesta que llegue tarde después de cambiar de pestaña.
@@ -67,7 +72,11 @@ export default function Reportes() {
       {cargando && <Cargando />}
       {!cargando &&
         datos &&
-        (pestana === "ventas" ? <Ventas datos={datos} /> : <Consumo datos={datos} />)}
+        (pestana === "ventas" ? (
+          <Ventas datos={datos} analisis={analisis} onAnalisis={setAnalisis} />
+        ) : (
+          <Consumo datos={datos} />
+        ))}
     </div>
   );
 }
@@ -118,7 +127,7 @@ function Fila({ izquierda, centro, derecha, resaltar }) {
 const cuentas = (n) => `${n} ${n === 1 ? "cuenta" : "cuentas"}`;
 const MAS_VENDIDOS = 10;
 
-// Con muchos días las columnas no caben ni se leen: se juntan por mes.
+// Con muchos días los puntos no caben ni se leen: se juntan por mes.
 const DIAS_POR_COLUMNAS = 45;
 const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
 const mesCorto = (mes) => `${MESES[Number(mes.slice(5, 7)) - 1]} ${mes.slice(2, 4)}`;
@@ -135,14 +144,259 @@ const agruparPorMes = (porDia) => {
   return [...meses.values()];
 };
 
-function Ventas({ datos }) {
-  const { resumen, porDia, porMetodoPago, porPlato } = datos;
+const MESES_LARGOS = [
+  "enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
+];
+// "2026-10" -> "octubre de 2026"
+const mesLargo = (mes) => `${MESES_LARGOS[Number(mes.slice(5, 7)) - 1]} de ${mes.slice(0, 4)}`;
+
+const VISTAS = [
+  { valor: "dia", texto: "Por día" },
+  { valor: "acumulado", texto: "Acumulado" },
+];
+const LINEAS = [
+  { valor: "puntos", texto: "Une los puntos" },
+  { valor: "tendencia", texto: "Tendencia de 7 días" },
+];
+const NOMBRE_COMPARADO = { anterior: "Periodo anterior", mes: "Mes pasado" };
+
+// Dos opciones de las que siempre hay una elegida.
+function Segmento({ etiqueta, opciones, valor, onCambiar, disabled = false }) {
+  return (
+    <fieldset disabled={disabled} className="min-w-0 disabled:opacity-50">
+      <legend className="mb-1 block text-sm font-semibold text-tinta-2">{etiqueta}</legend>
+      <div className="flex">
+        {opciones.map((opcion) => (
+          <button
+            key={opcion.valor}
+            type="button"
+            aria-pressed={valor === opcion.valor}
+            onClick={() => onCambiar(opcion.valor)}
+            className={`min-h-12 border px-3 text-[15px] font-bold first:rounded-l-lg last:rounded-r-lg [&:not(:first-child)]:-ml-px ${
+              valor === opcion.valor ? "z-[1] border-tinta bg-tinta text-white" : "border-filete bg-mantel text-tinta"
+            }`}
+          >
+            {opcion.texto}
+          </button>
+        ))}
+      </div>
+    </fieldset>
+  );
+}
+
+// La variación frente al periodo comparado. El color nunca va solo: lo
+// acompañan la flecha y el signo.
+function TarjetaVariacion({ actual, base }) {
+  const cambio = variacion(actual, base);
+  const diferencia = Math.abs(actual - base);
+  const Icono = cambio == null || cambio === 0 ? Minus : cambio > 0 ? TrendingUp : TrendingDown;
+  const color = cambio == null || cambio === 0 ? "text-tinta-2" : cambio > 0 ? "text-listo" : "text-brasa";
+  return (
+    <div className="rounded-xl border border-filete bg-white p-3">
+      <p className="text-xs text-tinta-2">Variación</p>
+      <p className="flex items-center gap-2 text-2xl font-extrabold tracking-[-0.02em] text-tinta">
+        <Icono size={22} strokeWidth={2.4} aria-hidden className={color} />
+        {cambio == null ? "Sin base" : textoVariacion(cambio)}
+      </p>
+      <p className="text-[13px] text-tinta-2">
+        {cambio == null
+          ? "El periodo comparado no tuvo ventas."
+          : cambio === 0
+            ? "Igual que el periodo comparado."
+            : `${pesos(diferencia)} ${cambio > 0 ? "más" : "menos"} que el periodo comparado.`}
+      </p>
+    </div>
+  );
+}
+
+/**
+ * Las ventas en el tiempo, para analizarlas y no solo verlas:
+ *  - Por día o acumulado: el acumulado dice si el periodo va por delante o por
+ *    detrás, aunque los días sueltos suban y bajen.
+ *  - La línea une los puntos o muestra la tendencia (media móvil de 7 días),
+ *    que quita el sube y baja entre semana y fin de semana.
+ *  - Se compara con otro periodo del mismo largo: el anterior, las mismas
+ *    fechas del mes pasado o cualquier mes del último año.
+ *
+ * `analisis` (qué se eligió) lo guarda la página: este bloque se vuelve a
+ * montar con cada cambio de rango y la elección no debe perderse.
+ */
+function VentasEnElTiempo({ datos, analisis, onAnalisis }) {
+  const { pedir } = useAuth();
+  const { porDia, desde, hasta } = datos;
+  // El periodo comparado que ya llegó, con las fechas a las que corresponde.
+  const [comparado, setComparado] = useState(null);
+
+  // Con fechas, la serie lleva todos los días del rango: un día sin ventas es
+  // un cero, no un hueco. Así cada día tiene su pareja al comparar.
+  const dias = desde && hasta ? diasEntre(desde, hasta) : null;
+  const porMes = (dias?.length ?? porDia.length) > DIAS_POR_COLUMNAS;
+  const puedeComparar = Boolean(dias) && !porMes;
+  const rango = puedeComparar && analisis.comparar ? rangoComparado(analisis.comparar, desde, hasta) : null;
+  const desdeC = rango?.desde;
+  const hastaC = rango?.hasta;
+
+  useEffect(() => {
+    if (!desdeC) return undefined;
+    let vigente = true;
+    const clave = `${desdeC}|${hastaC}`;
+    pedir(`/api/admin/reportes/ventas?desde=${desdeC}&hasta=${hastaC}`)
+      .then((otro) => vigente && setComparado({ clave, porDia: otro.porDia }))
+      .catch((err) => vigente && setComparado({ clave, error: err.message }));
+    return () => {
+      vigente = false;
+    };
+  }, [pedir, desdeC, hastaC]);
+
+  if (porMes) {
+    const meses = agruparPorMes(porDia);
+    if (meses.length < 2) return null;
+    return (
+      <Bloque titulo="Ventas por mes">
+        <div className="p-3 pt-8">
+          <SerieTiempo
+            titulo="Ventas por mes"
+            cada="mes"
+            formatoEje={pesosCompactos}
+            puntos={meses.map((m) => ({
+              clave: m.fecha,
+              etiqueta: mesCorto(m.fecha),
+              valor: m.total,
+              texto: pesos(m.total),
+              extra: cuentas(m.comandas),
+            }))}
+          />
+        </div>
+        <Tabla>
+          {meses.map((m) => (
+            <Fila key={m.fecha} izquierda={mesLargo(m.fecha)} centro={cuentas(m.comandas)} derecha={pesos(m.total)} />
+          ))}
+        </Tabla>
+      </Bloque>
+    );
+  }
+
+  const delDia = new Map(porDia.map((d) => [d.fecha, d]));
+  const serie = dias ? dias.map((fecha) => delDia.get(fecha) ?? { fecha, comandas: 0, total: 0 }) : porDia;
+  if (serie.length < 2) return null;
+
+  const acumulado = analisis.vista === "acumulado";
+  const tendencia = !acumulado && analisis.linea === "tendencia";
+  const totales = serie.map((d) => d.total);
+
+  // Solo vale la respuesta del periodo que se está pidiendo ahora.
+  const recibido = rango && comparado?.clave === `${desdeC}|${hastaC}` ? comparado : null;
+  const diasC = rango ? diasEntre(desdeC, hastaC) : [];
+  const delDiaC = new Map((recibido?.porDia ?? []).map((d) => [d.fecha, d.total]));
+  const totalesC = recibido?.porDia ? diasC.map((fecha) => delDiaC.get(fecha) ?? 0) : null;
+  const mesElegido = analisis.comparar ? mesLargo(analisis.comparar) : "";
+  const nombreC = NOMBRE_COMPARADO[analisis.comparar] ?? mesElegido.charAt(0).toUpperCase() + mesElegido.slice(1);
+
+  const valores = acumulado ? acumular(totales) : totales;
+  const valoresC = totalesC && (acumulado ? acumular(totalesC) : totalesC);
+  const media = tendencia ? mediaMovil(totales) : null;
+  const suma = (lista) => lista.reduce((total, valor) => total + valor, 0);
+
+  const puntos = serie.map((d, i) => {
+    const extra = [acumulado ? `Ese día: ${pesos(d.total)}` : cuentas(d.comandas)];
+    if (media) extra.push(`Media de 7 días: ${pesos(Math.round(media[i]))}`);
+    if (valoresC) {
+      extra.push(`${nombreC}, ${diaCorto(diasC[i])}: ${pesos(valoresC[i])}`);
+      extra.push(`Variación: ${textoVariacion(variacion(valores[i], valoresC[i]))}`);
+    }
+    return {
+      clave: d.fecha,
+      etiqueta: diaCorto(d.fecha),
+      etiquetaCorta: serie.length > 10 ? d.fecha.slice(8) : diaCorto(d.fecha),
+      valor: valores[i],
+      texto: pesos(valores[i]),
+      extra,
+    };
+  });
+
+  const titulo = acumulado ? "Ventas acumuladas" : "Ventas por día";
+  const elegir = (cambios) => onAnalisis({ ...analisis, ...cambios });
+
+  return (
+    <Bloque titulo={titulo}>
+      <div className="flex flex-wrap items-end gap-x-4 gap-y-3 border-b border-filete p-3">
+        <Segmento etiqueta="Ver" opciones={VISTAS} valor={analisis.vista} onCambiar={(vista) => elegir({ vista })} />
+        <Segmento
+          etiqueta="Línea"
+          opciones={LINEAS}
+          valor={acumulado ? "puntos" : analisis.linea}
+          onCambiar={(linea) => elegir({ linea })}
+          disabled={acumulado}
+        />
+        {puedeComparar && (
+          <Selector
+            etiqueta="Comparar con"
+            className="min-w-[14rem] flex-1 sm:max-w-xs"
+            value={analisis.comparar}
+            onChange={(e) => elegir({ comparar: e.target.value })}
+            opciones={[
+              { valor: "", texto: "Sin comparar" },
+              { valor: "anterior", texto: "El periodo anterior" },
+              { valor: "mes", texto: "Las mismas fechas del mes pasado" },
+              ...mesesAnteriores(desde).map((mes) => ({ valor: mes, texto: mesLargo(mes) })),
+            ]}
+          />
+        )}
+      </div>
+
+      {rango && !recibido && <p className="border-b border-filete px-3 py-2 text-sm text-tinta-2">Cargando el periodo comparado…</p>}
+      {recibido?.error && (
+        <p role="alert" className="border-b border-filete px-3 py-2 text-sm font-semibold text-brasa">
+          No se pudo cargar el periodo comparado: {recibido.error}
+        </p>
+      )}
+
+      {totalesC && (
+        <div className="grid gap-2 border-b border-filete p-3 sm:grid-cols-3">
+          <Tarjeta titulo={`Este periodo (${diaCorto(desde)} – ${diaCorto(hasta)})`} valor={pesos(suma(totales))} />
+          <Tarjeta titulo={`${nombreC} (${diaCorto(desdeC)} – ${diaCorto(hastaC)})`} valor={pesos(suma(totalesC))} />
+          <TarjetaVariacion actual={suma(totales)} base={suma(totalesC)} />
+        </div>
+      )}
+
+      <div className={`p-3 ${totalesC || media ? "" : "pt-8"}`}>
+        <SerieTiempo
+          titulo={titulo}
+          cada="día"
+          formatoEje={pesosCompactos}
+          puntos={puntos}
+          linea={media ?? undefined}
+          comparada={valoresC ? (tendencia ? mediaMovil(totalesC) : valoresC) : null}
+          leyenda={{
+            puntos: acumulado ? "Vendido hasta ese día" : "Venta de cada día",
+            linea: media ? "Media de 7 días" : undefined,
+            comparada: `${nombreC}${tendencia ? ", media de 7 días" : ""} (${rango ? `${diaCorto(desdeC)} – ${diaCorto(hastaC)}` : ""})`,
+          }}
+          rotular={acumulado ? "ultimo" : "mayor"}
+          conPromedio={!acumulado && !valoresC}
+        />
+      </div>
+
+      <Tabla>
+        {serie.map((d, i) => (
+          <Fila
+            key={d.fecha}
+            izquierda={d.fecha}
+            centro={totalesC ? `${nombreC}: ${pesos(totalesC[i])}` : cuentas(d.comandas)}
+            derecha={pesos(d.total)}
+          />
+        ))}
+      </Tabla>
+    </Bloque>
+  );
+}
+
+function Ventas({ datos, analisis, onAnalisis }) {
+  const { resumen, porMetodoPago, porPlato } = datos;
 
   if (resumen.comandas === 0) return <Vacio>No hay cuentas cobradas en este rango.</Vacio>;
 
   const platos = [...porPlato].sort((a, b) => b.cantidad - a.cantidad);
-  const porMes = porDia.length > DIAS_POR_COLUMNAS;
-  const serie = porMes ? agruparPorMes(porDia) : porDia;
 
   return (
     <>
@@ -153,30 +407,7 @@ function Ventas({ datos }) {
         <Tarjeta titulo="Ticket promedio" valor={pesos(resumen.ticketPromedio)} />
       </div>
 
-      {serie.length > 1 && (
-        <Bloque titulo={porMes ? "Ventas por mes" : "Ventas por día"}>
-          <div className="p-3 pt-8">
-            <Linea
-              titulo={porMes ? "Ventas por mes" : "Ventas por día"}
-              cada={porMes ? "mes" : "día"}
-              formatoEje={pesosCompactos}
-              puntos={serie.map((d) => ({
-                clave: d.fecha,
-                etiqueta: porMes ? mesCorto(d.fecha) : diaCorto(d.fecha),
-                etiquetaCorta: porMes ? mesCorto(d.fecha) : serie.length > 10 ? d.fecha.slice(8) : diaCorto(d.fecha),
-                valor: d.total,
-                texto: pesos(d.total),
-                extra: cuentas(d.comandas),
-              }))}
-            />
-          </div>
-          <Tabla>
-            {porDia.map((d) => (
-              <Fila key={d.fecha} izquierda={d.fecha} centro={cuentas(d.comandas)} derecha={pesos(d.total)} />
-            ))}
-          </Tabla>
-        </Bloque>
-      )}
+      <VentasEnElTiempo datos={datos} analisis={analisis} onAnalisis={onAnalisis} />
 
       <Bloque titulo="Ventas por método de pago">
         <div className="p-2">
