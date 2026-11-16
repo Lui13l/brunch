@@ -1,5 +1,6 @@
 const { Payment, Order } = require("../models");
 const { aplicarEstado } = require("../services/pedidos");
+const { publicarCaja } = require("../services/caja");
 const { HttpError, pick } = require("../utils/http");
 const { verificarDueno } = require("../middleware/auth");
 const { conTransaccion } = require("../utils/transaccion");
@@ -53,7 +54,7 @@ const cambiarEstado = async (req, res) => {
   // Condicional: solo un pago pendiente cambia, y solo una vez.
   const pago = await Payment.findOneAndUpdate(
     { _id: req.params.id, estado: "pendiente" },
-    { $set: { estado } },
+    { $set: estado === "aprobado" ? { estado, aprobado_en: new Date() } : { estado } },
     { returnDocument: "after" }
   );
   if (!pago) {
@@ -75,6 +76,8 @@ const cambiarEstado = async (req, res) => {
         if (err.status !== 409) throw err;
       }
     }
+    // El dinero de este pedido ya cuenta en el arqueo abierto.
+    publicarCaja();
   }
 
   res.json(pago);

@@ -65,6 +65,48 @@ describe("Personal", () => {
     expect(malo.status).toBe(400);
   });
 
+  test("solo hay un administrador: nadie más puede recibir ese rol", async () => {
+    const { body: lucia } = await nuevo();
+    const app = await api().patch(`/api/admin/personal/${lucia.id}/rol`).set(admin()).send({ rol: "ADMIN" });
+    expect(app.status).toBe(409);
+    expect(app.text).toBe("Solo puede haber un administrador y ya existe uno");
+
+    // La ruta de la web tiene la misma regla.
+    const web = await api().patch(`/api/usuarios/${lucia.id}/rol`).set(admin()).send({ rol_id: "admin" });
+    expect(web.status).toBe(409);
+    expect((await User.findById(lucia.id)).rol_id).toBe("mesero");
+  });
+
+  test("asigna y cambia el domiciliario de un pedido web desde la app", async () => {
+    const { body: pedido } = await api().post("/api/pedidos").set(bearer(d.tokenCliente))
+      .send({ items: [{ menu_item_id: String(d.cafe._id), cantidad: 1 }] });
+    const crear = (nombre) =>
+      api().post("/api/admin/domiciliarios").set(admin()).send({ nombre, apellido: "Gómez" });
+    const { body: pedro } = await crear("Pedro");
+    const { body: marta } = await crear("Marta");
+    expect(pedro).toEqual({ id: pedro.id, nombre: "Pedro Gómez", estado: "disponible" });
+    expect((await crear("")).text).toBe("El nombre es obligatorio");
+
+    const asignar = (domiciliarioId) =>
+      api().patch(`/api/admin/pedidos/${pedido._id}/domiciliario`).set(admin()).send({ domiciliarioId });
+    const primero = await asignar(pedro.id);
+    expect(primero.status).toBe(200);
+    expect(primero.body.domiciliario.nombre).toBe("Pedro Gómez");
+
+    const repetido = await asignar(pedro.id);
+    expect(repetido.status).toBe(409);
+    expect(repetido.text).toBe("Ese domiciliario ya lleva este pedido");
+
+    // Al cambiarlo, el anterior vuelve a quedar disponible.
+    const cambio = await asignar(marta.id);
+    expect(cambio.body.domiciliario.nombre).toBe("Marta Gómez");
+    const lista = await api().get("/api/admin/domiciliarios").set(admin());
+    expect(lista.body.map((x) => [x.nombre, x.estado])).toEqual([
+      ["Marta Gómez", "ocupado"],
+      ["Pedro Gómez", "disponible"],
+    ]);
+  });
+
   test("desactivar corta la sesión; no puedes desactivarte a ti mismo", async () => {
     const mesero = await crearPersonal("mesero");
     const res = await api().patch(`/api/admin/personal/${mesero.id}/activo`).set(admin()).send({ activo: false });

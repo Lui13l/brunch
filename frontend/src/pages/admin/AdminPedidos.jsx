@@ -26,6 +26,8 @@ export default function AdminPedidos() {
   const [estado, setEstado] = useState("");
   const [ocupado, setOcupado] = useState(null);
   const [aviso, setAviso] = useState("");
+  // Id del pedido al que se le está cambiando el domiciliario ya asignado.
+  const [cambiando, setCambiando] = useState(null);
 
   const cargar = useCallback(
     () =>
@@ -56,6 +58,25 @@ export default function AdminPedidos() {
   const cambiarEstado = (p, nuevo) => {
     if (nuevo === "cancelado" && !window.confirm(`¿Cancelar el pedido ${codigo(p.id)}?`)) return;
     ejecutar(p.id, () => svc.cambiarEstadoPedido(p.id, nuevo), `Pedido ${codigo(p.id)}: ${ESTADOS[nuevo].texto}.`);
+  };
+
+  const asignar = (p, domiciliarioId) => {
+    const nuevo = disponibles.find((d) => d._id === domiciliarioId);
+    const nombre = nuevo ? `${nuevo.nombre} ${nuevo.apellido}` : "otro domiciliario";
+    // En camino, el pedido ya va con alguien: cambiarlo se confirma.
+    if (
+      p.domiciliario &&
+      p.estado === "en_camino" &&
+      !window.confirm(`El pedido ya va en camino con ${p.domiciliario.nombre}. ¿Pasárselo a ${nombre}?`)
+    ) {
+      return;
+    }
+    setCambiando(null);
+    ejecutar(
+      p.id,
+      () => svc.asignarDomiciliario(p.id, domiciliarioId),
+      p.domiciliario ? `Ahora lo lleva ${nombre}.` : `Lo lleva ${nombre}.`,
+    );
   };
 
   return (
@@ -165,25 +186,42 @@ export default function AdminPedidos() {
                     Cancelar
                   </button>
                 )}
-                {puedeAsignar && disponibles.length > 0 && (
-                  <div className="select">
-                    <select
-                      aria-label={`Asignar domiciliario al pedido ${codigo(p.id)}`}
-                      value=""
-                      disabled={ocupado === p.id}
-                      onChange={(ev) =>
-                        ev.target.value &&
-                        ejecutar(p.id, () => svc.asignarDomiciliario(p.id, ev.target.value), "Domiciliario asignado.")
-                      }
-                    >
-                      <option value="">Asignar domiciliario…</option>
-                      {disponibles.map((d) => (
-                        <option key={d._id} value={d._id}>
-                          {d.nombre} {d.apellido}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Con domiciliario ya asignado la lista no queda abierta: cambiarlo
+                    es un paso aparte, para que no pase por un clic de más. */}
+                {puedeAsignar && p.domiciliario && cambiando !== p.id && (
+                  <button
+                    type="button"
+                    className="button"
+                    disabled={ocupado === p.id || disponibles.length === 0}
+                    title={disponibles.length === 0 ? "No hay otro domiciliario disponible" : undefined}
+                    onClick={() => setCambiando(p.id)}
+                  >
+                    Cambiar domiciliario
+                  </button>
+                )}
+                {puedeAsignar && disponibles.length > 0 && (!p.domiciliario || cambiando === p.id) && (
+                  <>
+                    <div className="select">
+                      <select
+                        aria-label={`${p.domiciliario ? "Cambiar" : "Asignar"} domiciliario del pedido ${codigo(p.id)}`}
+                        value=""
+                        disabled={ocupado === p.id}
+                        onChange={(ev) => ev.target.value && asignar(p, ev.target.value)}
+                      >
+                        <option value="">{p.domiciliario ? "¿Quién lo lleva ahora?" : "Asignar domiciliario…"}</option>
+                        {disponibles.map((d) => (
+                          <option key={d._id} value={d._id}>
+                            {d.nombre} {d.apellido}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    {cambiando === p.id && (
+                      <button type="button" className="button" onClick={() => setCambiando(null)}>
+                        Dejar a {p.domiciliario.nombre}
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             </li>

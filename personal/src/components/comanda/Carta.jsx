@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Plus, Search, X } from "lucide-react";
+import { Minus, Plus, Search, X } from "lucide-react";
 import { Boton } from "../ui";
 import { pesos, sinTildes } from "../../lib/formato";
 
@@ -7,10 +7,13 @@ import { pesos, sinTildes } from "../../lib/formato";
 // carta larga, escribir "panc" es más rápido que recorrer categorías. Al
 // buscar se mira en toda la carta, no solo en la categoría abierta.
 //
-// Un plato agotado (le falta algún insumo de su receta) se avisa, pero se
-// puede agregar: el inventario puede estar mal contado y quien decide es el
-// mesero frente al cliente.
-export default function Carta({ carta, enCuenta, onAgregar, onCerrar, onCobrar, ocupado }) {
+// Un plato agotado (le falta algún insumo de su receta) no se puede agregar:
+// se ve qué le falta y sus botones quedan apagados hasta que vuelva a haber
+// inventario. Lo que ya estaba por enviar sí se puede quitar.
+//
+// Cada plato lleva su contador: cuántas unidades hay por enviar, con menos y
+// más al lado, para pedir tres cafés sin salir de la carta.
+export default function Carta({ carta, enCuenta, onAgregar, onQuitar, onCerrar, onCobrar, ocupado }) {
   const [categoria, setCategoria] = useState(null);
   const [busqueda, setBusqueda] = useState("");
 
@@ -79,36 +82,62 @@ export default function Carta({ carta, enCuenta, onAgregar, onCerrar, onCobrar, 
           {platos.map((plato) => {
             const pedidos = enCuenta.get(plato.id) ?? 0;
             return (
-              <li key={plato.id} className="border-b border-filete last:border-0">
+              <li key={plato.id} className="flex items-stretch border-b border-filete last:border-0">
+                {/* Tocar el nombre también suma uno: es el blanco más grande de la fila. */}
                 <button
-                  disabled={ocupado}
+                  disabled={ocupado || plato.agotado}
                   onClick={() => onAgregar(plato)}
-                  className="flex w-full items-center gap-3 p-4 text-left active:bg-sala disabled:opacity-60"
+                  aria-label={`Agregar ${plato.nombre}`}
+                  className="min-w-0 flex-1 py-4 pr-2 pl-4 text-left active:bg-sala disabled:cursor-not-allowed"
                 >
-                  <div className="min-w-0 flex-1">
-                    <p className="flex flex-wrap items-center gap-2 text-[17px] font-bold text-tinta">
-                      {plato.nombre}
-                      {plato.agotado && (
-                        <span className="rounded bg-brasa px-2 py-0.5 text-[13px] font-extrabold text-white">Agotado</span>
-                      )}
-                    </p>
-                    <p className="text-[15px] font-semibold text-tinta-2">
-                      {pesos(plato.precio)}
-                      {plato.categoria && `, ${plato.categoria}`}
-                    </p>
+                  <p className={`flex flex-wrap items-center gap-2 text-[17px] font-bold ${plato.agotado ? "text-tinta-2" : "text-tinta"}`}>
+                    {plato.nombre}
                     {plato.agotado && (
-                      <p className="mt-0.5 text-[14px] font-semibold text-brasa">Falta: {plato.faltan.join(", ")}</p>
+                      <span className="rounded bg-brasa px-2 py-0.5 text-[13px] font-extrabold text-white">Agotado</span>
                     )}
-                  </div>
-                  {pedidos > 0 && (
-                    <span className="shrink-0 rounded-lg bg-tibio px-2.5 py-1 text-[13px] font-extrabold text-tinta tabular-nums">
-                      {pedidos} por enviar
-                    </span>
+                  </p>
+                  <p className="text-[15px] font-semibold text-tinta-2">
+                    {pesos(plato.precio)}
+                    {plato.categoria && `, ${plato.categoria}`}
+                  </p>
+                  {plato.agotado && (
+                    <p className="mt-0.5 text-[14px] font-semibold text-brasa">Falta: {plato.faltan.join(", ")}</p>
                   )}
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-rio text-white">
-                    <Plus size={22} />
-                  </span>
                 </button>
+
+                <div
+                  className="flex shrink-0 items-center gap-1.5 py-3 pr-4"
+                  role="group"
+                  aria-label={`Unidades de ${plato.nombre} por enviar`}
+                >
+                  {pedidos > 0 && (
+                    <>
+                      <button
+                        disabled={ocupado}
+                        onClick={() => onQuitar(plato)}
+                        aria-label={`Quitar uno de ${plato.nombre}`}
+                        className="flex size-11 items-center justify-center rounded-lg border border-filete text-tinta pulsable disabled:opacity-50"
+                      >
+                        <Minus size={20} />
+                      </button>
+                      <span
+                        aria-live="polite"
+                        className="flex h-11 min-w-11 items-center justify-center rounded-lg bg-tibio px-2 text-lg font-extrabold text-tinta tabular-nums"
+                      >
+                        {pedidos}
+                      </span>
+                    </>
+                  )}
+                  <button
+                    disabled={ocupado || plato.agotado}
+                    onClick={() => onAgregar(plato)}
+                    aria-label={`Sumar uno de ${plato.nombre}`}
+                    title={plato.agotado ? "Agotado: falta inventario" : undefined}
+                    className="flex size-11 items-center justify-center rounded-lg bg-rio text-white pulsable disabled:cursor-not-allowed disabled:bg-filete disabled:text-tinta-2"
+                  >
+                    <Plus size={22} />
+                  </button>
+                </div>
               </li>
             );
           })}

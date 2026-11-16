@@ -1,5 +1,7 @@
+import { useLayoutEffect, useRef } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./context/AuthContext";
+import { usePantallaCarga } from "./context/carga";
 import { useAuth } from "./context/sesion";
 import { RutaProtegida } from "./components/Layout";
 import { INICIO_POR_ROL } from "./lib/formato";
@@ -28,9 +30,25 @@ function Inicio() {
   return <Navigate to={user ? (INICIO_POR_ROL[user.rol] ?? "/mesas") : "/login"} replace />;
 }
 
+// Al abrir la app con una sesión guardada, el pancito tapa la pantalla
+// mientras el servidor la confirma. Sin sesión no sale: se va directo al login.
+// (El proveedor de la pantalla de carga envuelve la app en main.jsx.)
+function CargaAlAbrir() {
+  const { verificando } = useAuth();
+  const cubrir = usePantallaCarga();
+  const habiaSesion = useRef(verificando);
+
+  useLayoutEffect(() => {
+    if (habiaSesion.current) cubrir("Abriendo comandas…", { inmediata: true });
+  }, [cubrir]);
+
+  return null;
+}
+
 export default function App() {
   return (
     <AuthProvider>
+      <CargaAlAbrir />
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Inicio />} />

@@ -466,8 +466,15 @@ describe("Usuarios", () => {
     const rol = await api()
       .patch(`/api/usuarios/${d.cliente.id}/rol`)
       .set(bearer(d.tokenAdmin))
+      .send({ rol_id: "mesero" });
+    expect(rol.body.rol_id).toBe("mesero");
+
+    // Administrador hay uno solo: ese rol no se le da a nadie más.
+    const otroAdmin = await api()
+      .patch(`/api/usuarios/${d.cliente.id}/rol`)
+      .set(bearer(d.tokenAdmin))
       .send({ rol_id: "admin" });
-    expect(rol.body.rol_id).toBe("admin");
+    expect(otroAdmin.status).toBe(409);
 
     const invalido = await api()
       .patch(`/api/usuarios/${d.cliente.id}/rol`)

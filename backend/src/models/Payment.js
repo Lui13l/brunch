@@ -36,6 +36,12 @@ const paymentSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+
+    // Cuándo se aprobó: desde ese momento cuenta en el arqueo de caja abierto.
+    aprobado_en: {
+      type: Date,
+      default: null,
+    },
   },
   {
     collection: "payments",

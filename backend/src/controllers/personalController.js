@@ -19,7 +19,8 @@ const listarSchema = z.object({
   activo: booleanoQuery("activo").optional(),
 });
 
-// Desde aquí solo se crea personal del salón; los admin se promueven con /rol.
+// Desde aquí solo se crea personal del salón. Administrador hay uno solo: /rol
+// tampoco deja dárselo a otra cuenta (ver services/cuentas.js).
 const crearSchema = z.object({
   nombre: texto("El nombre"),
   email,

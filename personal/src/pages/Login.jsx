@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/sesion";
+import { usePantallaCarga } from "../context/carga";
 import { INICIO_POR_ROL } from "../lib/formato";
 import { Boton } from "../components/ui";
 
@@ -9,21 +10,29 @@ import { Boton } from "../components/ui";
 export default function Login() {
   const { user, login, motivo } = useAuth();
   const navigate = useNavigate();
+  const cubrir = usePantallaCarga();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(false);
 
-  if (user) return <Navigate to={INICIO_POR_ROL[user.rol] ?? "/mesas"} replace />;
+  // Mientras se está entrando no se salta todavía: primero sube la pantalla
+  // de carga y la página cambia cuando ya está tapada.
+  if (user && !cargando) return <Navigate to={INICIO_POR_ROL[user.rol] ?? "/mesas"} replace />;
 
   const enviar = async (e) => {
     e.preventDefault();
     setCargando(true);
     setError("");
     const resultado = await login(email.trim(), password);
+    if (resultado.ok) {
+      // Solo sale si entró: con la contraseña mal escrita no se tapa el formulario.
+      await cubrir("Abriendo comandas…");
+      navigate(INICIO_POR_ROL[resultado.rol] ?? "/mesas", { replace: true });
+      return;
+    }
     setCargando(false);
-    if (resultado.ok) navigate(INICIO_POR_ROL[resultado.rol] ?? "/mesas", { replace: true });
-    else setError(resultado.error);
+    setError(resultado.error);
   };
 
   return (

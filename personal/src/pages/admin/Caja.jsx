@@ -163,6 +163,15 @@ export default function Caja() {
               if (ok) setMovimiento(null);
             }}
           >
+            {/* Las ventas ya entran solas: esto es para lo demás. Sin esta
+                aclaración se termina registrando dos veces una venta. */}
+            <p className="border-l-4 border-tibio bg-tibio/10 px-3 py-2 text-sm text-tinta">
+              Las cuentas de mesa y los pedidos web <strong>ya se suman solos</strong>, también los pagados con tarjeta
+              o transferencia. Registra aquí solo dinero que no viene de una venta:{" "}
+              {movimiento.tipo === "INGRESO"
+                ? "un anticipo de un evento, cambio que se trae al cajón, un préstamo."
+                : "el pago a un proveedor, una devolución a un cliente, un retiro."}
+            </p>
             <Selector
               etiqueta="Tipo"
               value={movimiento.tipo}
@@ -194,8 +203,12 @@ export default function Caja() {
               <p className="mt-1 text-[13px] text-tinta-2">
                 {movimiento.metodo === "EFECTIVO"
                   ? "Cambia lo que debería haber en el cajón."
-                  : `No toca el cajón: suma a lo que debe cuadrar ${
+                  : `No toca el cajón: ${movimiento.tipo === "INGRESO" ? "suma a" : "resta de"} lo que debe cuadrar ${
                       movimiento.metodo === "TARJETA" ? "contra el datáfono" : "contra el banco"
+                    }. Sirve, por ejemplo, para ${
+                      movimiento.tipo === "INGRESO"
+                        ? "un anticipo que el cliente pagó así"
+                        : "una devolución que se hizo por ese medio"
                     }.`}
               </p>
             </fieldset>
@@ -307,10 +320,14 @@ function Resumen({ cuadre, arqueo }) {
   // Entradas y salidas manuales de cada método (el servidor las separa).
   const de = (metodo) => cuadre.movimientos?.[metodo] ?? { ingresos: 0, egresos: 0 };
   const efectivo = de("EFECTIVO");
+  // Lo que entró por pedidos web con pago aprobado (el servidor lo suma solo).
+  const web = (metodo) => cuadre.ventasWeb?.[metodo] ?? 0;
+  const pedidosWeb = cuadre.pedidosWeb ?? 0;
   const desglose = (metodo) => {
     const { ingresos, egresos } = de(metodo);
     return (
-      `Ventas ${pesos(cuadre.ventas[metodo])}` +
+      `Mesas ${pesos(cuadre.ventas[metodo])}` +
+      (web(metodo) > 0 ? ` + pedidos web ${pesos(web(metodo))}` : "") +
       (ingresos > 0 ? ` + entradas ${pesos(ingresos)}` : "") +
       (egresos > 0 ? ` − salidas ${pesos(egresos)}` : "")
     );
@@ -326,13 +343,15 @@ function Resumen({ cuadre, arqueo }) {
           {pesos(cuadre.esperado.EFECTIVO)}
         </p>
         <p className="mt-3 text-[15px] text-white/70">
-          Base {pesos(cuadre.baseInicial)} + ventas en efectivo {pesos(cuadre.ventas.EFECTIVO)}
+          Base {pesos(cuadre.baseInicial)} + mesas en efectivo {pesos(cuadre.ventas.EFECTIVO)}
+          {web("EFECTIVO") > 0 && ` + pedidos web ${pesos(web("EFECTIVO"))}`}
           {efectivo.ingresos > 0 && ` + entradas ${pesos(efectivo.ingresos)}`}
           {efectivo.egresos > 0 && ` − salidas ${pesos(efectivo.egresos)}`}
         </p>
         <p className="mt-2 text-[13px] text-white/50">
           Abierta desde {arqueo.fechaApertura?.replace("T", " ").slice(0, 16)}, {cuadre.comandas}{" "}
           {cuadre.comandas === 1 ? "cuenta cobrada" : "cuentas cobradas"}
+          {pedidosWeb > 0 && ` y ${pedidosWeb} ${pedidosWeb === 1 ? "pedido web pagado" : "pedidos web pagados"}`}
         </p>
       </div>
 
@@ -350,6 +369,26 @@ function Resumen({ cuadre, arqueo }) {
           detalle={desglose("TRANSFERENCIA")}
         />
       </div>
+
+      {/* Qué se suma solo: evita registrar a mano una venta que ya está contada. */}
+      <details className="mt-3 rounded-xl border border-filete bg-white px-3 py-2 text-sm text-tinta-2">
+        <summary className="min-h-8 font-bold text-tinta">¿Qué se suma solo y qué se registra a mano?</summary>
+        <ul className="mt-2 list-disc space-y-1.5 pl-5">
+          <li>
+            <strong className="text-tinta">Mesas:</strong> cada cuenta entra al cobrarla, en el método con que se pagó.
+            Si la cuenta se dividió, cada parte entra en su método: una en efectivo, otra en tarjeta y otra en
+            transferencia quedan repartidas así, sin hacer nada más.
+          </li>
+          <li>
+            <strong className="text-tinta">Pedidos web:</strong> entran cuando se aprueba su pago (efectivo, tarjeta o
+            transferencia). Si el pedido se cancela, dejan de contar.
+          </li>
+          <li>
+            <strong className="text-tinta">A mano (Entrada y Salida):</strong> solo el dinero que no viene de una
+            cuenta ni de un pedido, como un anticipo, el pago a un proveedor o una devolución.
+          </li>
+        </ul>
+      </details>
 
       {sinMetodo > 0 && (
         <div className="mt-3 rounded-xl border border-brasa/40 bg-brasa/8 p-3 text-sm text-brasa">

@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { useAuth } from "../context/sesion";
+import { usePantallaCarga } from "../context/carga";
 import { INICIO_POR_ROL } from "../lib/formato";
 import { Cargando } from "../components/ui";
 
@@ -11,6 +12,13 @@ export default function Entrar() {
   const { entrarConToken, logout } = useAuth();
   const [destino, setDestino] = useState(null);
   const iniciado = useRef(false);
+  const cubrir = usePantallaCarga();
+
+  // Se llega desde el panel de la web con la pantalla en blanco: el pancito
+  // aparece ya puesto mientras se confirma la sesión.
+  useLayoutEffect(() => {
+    cubrir("Abriendo comandas…", { inmediata: true });
+  }, [cubrir]);
 
   useEffect(() => {
     if (iniciado.current) return;

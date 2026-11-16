@@ -148,6 +148,196 @@ body {
   }
 }
 
+/* --- Pantalla de carga con el pancito (components/PantallaCarga.jsx) ---
+   Es la de la web, movida solo con CSS. El telón sube desde abajo y se va por
+   arriba; sus tiempos están repetidos en context/CargaContext.jsx. */
+.carga {
+  position: fixed;
+  inset: 0;
+  /* Por encima de las hojas (z-30). */
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  text-align: center;
+  background: var(--color-sala);
+  clip-path: inset(0 0 0 0);
+  transition: clip-path 380ms cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+/* `backwards` y no `both`: si la animación se quedara con su último valor,
+   taparía el clip-path de la salida. */
+.carga--entra {
+  animation: carga-sube 320ms cubic-bezier(0.65, 0, 0.35, 1) backwards;
+}
+
+.carga--sale {
+  clip-path: inset(0 0 100% 0);
+  pointer-events: none;
+}
+
+.carga-escena {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(180px, 46vw, 250px);
+  aspect-ratio: 1;
+}
+
+.carga-plato {
+  position: absolute;
+  inset: 0;
+  background: var(--color-espera);
+  border-radius: 50%;
+}
+
+/* Sube y baja al ritmo de los pasos. */
+.carga-pan-caja {
+  position: relative;
+  width: 58%;
+  /* Un poco arriba del centro: le deja sitio a la sombra y al suelo. */
+  margin-bottom: 8%;
+  animation: carga-rebota 212ms ease-in-out infinite alternate;
+}
+
+/* Un cuadro de la hoja, que mide 4 cuadros de ancho y 2 de alto. `step-end`
+   salta de cuadro en cuadro en vez de deslizar la hoja. */
+.carga-pan {
+  width: 100%;
+  aspect-ratio: 180 / 190;
+  background-repeat: no-repeat;
+  background-size: 400% 200%;
+  animation: carga-camina 850ms step-end infinite;
+}
+
+.carga-pan-quieto {
+  display: none;
+  width: 100%;
+  height: auto;
+}
+
+/* La sombra se encoge cuando el pancito sube. */
+.carga-sombra {
+  position: absolute;
+  bottom: 17%;
+  left: 50%;
+  width: 40%;
+  height: 5%;
+  background: rgb(57 25 3 / 0.22);
+  border-radius: 50%;
+  translate: -50% 0;
+  animation: carga-sombra 212ms ease-in-out infinite alternate;
+}
+
+/* Migas en fila: corren hacia atrás y por eso el pancito parece avanzar. */
+.carga-suelo {
+  position: absolute;
+  bottom: 13%;
+  left: 12%;
+  width: 76%;
+  height: 4px;
+  background-image: radial-gradient(circle, var(--color-caramelo) 1.6px, transparent 1.8px);
+  background-size: 22px 4px;
+  opacity: 0.55;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 25%, #000 75%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 25%, #000 75%, transparent);
+  animation: carga-suelo 500ms linear infinite;
+}
+
+.carga-barra {
+  width: min(13rem, 60%);
+  height: 4px;
+  margin-top: 1.1rem;
+  overflow: hidden;
+  background: var(--color-espera);
+}
+
+/* Se llena rápido al principio y cada vez más despacio: nunca parece atascada. */
+.carga-barra-relleno {
+  width: 100%;
+  height: 100%;
+  background: var(--color-caramelo);
+  transform-origin: left center;
+  animation: carga-llena 1700ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@keyframes carga-sube {
+  from {
+    clip-path: inset(100% 0 0 0);
+  }
+}
+
+@keyframes carga-camina {
+  0% {
+    background-position: 0% 0%;
+  }
+  12.5% {
+    background-position: 33.333% 0%;
+  }
+  25% {
+    background-position: 66.667% 0%;
+  }
+  37.5% {
+    background-position: 100% 0%;
+  }
+  50% {
+    background-position: 0% 100%;
+  }
+  62.5% {
+    background-position: 33.333% 100%;
+  }
+  75% {
+    background-position: 66.667% 100%;
+  }
+  87.5%,
+  100% {
+    background-position: 100% 100%;
+  }
+}
+
+@keyframes carga-rebota {
+  to {
+    translate: 0 -7px;
+  }
+}
+
+@keyframes carga-sombra {
+  to {
+    scale: 0.86 1;
+    opacity: 0.55;
+  }
+}
+
+@keyframes carga-suelo {
+  to {
+    background-position-x: -44px;
+  }
+}
+
+@keyframes carga-llena {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(0.92);
+  }
+}
+
+/* Sin animaciones: el pancito quieto y nada que se mueva solo. */
+@media (prefers-reduced-motion: reduce) {
+  .carga-pan,
+  .carga-suelo,
+  .carga-barra {
+    display: none;
+  }
+
+  .carga-pan-quieto {
+    display: block;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -88,7 +88,7 @@ Todas las rutas empiezan por `/api`. Las respuestas incluyen `id` además de `_i
 | PUT | `/usuarios/perfil` | Usuario | Actualiza `nombre, direccion, celular, password` |
 | GET | `/usuarios` | Admin | Lista usuarios (`?rol_id=`) |
 | GET | `/usuarios/:id` | Admin | Detalle |
-| PATCH | `/usuarios/:id/rol` | Admin | `{rol_id}` |
+| PATCH | `/usuarios/:id/rol` | Admin | `{rol_id}`. Solo puede haber un administrador: dar el rol `admin` a otra cuenta responde 409 |
 
 ### Menú
 | Método | Ruta | Acceso | Descripción |
@@ -110,7 +110,7 @@ Todas las rutas empiezan por `/api`. Las respuestas incluyen `id` además de `_i
 | GET | `/pedidos/:id` | Dueño / admin | Detalle con pago y domiciliario |
 | PATCH | `/pedidos/:id/cancelar` | Dueño / admin | Solo si está `pendiente` o `confirmado` |
 | PATCH | `/pedidos/:id/estado` | Admin | `{estado}` |
-| PATCH | `/pedidos/:id/domiciliario` | Admin | `{domiciliario_id}`. El domiciliario pasa a `ocupado` |
+| PATCH | `/pedidos/:id/domiciliario` | Admin | `{domiciliario_id}`. El domiciliario pasa a `ocupado`; si el pedido ya tenía otro, ese vuelve a `disponible` |
 
 Flujo de estados (`Order.TRANSICIONES`): `pendiente → confirmado → preparando → en_camino → entregado`. Se puede cancelar desde cualquier estado anterior a `en_camino`. Al entregar o cancelar, el domiciliario vuelve a quedar `disponible`.
 
@@ -126,7 +126,7 @@ Flujo de estados (`Order.TRANSICIONES`): `pendiente → confirmado → preparand
 | POST | `/pagos` | Dueño del pedido | `{pedido_id, metodo, referencia?}`. `metodo`: efectivo, tarjeta o transferencia. El monto es el total del pedido |
 | GET | `/pagos` | Admin | Lista (`?estado=`, `?metodo=`, `?pedido_id=`) |
 | GET | `/pagos/:id` | Dueño / admin | Detalle |
-| PATCH | `/pagos/:id/estado` | Admin | `{estado: "aprobado" \| "rechazado"}`. Aprobar confirma el pedido pendiente |
+| PATCH | `/pagos/:id/estado` | Admin | `{estado: "aprobado" \| "rechazado"}`. Aprobar confirma el pedido pendiente y guarda `aprobado_en`: desde ahí el pago cuenta en el arqueo de caja abierto |
 
 ### Facturas (comprobantes en PDF, solo admin)
 | Método | Ruta | Descripción |
@@ -230,10 +230,11 @@ La app del personal ([../personal](../personal)) usa estas rutas. Responden en c
 | `/api/admin/mesas`, `/api/admin/menu` | admin | Mesas (`forma`: cuadrada, redonda o rectangular) y carta (`disponible`, `visibleWeb`, `visibleSalon`) |
 | `PUT /api/admin/mesas/plano` | admin | `{mesas: [{id, x, y, rotacion}]}` guarda el plano del salón en celdas (`x` e `y` en `null` saca la mesa del plano). Rechaza mesas encimadas o fuera del plano |
 | `/api/admin/insumos`, `/api/admin/recetas` | admin | Inventario (ajustes y movimientos) y recetas por plato |
-| `/api/admin/caja` | admin | Abrir y cerrar caja, entradas y salidas (`metodo`: EFECTIVO, TARJETA o TRANSFERENCIA; por defecto efectivo), cuadre, historial |
+| `/api/admin/caja` | admin | Abrir y cerrar caja, entradas y salidas (`metodo`: EFECTIVO, TARJETA o TRANSFERENCIA; por defecto efectivo), cuadre, historial. El cuadre suma solo las cuentas de mesa (`ventas`, `comandas`) y los pedidos web con pago aprobado y sin cancelar (`ventasWeb`, `pedidosWeb`) |
 | `/api/admin/reportes/ventas\|consumo` | admin | `?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` (por defecto, hoy) o `?todo=true` para todo el tiempo |
-| `/api/admin/personal` | admin | Crear meseros y cocina, cambiar rol, activar o desactivar, poner contraseña |
-| `/api/admin/pedidos` | admin | Pedidos web (`?activos=true`, `?estado=`, fechas) y `PATCH /:id/estado` |
+| `/api/admin/personal` | admin | Crear meseros y cocina, cambiar rol (nunca a `ADMIN`: solo hay un administrador, responde 409), activar o desactivar, poner contraseña |
+| `/api/admin/pedidos` | admin | Pedidos web (`?activos=true`, `?estado=`, fechas), `PATCH /:id/estado` y `PATCH /:id/domiciliario` con `{domiciliarioId}` (asigna o cambia quién lo lleva) |
+| `/api/admin/domiciliarios` | admin | `GET`: domiciliarios que no están inactivos, como `{id, nombre, estado}`. `POST {nombre, apellido}`: registra uno |
 | `/api/admin/auditoria` | admin | Quién hizo qué: `?servicio=&usuarioId=&desde=&hasta=&limite=`. Sin fechas trae todo; `?antes=<id>` pide la página siguiente (los anteriores a ese registro) |
 
 Reglas importantes:
@@ -270,7 +271,7 @@ Avisos que no son un documento completo (llevan `tipo`):
 | `/topic/admin/inventario` | `inventario` | Hubo un movimiento de inventario |
 | `/topic/cocina` | `pedidoWeb` | Un pedido web entró a cocina o se canceló |
 
-`/topic/admin/pedidos/estado` trae `{id, estado, siguientes, cocina}`; `cocina` es `{total, listos, completo}` o `null` si el pedido aún no entra a cocina.
+`/topic/admin/pedidos/estado` trae `{id, estado, siguientes, cocina}` y, cuando cambia quién lleva el pedido, también `domiciliario`; `cocina` es `{total, listos, completo}` o `null` si el pedido aún no entra a cocina.
 
 Códigos de cierre:
 - **4401**: la sesión no vale (token inválido, logout o cuenta desactivada).

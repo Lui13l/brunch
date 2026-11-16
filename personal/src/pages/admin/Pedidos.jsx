@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Phone } from "lucide-react";
-import { Aviso, Boton, Cargando, Estado, RangoFechas, Selector, Vacio } from "../../components/ui";
+import { Bike, Phone, Plus } from "lucide-react";
+import { Aviso, Boton, Campo, Cargando, Estado, Hoja, RangoFechas, Selector, Vacio } from "../../components/ui";
 import { useAuth } from "../../context/sesion";
 import { useWebSocket } from "../../hooks/useWebSocket";
 import {
@@ -45,6 +45,10 @@ export default function Pedidos() {
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
   const [ocupado, setOcupado] = useState(null);
+  const [domiciliarios, setDomiciliarios] = useState([]);
+  // Id del pedido al que se le está eligiendo domiciliario (abre la hoja).
+  const [asignando, setAsignando] = useState(null);
+  const [errorHoja, setErrorHoja] = useState("");
 
   const consulta = useCallback(() => {
     if (pestana === "activos") return "activos=true";
@@ -68,6 +72,17 @@ export default function Pedidos() {
     cargar();
   }, [cargar]);
 
+  // Quién puede llevar un pedido. Si falla no se tapa la lista de pedidos: la
+  // hoja de asignar simplemente sale vacía y deja reintentar.
+  const cargarDomiciliarios = useCallback(
+    () => pedir("/api/admin/domiciliarios").then(setDomiciliarios).catch(() => {}),
+    [pedir],
+  );
+
+  useEffect(() => {
+    cargarDomiciliarios();
+  }, [cargarDomiciliarios]);
+
   const resaltar = (id) => {
     setRecientes((previos) => new Set(previos).add(id));
     setTimeout(() => {
@@ -87,7 +102,9 @@ export default function Pedidos() {
       resaltar(data.id);
       return;
     }
-    // El aviso de estado trae solo { id, estado, siguientes }.
+    // El aviso de estado trae solo { id, estado, siguientes } y, si cambió
+    // quién lo lleva, `domiciliario`. Un pedido que termina suelta al suyo.
+    cargarDomiciliarios();
     setPedidos((lista) => {
       if (!lista.some((p) => p.id === data.id)) {
         cargar();
@@ -122,12 +139,47 @@ export default function Pedidos() {
     }
   };
 
+  // Asigna o cambia quién lleva el pedido. Devuelve si salió bien, para que la
+  // hoja sepa si puede cerrarse.
+  const asignarDomiciliario = async (pedido, domiciliarioId) => {
+    setOcupado(pedido.id);
+    setErrorHoja("");
+    try {
+      const actualizado = await pedir(`/api/admin/pedidos/${pedido.id}/domiciliario`, {
+        method: "PATCH",
+        body: JSON.stringify({ domiciliarioId }),
+      });
+      setPedidos((lista) => lista.map((p) => (p.id === pedido.id ? actualizado : p)));
+      setAsignando(null);
+    } catch (err) {
+      setErrorHoja(err.message);
+    } finally {
+      setOcupado(null);
+      cargarDomiciliarios();
+    }
+  };
+
+  const crearDomiciliario = async (datos) => {
+    setErrorHoja("");
+    try {
+      await pedir("/api/admin/domiciliarios", { method: "POST", body: JSON.stringify(datos) });
+      await cargarDomiciliarios();
+      return true;
+    } catch (err) {
+      setErrorHoja(err.message);
+      return false;
+    }
+  };
+
   // En "Activos" un pedido que termina sale de la lista.
   const visibles = ordenar(
     pestana === "activos" ? pedidos.filter((p) => !["entregado", "cancelado"].includes(p.estado)) : pedidos,
     pestana,
   );
   const porConfirmar = visibles.filter((p) => p.estado === "pendiente").length;
+  // Se busca en la lista viva: si el pedido termina mientras la hoja está
+  // abierta, la hoja se cierra sola.
+  const pedidoAsignando = pedidos.find((p) => p.id === asignando && !["entregado", "cancelado"].includes(p.estado));
 
   return (
     <div className="p-4">
@@ -186,17 +238,150 @@ export default function Pedidos() {
             nuevo={recientes.has(p.id)}
             ocupado={ocupado === p.id}
             onEstado={(estado) => cambiarEstado(p, estado)}
+            onDomiciliario={() => {
+              setErrorHoja("");
+              cargarDomiciliarios();
+              setAsignando(p.id);
+            }}
           />
         ))}
       </ul>
+
+      {pedidoAsignando && (
+        <HojaDomiciliario
+          pedido={pedidoAsignando}
+          domiciliarios={domiciliarios}
+          error={errorHoja}
+          ocupado={ocupado === pedidoAsignando.id}
+          onElegir={(domiciliarioId) => asignarDomiciliario(pedidoAsignando, domiciliarioId)}
+          onCrear={crearDomiciliario}
+          onCerrar={() => setAsignando(null)}
+        />
+      )}
     </div>
   );
 }
 
-function TarjetaPedido({ pedido: p, nuevo, ocupado, onEstado }) {
+// Elegir quién lleva un pedido. Con uno ya asignado, la hoja sirve para
+// cambiarlo: es un paso aparte y a propósito, no una lista siempre abierta
+// donde un toque de más lo cambia sin querer.
+function HojaDomiciliario({ pedido, domiciliarios, error, ocupado, onElegir, onCrear, onCerrar }) {
+  const [nuevo, setNuevo] = useState(null);
+  const [creando, setCreando] = useState(false);
+  const actual = pedido.domiciliario;
+  const otros = domiciliarios.filter((d) => d.id !== actual?.id);
+
+  const elegir = (d) => {
+    // En camino, el pedido ya va con alguien: cambiarlo se confirma.
+    if (
+      actual &&
+      pedido.estado === "en_camino" &&
+      !window.confirm(`El pedido ya va en camino con ${actual.nombre}. ¿Pasárselo a ${d.nombre}?`)
+    ) {
+      return;
+    }
+    onElegir(d.id);
+  };
+
+  const crear = async (e) => {
+    e.preventDefault();
+    setCreando(true);
+    if (await onCrear(nuevo)) setNuevo(null);
+    setCreando(false);
+  };
+
+  return (
+    <Hoja
+      titulo={`${actual ? "Cambiar" : "Asignar"} domiciliario, pedido ${codigoCorto(pedido.id)}`}
+      error={error}
+      onCerrar={onCerrar}
+    >
+      <p className="mb-3 text-[15px] text-tinta-2">
+        {actual ? (
+          <>
+            Lo lleva <strong className="text-tinta">{actual.nombre}</strong>. Elige a quién pasárselo; {actual.nombre}{" "}
+            vuelve a quedar disponible.
+          </>
+        ) : (
+          "Elige quién lleva este pedido. Queda ocupado hasta que el pedido se entregue o se cancele."
+        )}
+      </p>
+
+      {otros.length === 0 ? (
+        <p className="mb-4 border-l-4 border-tibio bg-tibio/10 px-3 py-2 text-[15px]">
+          No hay {actual ? "otros " : ""}domiciliarios registrados. Agrega uno aquí abajo.
+        </p>
+      ) : (
+        <ul className="mb-4 overflow-hidden rounded-xl border border-filete bg-white">
+          {otros.map((d) => {
+            const libre = d.estado === "disponible";
+            return (
+              <li key={d.id} className="border-b border-filete last:border-0">
+                <button
+                  disabled={!libre || ocupado}
+                  onClick={() => elegir(d)}
+                  className="flex min-h-13 w-full items-center gap-3 px-4 text-left disabled:cursor-not-allowed"
+                >
+                  <Bike size={18} aria-hidden className={libre ? "text-tinta" : "text-tinta-2"} />
+                  <span className={`min-w-0 flex-1 truncate text-[17px] font-bold ${libre ? "text-tinta" : "text-tinta-2"}`}>
+                    {d.nombre}
+                  </span>
+                  <span
+                    className={`shrink-0 rounded px-2 py-0.5 text-[13px] font-bold ${
+                      libre ? "bg-listo text-white" : "bg-espera text-tinta-2"
+                    }`}
+                  >
+                    {libre ? "Disponible" : "Con otro pedido"}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {nuevo ? (
+        <form onSubmit={crear} className="space-y-3 border-t border-filete pt-4">
+          <Campo
+            etiqueta="Nombre"
+            required
+            autoFocus
+            maxLength={255}
+            value={nuevo.nombre}
+            onChange={(e) => setNuevo({ ...nuevo, nombre: e.target.value })}
+          />
+          <Campo
+            etiqueta="Apellido"
+            required
+            maxLength={255}
+            value={nuevo.apellido}
+            onChange={(e) => setNuevo({ ...nuevo, apellido: e.target.value })}
+          />
+          <div className="flex gap-2">
+            <Boton type="button" variante="secundario" className="flex-1" onClick={() => setNuevo(null)}>
+              Cancelar
+            </Boton>
+            <Boton type="submit" className="flex-1" cargando={creando}>
+              Agregar
+            </Boton>
+          </div>
+        </form>
+      ) : (
+        <Boton variante="secundario" className="w-full" onClick={() => setNuevo({ nombre: "", apellido: "" })}>
+          <span className="flex items-center justify-center gap-2">
+            <Plus size={18} /> Nuevo domiciliario
+          </span>
+        </Boton>
+      )}
+    </Hoja>
+  );
+}
+
+function TarjetaPedido({ pedido: p, nuevo, ocupado, onEstado, onDomiciliario }) {
   const espera = ["pendiente", "confirmado"].includes(p.estado) ? minutosDesde(p.fechaInicio) : null;
   const avance = (p.siguientes ?? []).filter((e) => e !== "cancelado");
   const puedeCancelar = (p.siguientes ?? []).includes("cancelado");
+  const terminado = ["entregado", "cancelado"].includes(p.estado);
 
   return (
     <li className={`rounded-xl border bg-white p-4 ${nuevo ? "border-l-4 border-brasa" : "border-filete"}`}>
@@ -250,9 +435,32 @@ function TarjetaPedido({ pedido: p, nuevo, ocupado, onEstado }) {
 
       <p className="mt-2 text-[13px] text-tinta-2">
         {fechaHora(p.fechaInicio)}
-        {p.domiciliario ? ` · Domiciliario: ${p.domiciliario.nombre}` : ""}
         {p.pagoId ? " · Pago registrado" : " · Sin pago"}
       </p>
+
+      {/* Quién lo lleva. En un pedido terminado solo se muestra si hubo alguien. */}
+      {(!terminado || p.domiciliario) && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2 border-t border-filete pt-3">
+          {/* En el celular el nombre ocupa su renglón y el botón va debajo: un
+              nombre cortado no dice quién lleva el pedido. */}
+          <p className="flex min-w-0 flex-1 basis-full items-center gap-2 text-[15px] sm:basis-0">
+            <Bike size={18} aria-hidden className="shrink-0 text-tinta-2" />
+            {p.domiciliario ? (
+              <span className="min-w-0">
+                <span className="text-tinta-2">{terminado ? "Lo llevó " : "Lo lleva "}</span>
+                <strong className="text-tinta">{p.domiciliario.nombre}</strong>
+              </span>
+            ) : (
+              <span className="font-semibold text-tinta-2">Sin domiciliario</span>
+            )}
+          </p>
+          {!terminado && (
+            <Boton variante="secundario" className="w-full sm:w-auto" disabled={ocupado} onClick={onDomiciliario}>
+              {p.domiciliario ? "Cambiar domiciliario" : "Asignar domiciliario"}
+            </Boton>
+          )}
+        </div>
+      )}
 
       {(avance.length > 0 || puedeCancelar) && (
         <div className="mt-3 flex flex-wrap gap-2">

@@ -1,4 +1,4 @@
-const { Arqueo, Comanda } = require("../models");
+const { Arqueo, Comanda, Payment, Order } = require("../models");
 const { redondear2 } = require("../utils/dinero");
 const { pagosDeComanda } = require("../utils/pagos");
 const { toArqueo } = require("../utils/serializar");
@@ -10,8 +10,45 @@ const SIN_METODO = "SIN_REGISTRAR";
 const arqueoAbierto = (session) => Arqueo.findOne({ estado: "ABIERTO" }).session(session || null);
 
 /**
+ * Lo que entró por pedidos web mientras el arqueo estuvo abierto, por método.
+ *
+ * Un pedido web cuenta desde que se aprueba su pago (no al entregarse) y deja
+ * de contar si se cancela. Los pagos aprobados antes de que existiera
+ * `aprobado_en` usan la fecha de su último cambio.
+ */
+const ventasDePedidosWeb = async (desde, hasta) => {
+  const enIntervalo = { $gte: desde, $lte: hasta };
+  const pagos = await Payment.find({
+    estado: "aprobado",
+    $or: [{ aprobado_en: enIntervalo }, { aprobado_en: null, updatedAt: enIntervalo }],
+  })
+    .select("monto metodo pedido_id")
+    .lean();
+
+  const cancelados = new Set(
+    (
+      await Order.find({ _id: { $in: pagos.map((p) => p.pedido_id) }, estado: "cancelado" })
+        .select("_id")
+        .lean()
+    ).map((p) => String(p._id))
+  );
+
+  const ventasWeb = { EFECTIVO: 0, TARJETA: 0, TRANSFERENCIA: 0 };
+  let pedidosWeb = 0;
+  for (const pago of pagos) {
+    if (cancelados.has(String(pago.pedido_id))) continue;
+    // Los pagos web guardan el método en minúscula.
+    ventasWeb[String(pago.metodo).toUpperCase()] += Number(pago.monto);
+    pedidosWeb += 1;
+  }
+  for (const m of METODOS) ventasWeb[m] = redondear2(ventasWeb[m]);
+  return { ventasWeb, pedidosWeb };
+};
+
+/**
  * Lo que la caja dice que debería haber, a partir de las comandas cobradas en
- * el intervalo del arqueo y de los movimientos no anulados.
+ * el intervalo del arqueo, de los pedidos web con pago aprobado y de los
+ * movimientos no anulados.
  *
  * Abierta: se calcula al vuelo. Cerrada: manda lo congelado al cerrar, y
  * "recalculado" muestra lo que dirían hoy las comandas por si alguien las tocó.
@@ -35,6 +72,8 @@ const calcularCuadre = async (arqueo, hastaFijo) => {
     }
   }
 
+  const { ventasWeb, pedidosWeb } = await ventasDePedidosWeb(arqueo.fecha_apertura, hasta);
+
   // Entradas y salidas manuales, por método. Un movimiento sin método es de
   // efectivo (así eran todos antes de que existiera el campo).
   const movimientos = Object.fromEntries(METODOS.map((m) => [m, { ingresos: 0, egresos: 0 }]));
@@ -53,10 +92,11 @@ const calcularCuadre = async (arqueo, hastaFijo) => {
 
   // Solo el efectivo arrastra la base: es lo único que hay físicamente en el
   // cajón. Tarjeta y transferencia suman sus ventas y sus propios movimientos.
+  // Las ventas son las de las mesas más las de los pedidos web.
   const calculado = {
-    EFECTIVO: redondear2(base + porMetodo.EFECTIVO + neto("EFECTIVO")),
-    TARJETA: redondear2(porMetodo.TARJETA + neto("TARJETA")),
-    TRANSFERENCIA: redondear2(porMetodo.TRANSFERENCIA + neto("TRANSFERENCIA")),
+    EFECTIVO: redondear2(base + porMetodo.EFECTIVO + ventasWeb.EFECTIVO + neto("EFECTIVO")),
+    TARJETA: redondear2(porMetodo.TARJETA + ventasWeb.TARJETA + neto("TARJETA")),
+    TRANSFERENCIA: redondear2(porMetodo.TRANSFERENCIA + ventasWeb.TRANSFERENCIA + neto("TRANSFERENCIA")),
   };
 
   const congelado = arqueo.estado === "CERRADO" && arqueo.esperado_efectivo != null;
@@ -84,6 +124,9 @@ const calcularCuadre = async (arqueo, hastaFijo) => {
       SIN_REGISTRAR: redondear2(porMetodo[SIN_METODO]),
     },
     comandas: ventas.length,
+    // Pedidos web con pago aprobado; van aparte de `ventas`, que son las mesas.
+    ventasWeb,
+    pedidosWeb,
     // Totales de todos los métodos; el detalle por método va en `movimientos`.
     ingresos: redondear2(ingresos),
     egresos: redondear2(egresos),

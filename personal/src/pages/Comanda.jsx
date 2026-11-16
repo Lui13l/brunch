@@ -87,26 +87,37 @@ export default function Comanda() {
     }
   };
 
-  const agregar = (plato) =>
-    accion(async () => {
-      await pedir(`/api/comandas/${id}/items`, {
-        method: "POST",
-        body: JSON.stringify({ menuItemId: plato.id, cantidad: 1 }),
-      });
-      // Agotado es un aviso, no un bloqueo: se agrega y se le dice al mesero.
-      setAviso(
-        plato.agotado
-          ? { tipo: "faltante", texto: `${plato.nombre} agregado, pero falta inventario de ${plato.faltan.join(", ")}.` }
-          : null,
-      );
-    });
-
   const cambiarCantidad = (item, delta) => {
     const cantidad = item.cantidad + delta;
     if (cantidad < 1) return accion(() => pedir(`/api/comandas/${id}/items/${item.id}`, { method: "DELETE" }));
     return accion(() =>
       pedir(`/api/comandas/${id}/items/${item.id}`, { method: "PATCH", body: JSON.stringify({ cantidad }) }),
     );
+  };
+
+  // Lo que está por enviar de un plato, sin notas: ahí se suman y se restan
+  // las unidades que se piden desde la carta.
+  const borradorDe = (plato) =>
+    comanda.items.findLast((i) => i.estado === "BORRADOR" && i.menuItemId === plato.id && !i.notas);
+
+  // Pedir otra vez el mismo plato sube su cantidad: tres cafés son un renglón
+  // con un 3, no tres renglones. La carta no deja agregar un plato agotado.
+  const agregar = (plato) => {
+    const existente = borradorDe(plato);
+    if (existente) return cambiarCantidad(existente, 1);
+    return accion(async () => {
+      await pedir(`/api/comandas/${id}/items`, {
+        method: "POST",
+        body: JSON.stringify({ menuItemId: plato.id, cantidad: 1 }),
+      });
+      setAviso(null);
+    });
+  };
+
+  const quitarUno = (plato) => {
+    const item =
+      borradorDe(plato) ?? comanda.items.findLast((i) => i.estado === "BORRADOR" && i.menuItemId === plato.id);
+    if (item) cambiarCantidad(item, -1);
   };
 
   // `seguirEn`: a qué vista volver después de enviar (desde el cobro se sigue cobrando).
@@ -169,6 +180,9 @@ export default function Comanda() {
   const enCuenta = new Map();
   for (const item of borradores) enCuenta.set(item.menuItemId, (enCuenta.get(item.menuItemId) ?? 0) + item.cantidad);
 
+  // A un plato agotado tampoco se le suman unidades desde la cuenta.
+  const agotados = new Set(carta.flatMap((c) => c.items).filter((p) => p.agotado).map((p) => p.id));
+
   return (
     <Pantalla>
       <Cabecera
@@ -213,6 +227,7 @@ export default function Comanda() {
           carta={carta}
           enCuenta={enCuenta}
           onAgregar={agregar}
+          onQuitar={quitarUno}
           onCerrar={() => setVista("cuenta")}
           onCobrar={() => setVista("cobro")}
           ocupado={ocupado}
@@ -264,6 +279,7 @@ export default function Comanda() {
                       key={item.id}
                       item={item}
                       ocupado={ocupado}
+                      agotado={agotados.has(item.menuItemId)}
                       onCantidad={(delta) => cambiarCantidad(item, delta)}
                       onEntregar={() => entregar([item])}
                       onCancelar={() => cancelar(item)}
@@ -321,7 +337,7 @@ export default function Comanda() {
 
 // Un plato de la cuenta. Lo que se puede hacer con él depende de dónde está:
 // en borrador se cambia la cantidad, en cocina se cancela y listo se entrega.
-function Renglon({ item, ocupado, onCantidad, onEntregar, onCancelar }) {
+function Renglon({ item, ocupado, agotado, onCantidad, onEntregar, onCancelar }) {
   const borrador = item.estado === "BORRADOR";
   const enCocina = EN_COCINA.includes(item.estado);
 
@@ -354,12 +370,14 @@ function Renglon({ item, ocupado, onCantidad, onEntregar, onCancelar }) {
               </button>
               <button
                 onClick={() => onCantidad(1)}
-                disabled={ocupado}
+                disabled={ocupado || agotado}
                 aria-label="Sumar uno"
+                title={agotado ? "Agotado: falta inventario" : undefined}
                 className="flex size-12 items-center justify-center rounded-lg border border-filete text-tinta active:bg-sala disabled:opacity-50"
               >
                 <Plus size={20} />
               </button>
+              {agotado && <span className="text-[14px] font-bold text-brasa">Agotado</span>}
             </>
           )}
 

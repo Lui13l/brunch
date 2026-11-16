@@ -2,7 +2,7 @@
 
 Relevo de trabajo entre sesiones y entre asistentes (cualquier modelo). Lee esto **antes** de explorar el repo: dice qué está hecho, qué sigue y qué no hay que volver a averiguar. El contexto general del proyecto está en [AGENTS.md](AGENTS.md).
 
-**Última actualización:** 2026-11-15. Las 7 fases y una tercera ronda de ajustes (ver "Tercera ronda") están escritas, probadas y revisadas en pantalla a 1280, 1024 y 390 px. Todo quedó en un commit en `main` (sin subir a GitHub). Falta lo que depende de la persona: ver "Qué sigue".
+**Última actualización:** 2026-11-16. Las 7 fases y las rondas tercera y cuarta están en `main`. La quinta ronda (ver "Quinta ronda") está escrita, probada (235 de 235 pruebas del backend, lint y build de las tres apps) y revisada en pantalla a 1280 y 390 px con la API simulada, y quedó en un commit en `main` el 2026-11-16 (sin subir a GitHub). Falta lo que depende de la persona: ver "Qué sigue".
 
 ## Estado
 
@@ -75,10 +75,31 @@ El detalle de cada fase (archivos, endpoints y pruebas) está más abajo, en "Qu
 
 `frontend/src/components/PantallaCarga.jsx` y `context/CargaContext.jsx`: telón en dos capas, el pancito caminando (hoja de 8 cuadros con `steps`) y salida con saltito. Enganchada en `Login.jsx`, `Navbar.jsx` (salir y botón del panel), `usePerfilUsuario.js`, `Checkout.jsx` y `AdminLayout.jsx`. La hoja en WebP se generó con `sharp` desde el PNG que agregó la persona; los dos PNG originales quedaron en `assets/` sin usarse. Revisada en pantalla con la API simulada. **Sin commit todavía.**
 
+## Quinta ronda (2026-11-16): lista de pruebas del equipo
+
+Nueve puntos que el equipo encontró probando, más la pantalla de carga en comandas y al reservar. En `main`, sin `git push`.
+
+| Punto | Dónde | Qué quedó |
+|---|---|---|
+| Un solo administrador | `backend/src/services/cuentas.js`; `personal/.../Personal.jsx`, `frontend/.../AdminUsuarios.jsx` | Dar el rol de admin a otra cuenta responde 409 y las listas de rol ya no lo ofrecen. No hay forma de pasar el rol a otra persona desde la app: se haría en la base |
+| Domiciliario desde comandas | `services/pedidos.js#asignarDomiciliario`, `pedidoAdminController.js`, `routes/admin/gestion.js`; `personal/.../Pedidos.jsx` | Cada pedido web muestra quién lo lleva, con "Asignar" o "Cambiar domiciliario" (hoja con disponibles y ocupados, y "Nuevo domiciliario"). Endpoints nuevos: `PATCH /api/admin/pedidos/:id/domiciliario`, `GET` y `POST /api/admin/domiciliarios` |
+| Cambio de domiciliario | `frontend/.../AdminPedidos.jsx` y la hoja de comandas | Con uno asignado la lista ya no queda abierta: "Cambiar domiciliario" es un paso aparte y en camino pide confirmar |
+| Contador en la carta | `personal/.../comanda/Carta.jsx`, `pages/Comanda.jsx` | Menos, cantidad y más por plato. Repetir un plato sube la cantidad del renglón por enviar (antes creaba un renglón por toque) |
+| Plato agotado | Los mismos | No se puede agregar ni sumar (mesero y admin usan la misma pantalla). El servidor sigue aceptándolo: el bloqueo es de la pantalla |
+| Motivo en insumos | `personal/.../Insumos.jsx` | Texto bajo el título de Entrada y Merma que explica para qué es, con ejemplo en el campo |
+| Caja y cuenta dividida | `personal/.../Caja.jsx` | Ya entraba sola (cada parte en su método). Ahora la caja lo dice en "¿Qué se suma solo y qué se registra a mano?" |
+| Tarjeta y transferencia en Entrada | `personal/.../Caja.jsx` | Se conservan (anticipos, devoluciones) y la hoja aclara que las ventas ya se suman solas |
+| Pedidos web en la caja | `services/caja.js`, `models/Payment.js` (`aprobado_en`), `pagoController.js` | Entran solos al aprobar el pago y salen si el pedido se cancela. El cuadre los trae aparte (`ventasWeb`, `pedidosWeb`) |
+| Pantalla de carga en comandas | `personal/src/components/PantallaCarga.jsx`, `context/CargaContext.jsx`, `context/carga.js`, `index.css`, `assets/` | El pancito, solo con CSS. Sale al entrar con correo, por `/entrar` y al abrir con sesión guardada |
+| Pantalla de carga al reservar | `frontend/src/pages/Reservas.jsx` | "Guardando tu mesa…" antes de la confirmación |
+
+Decisiones que tomó el asistente sin preguntar (la persona puede cambiarlas): los pedidos web cuentan en caja al **aprobar el pago** y no al entregar; un pedido cancelado deja de contar (la devolución no se registra aparte); las opciones de tarjeta y transferencia en los movimientos manuales se dejaron, con explicación.
+
 ## Qué sigue
 
 Todo lo que queda necesita a la persona:
 
+0. **Quinta ronda:** commit hecho el 2026-11-16 con permiso; subirlo lo decide la persona. Falta una prueba real con el backend encendido: aprobar el pago de un pedido `[E2E]` con la caja abierta y asignarle domiciliario desde comandas.
 1. **Chat en la base:** hecho el 2026-11-15 (23 cambios aplicados con permiso de la persona).
 2. **Correo de facturas:** hecho el 2026-11-15. `GMAIL_USUARIO` y `GMAIL_CLAVE_APP` están en `backend/.env` (cuenta institucional de Google, no `@gmail.com`); Gmail aceptó la clave y un comprobante de prueba enviado a la misma cuenta. Falta probarlo desde el panel con un pedido `[E2E]` y que la persona cambie la contraseña de aplicación (quedó escrita en una conversación).
 3. **Palabras clave del menú:** hecho el 2026-11-15 ("que venden", "que ofrecen" y "que sirven" ya están en la base).
@@ -108,6 +129,10 @@ Todo lo que queda necesita a la persona:
 - **Reportes de todo el tiempo:** se piden con `?todo=true`; sin fechas el informe sigue siendo el de hoy. Con más de 45 días la gráfica se agrupa por mes.
 - **Radios y hover de la app de comandas:** los radios salen de `--radius-*` en `personal/src/index.css` (no de cada pantalla). Todo `button` y enlace recibe un aro al pasar el mouse; `data-sin-hover` lo apaga y la clase `pulsable` agrega el levantado.
 - **Build de la web:** `npm run build` en `frontend/` reescribe las imágenes de `frontend/public` (optimizador de Vite) y quedan como modificadas en git. Después de verificar, `git restore -- frontend/public`.
+- **Un solo admin en las pruebas:** por la API ya no se puede crear otro admin. En las pruebas se crea con `crearPersonal("admin", …)` o `User.create` (así quedó `e2e.test.js`).
+- **Playwright sin el MCP:** si el MCP no conecta, `node .playwright-mcp/revisar_ronda5.js` usa el `playwright-core` que quedó en la caché de `npx` y los navegadores ya descargados. Simula la API de las dos apps (la web necesita cabeceras CORS en las respuestas simuladas).
+- **Sesión simulada en la web con Vite recién arrancado:** la primera visita puede recargar la página (optimiza dependencias); la petición de perfil cortada borra `brunch_token` y la página cae al login. El script reintenta.
+- **`git restore`:** el modo automático del asistente lo bloquea. Si el build de la web deja `frontend/public` modificado, lo restaura la persona.
 - **GitHub CLI:** `gh` no está instalado en este equipo.
 - **Servidores de desarrollo:** se detienen al terminar la sesión. Volver a levantarlos (`npm run dev` en cada carpeta).
 

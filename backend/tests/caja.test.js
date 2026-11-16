@@ -178,6 +178,33 @@ describe("Caja", () => {
     ]);
   });
 
+  test("un pedido web cuenta al aprobar su pago y deja de contar si se cancela", async () => {
+    await abrirCaja(50000);
+    const cliente = bearer(d.tokenCliente);
+    const { body: pedido } = await api().post("/api/pedidos").set(cliente)
+      .send({ items: [{ menu_item_id: String(d.cafe._id), cantidad: 2 }] });
+    const { body: pago } = await api().post("/api/pagos").set(cliente)
+      .send({ pedido_id: pedido._id, metodo: "transferencia" });
+
+    // Con el pago todavía por aprobar, la caja no lo espera.
+    const pendiente = await api().get("/api/admin/caja").set(admin());
+    expect(pendiente.body.cuadre.pedidosWeb).toBe(0);
+    expect(pendiente.body.cuadre.esperado.TRANSFERENCIA).toBe(0);
+
+    await api().patch(`/api/pagos/${pago._id}/estado`).set(admin()).send({ estado: "aprobado" });
+    const aprobado = await api().get("/api/admin/caja").set(admin());
+    expect(aprobado.body.cuadre.ventasWeb).toEqual({ EFECTIVO: 0, TARJETA: 0, TRANSFERENCIA: 10000 });
+    expect(aprobado.body.cuadre.pedidosWeb).toBe(1);
+    // Las ventas de mesas siguen aparte.
+    expect(aprobado.body.cuadre.ventas.TRANSFERENCIA).toBe(0);
+    expect(aprobado.body.cuadre.esperado).toEqual({ EFECTIVO: 50000, TARJETA: 0, TRANSFERENCIA: 10000 });
+
+    await api().patch(`/api/pedidos/${pedido._id}/estado`).set(admin()).send({ estado: "cancelado" });
+    const cancelado = await api().get("/api/admin/caja").set(admin());
+    expect(cancelado.body.cuadre.pedidosWeb).toBe(0);
+    expect(cancelado.body.cuadre.esperado.TRANSFERENCIA).toBe(0);
+  });
+
   test("una comanda cobrada con caja abierta queda ligada al arqueo", async () => {
     const { body: caja } = await abrirCaja();
     const res = await cobrar("EFECTIVO");

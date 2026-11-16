@@ -58,7 +58,7 @@ export default function AdminUsuarios() {
     <>
       <Encabezado
         titulo="Usuarios y roles"
-        descripcion="Las cuentas de mesero y cocina se crean desde la app de comandas (Administración → Personal)."
+        descripcion="Las cuentas de mesero y cocina se crean desde la app de comandas (Administración → Personal). Solo puede haber un administrador."
       />
 
       <div className="adm-filtros">
@@ -101,7 +101,8 @@ export default function AdminUsuarios() {
                       disabled={yo(u) || ocupado === u._id}
                       onChange={(e) => cambiarRol(u, e.target.value)}
                     >
-                      {ROLES.map((r) => (
+                      {/* Administrador hay uno solo: no se ofrece para dárselo a nadie más. */}
+                      {ROLES.filter((r) => r.valor !== "admin" || u.rol_id === "admin").map((r) => (
                         <option key={r.valor} value={r.valor}>{r.texto}</option>
                       ))}
                     </select>

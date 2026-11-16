@@ -19,9 +19,10 @@ const { cajaRouter, reportesRouter } = require("./caja");
 router.use("/caja", cajaRouter);
 router.use("/reportes", reportesRouter);
 
-const { personalRouter, pedidosRouter, auditoriaRouter } = require("./gestion");
+const { personalRouter, pedidosRouter, domiciliariosRouter, auditoriaRouter } = require("./gestion");
 router.use("/personal", personalRouter);
 router.use("/pedidos", pedidosRouter);
+router.use("/domiciliarios", domiciliariosRouter);
 router.use("/auditoria", auditoriaRouter);
 
 module.exports = router;

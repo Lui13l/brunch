@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useAuth } from "../context/AuthContext";
+import { usePantallaCarga } from "../context/CargaContext";
 import { crearReserva } from "../services/reservasService";
 import "./Reservas.css";
 
@@ -18,6 +19,7 @@ const hoyLocal = () => {
 const Reservas = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { cubrir } = usePantallaCarga();
   const [form, setForm] = useState({ dia: "", hora: "", cupo: "2", ocasion: "", detalles: "" });
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
@@ -39,6 +41,8 @@ const Reservas = () => {
         ocasion: form.ocasion || undefined,
         detalles: form.detalles || undefined,
       });
+      // Ya quedó guardada: la confirmación aparece detrás de la pantalla de carga.
+      await cubrir("Guardando tu mesa…");
       navigate("/reserva-exitosa", { state: { reserva } });
     } catch (err) {
       setError(err.message);

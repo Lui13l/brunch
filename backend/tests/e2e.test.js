@@ -21,9 +21,9 @@ const sembrar = async () => {
   await api().post("/api/admin/insumos").set(admin()).send({ nombre: "Harina", unidad: "G", stock: 10 });
 
   // E2E: cuentas, mesa, insumo, plato, receta, comanda enviada, pedido web, caja
-  const { body: e2eAdmin } = await api().post("/api/admin/personal").set(admin())
-    .send({ nombre: "E2E Admin", email: "admin-r1@e2e.brunch.test", password: "clave123", rol: "MESERO" });
-  await api().patch(`/api/admin/personal/${e2eAdmin.id}/rol`).set(admin()).send({ rol: "ADMIN" });
+  // El admin e2e se crea directo con el modelo: por la API no se puede, porque
+  // solo hay un administrador y nadie más recibe ese rol.
+  await User.create({ nombre: "E2E Admin", correo: "admin-r1@e2e.brunch.test", password: "clave123", rol_id: "admin" });
   const { body: login } = await api().post("/api/usuarios/login").send({ email: "admin-r1@e2e.brunch.test", password: "clave123" });
   const e2e = bearer(login.token);
 

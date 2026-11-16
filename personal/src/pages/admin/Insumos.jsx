@@ -231,6 +231,13 @@ export default function Insumos() {
           onCerrar={() => cerrar(setAjustando)}
         >
           <form onSubmit={ajustar} className="space-y-4">
+            <p className="text-sm text-tinta-2">
+              {ajustando.direccion === "entrada"
+                ? "Suma al inventario lo que llegó o lo que apareció al contar."
+                : "Resta del inventario lo que se perdió sin venderse: se dañó, se venció o se regó."}{" "}
+              El <strong>motivo</strong> es una nota corta que explica por qué cambió la cantidad. Queda en el
+              historial del insumo, para que después se entienda el movimiento.
+            </p>
             <Campo
               etiqueta={`Cantidad (${ajustando.insumo.unidad})`}
               type="number"
@@ -257,7 +264,18 @@ export default function Insumos() {
               required={ajustando.tipo === "AJUSTE"}
               value={ajustando.motivo}
               onChange={(e) => setAjustando({ ...ajustando, motivo: e.target.value })}
-              ayuda={ajustando.tipo === "AJUSTE" ? "Obligatorio: una corrección sin motivo no se puede auditar." : undefined}
+              placeholder={
+                ajustando.direccion === "salida"
+                  ? "Ej.: se venció, se cayó una bandeja"
+                  : ajustando.tipo === "AJUSTE"
+                    ? "Ej.: al contar había 2 kg de más"
+                    : "Ej.: factura 123 del proveedor"
+              }
+              ayuda={
+                ajustando.tipo === "AJUSTE"
+                  ? "Obligatorio: una corrección sin motivo no se puede auditar."
+                  : "Opcional: sirve para ubicar la compra después."
+              }
             />
             <Boton type="submit" cargando={guardando} className="w-full">
               Registrar

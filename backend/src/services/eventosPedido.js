@@ -25,4 +25,12 @@ const estado = (pedido) =>
     if (usuarioId) publicar(TOPICS.usuario(String(usuarioId)), { id, estado: pedido.estado });
   });
 
-module.exports = { nuevo, estado };
+// Cambió quién lleva el pedido (con domiciliario_id poblado). Va por el mismo
+// tema del estado: las pantallas ya mezclan lo que llega ahí con su pedido.
+const domiciliario = (pedido) =>
+  seguro(() => {
+    const { id, estado: actual, siguientes, cocina, domiciliario: quien } = toPedidoAdmin(pedido);
+    publicar(TOPICS.adminPedidosEstado, { id, estado: actual, siguientes, cocina, domiciliario: quien });
+  });
+
+module.exports = { nuevo, estado, domiciliario };

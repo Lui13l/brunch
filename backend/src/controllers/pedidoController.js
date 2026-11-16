@@ -1,7 +1,8 @@
-const { Order, MenuItem, DeliveryPerson } = require("../models");
+const { Order, MenuItem } = require("../models");
 const { HttpError, pick } = require("../utils/http");
 const { verificarDueno } = require("../middleware/auth");
-const { liberarDomiciliario, aplicarEstado } = require("../services/pedidos");
+const servicioPedidos = require("../services/pedidos");
+const { aplicarEstado } = servicioPedidos;
 const eventosPedido = require("../services/eventosPedido");
 
 const buscarPedido = async (id) => {
@@ -98,39 +99,10 @@ const cancelar = async (req, res) => {
 };
 
 const asignarDomiciliario = async (req, res) => {
-  const pedido = await buscarPedido(req.params.id);
-  if (["entregado", "cancelado"].includes(pedido.estado)) {
-    throw new HttpError(400, `El pedido ya está ${pedido.estado}`);
-  }
-
-  // Se "reclama" el domiciliario de forma atómica: si dos pedidos lo piden a la
-  // vez, solo uno lo consigue.
-  const domiciliario = await DeliveryPerson.findOneAndUpdate(
-    { _id: req.body?.domiciliario_id, estado: "disponible" },
-    { $set: { estado: "ocupado" } },
-    { returnDocument: "after" }
-  );
-  if (!domiciliario) {
-    if (!(await DeliveryPerson.exists({ _id: req.body?.domiciliario_id }))) {
-      throw new HttpError(404, "Domiciliario no encontrado");
-    }
-    throw new HttpError(409, "El domiciliario no está disponible");
-  }
-
-  const anterior = await Order.findOneAndUpdate(
-    { _id: pedido._id, estado: { $nin: ["entregado", "cancelado"] } },
-    { $set: { domiciliario_id: domiciliario._id } },
-    { returnDocument: "before" }
-  );
-  if (!anterior) {
-    // El pedido terminó mientras tanto: el domiciliario vuelve a quedar libre.
-    await DeliveryPerson.updateOne({ _id: domiciliario._id }, { $set: { estado: "disponible" } });
-    throw new HttpError(400, "El pedido ya terminó");
-  }
-  if (anterior.domiciliario_id && String(anterior.domiciliario_id) !== String(domiciliario._id)) {
-    await liberarDomiciliario(anterior);
-  }
-  res.json(await Order.findById(pedido._id));
+  // Las reglas (reclamar al domiciliario, soltar al anterior) están en el
+  // servicio, que también usa la app de comandas.
+  await servicioPedidos.asignarDomiciliario(req.params.id, req.body?.domiciliario_id);
+  res.json(await Order.findById(req.params.id));
 };
 
 module.exports = {

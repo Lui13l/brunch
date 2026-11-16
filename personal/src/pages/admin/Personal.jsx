@@ -188,12 +188,15 @@ function EditarCuenta({ cuenta, esPropia, error, guardando, onCambiar, onCerrar,
       )}
 
       <section className="mb-5 space-y-2">
+        {/* Administrador hay uno solo: el rol no se ofrece para dárselo a nadie
+            más (el servidor tampoco lo acepta). */}
         <Selector
           etiqueta="Rol"
-          opciones={OPCIONES_ROL}
+          opciones={OPCIONES_ROL.filter((o) => o.valor !== "ADMIN" || cuenta.rol === "ADMIN")}
           disabled={esPropia}
           value={cuenta.nuevoRol}
           onChange={(e) => onCambiar({ ...cuenta, nuevoRol: e.target.value })}
+          ayuda={esPropia ? undefined : "Solo puede haber un administrador, por eso ese rol no está en la lista."}
         />
         <Boton
           variante="secundario"

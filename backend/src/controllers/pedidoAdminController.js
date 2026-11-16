@@ -1,10 +1,10 @@
 const { z } = require("zod");
-const { Order } = require("../models");
+const { Order, DeliveryPerson } = require("../models");
 const { HttpError } = require("../utils/http");
-const { fecha, booleanoQuery } = require("../utils/validar");
+const { fecha, booleanoQuery, texto, objectId } = require("../utils/validar");
 const { toPedidoAdmin } = require("../utils/serializar");
 const { rangoLocal } = require("../utils/tiempo");
-const { aplicarEstado } = require("../services/pedidos");
+const { aplicarEstado, asignarDomiciliario: asignar } = require("../services/pedidos");
 const { registrar, SERVICIO } = require("../services/auditoria");
 const { codigoCorto } = require("../utils/codigo");
 
@@ -20,6 +20,8 @@ const listarSchema = z.object({
 });
 
 const estadoSchema = z.object({ estado: estadoEnum });
+const domiciliarioSchema = z.object({ nombre: texto("El nombre"), apellido: texto("El apellido") });
+const asignarSchema = z.object({ domiciliarioId: objectId });
 
 const poblar = (q) =>
   q.populate("usuario_id", "nombre correo celular").populate("domiciliario_id", "nombre apellido telefono");
@@ -56,4 +58,51 @@ const cambiarEstado = async (req, res) => {
   res.json(toPedidoAdmin(actualizado));
 };
 
-module.exports = { listarSchema, estadoSchema, listar, cambiarEstado };
+// --- Domiciliarios, para asignarlos desde la app de comandas ---
+
+const toDomiciliario = (d) => ({
+  id: String(d._id),
+  nombre: [d.nombre, d.apellido].filter(Boolean).join(" "),
+  estado: d.estado,
+});
+
+// Los inactivos no se ofrecen: ya no trabajan con el restaurante.
+const listarDomiciliarios = async (req, res) => {
+  const domiciliarios = await DeliveryPerson.find({ estado: { $ne: "inactivo" } }).sort({ nombre: 1 }).lean();
+  res.json(domiciliarios.map(toDomiciliario));
+};
+
+const crearDomiciliario = async (req, res) => {
+  const domiciliario = await DeliveryPerson.create(req.valid.body);
+  await registrar(
+    req.usuario,
+    "CREAR_DOMICILIARIO",
+    `Registró al domiciliario ${domiciliario.nombre} ${domiciliario.apellido}`,
+    SERVICIO.PEDIDOS
+  );
+  res.json(toDomiciliario(domiciliario));
+};
+
+const asignarDomiciliario = async (req, res) => {
+  const pedido = await asignar(req.valid.params.id, req.valid.body.domiciliarioId);
+  await registrar(
+    req.usuario,
+    "ASIGNAR_DOMICILIARIO",
+    `Asignó a ${pedido.domiciliario_id.nombre} ${pedido.domiciliario_id.apellido} al pedido web ${codigoCorto(pedido._id)}`,
+    SERVICIO.PEDIDOS
+  );
+  const actualizado = await poblar(Order.findById(pedido._id)).lean();
+  res.json(toPedidoAdmin(actualizado));
+};
+
+module.exports = {
+  listarSchema,
+  estadoSchema,
+  domiciliarioSchema,
+  asignarSchema,
+  listar,
+  cambiarEstado,
+  listarDomiciliarios,
+  crearDomiciliario,
+  asignarDomiciliario,
+};
