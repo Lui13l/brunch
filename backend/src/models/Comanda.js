@@ -4,6 +4,8 @@ const ESTADOS_COMANDA = ["ABIERTA", "CERRADA", "ANULADA"];
 const ESTADOS_ITEM = ["BORRADOR", "PENDIENTE", "PREPARANDO", "LISTO", "ENTREGADO", "CANCELADO"];
 const METODOS_PAGO = ["EFECTIVO", "TARJETA", "TRANSFERENCIA"];
 const EN_COCINA = ["PENDIENTE", "PREPARANDO"];
+// Resumen de una cuenta dividida que se pagó con más de un método.
+const PAGO_MIXTO = "MIXTO";
 
 // Plato pedido en la mesa. Nombre y precio se copian al agregarlo para que la
 // cuenta no cambie si después se edita la carta.
@@ -22,6 +24,17 @@ const itemSchema = new mongoose.Schema({
   fecha_listo: { type: Date, default: null },
 });
 
+// Una parte del cobro. Una cuenta sin dividir tiene un solo pago por el total;
+// una dividida tiene uno por persona, cada uno con su método.
+const pagoSchema = new mongoose.Schema(
+  {
+    metodo: { type: String, enum: METODOS_PAGO, required: true },
+    monto: { type: Number, required: true, min: 0 },
+    etiqueta: { type: String, default: null },
+  },
+  { _id: false }
+);
+
 // Cuenta de una mesa. Los platos van embebidos: cada cambio de estado es una
 // actualización atómica y condicional sobre un solo documento.
 const comandaSchema = new mongoose.Schema(
@@ -35,7 +48,10 @@ const comandaSchema = new mongoose.Schema(
     comensales: { type: Number, min: 1, max: 100, default: null },
     notas: { type: String, default: null },
     total: { type: Number, default: null }, // se congela al cerrar
-    metodo_pago: { type: String, enum: [...METODOS_PAGO, null], default: null },
+    // Resumen de `pagos`: el método si todos pagaron igual, o MIXTO. Las
+    // cuentas anteriores a la división solo tienen este campo.
+    metodo_pago: { type: String, enum: [...METODOS_PAGO, PAGO_MIXTO, null], default: null },
+    pagos: { type: [pagoSchema], default: [] },
     tiene_faltante: { type: Boolean, default: false },
     arqueo_id: { type: mongoose.Schema.Types.ObjectId, ref: "Arqueo", default: null },
     fecha_apertura: { type: Date, default: Date.now },
@@ -58,6 +74,6 @@ comandaSchema.index({ "items.estado": 1 });
 comandaSchema.index({ "items._id": 1 });
 
 const Comanda = mongoose.model("Comanda", comandaSchema);
-Object.assign(Comanda, { ESTADOS_COMANDA, ESTADOS_ITEM, METODOS_PAGO, EN_COCINA });
+Object.assign(Comanda, { ESTADOS_COMANDA, ESTADOS_ITEM, METODOS_PAGO, PAGO_MIXTO, EN_COCINA });
 
 module.exports = Comanda;

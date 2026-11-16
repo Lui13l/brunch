@@ -52,6 +52,13 @@ const chatIntentSchema = new mongoose.Schema(
       type: [responseSchema],
       default: [],
     },
+
+    // Preguntas que el chat ofrece como botones después de responder
+    // ("Ver el menú", "Quiero hacer una reserva"). Opcional.
+    sugerencias: {
+      type: [String],
+      default: [],
+    },
   },
   {
     collection: "chat_intents",

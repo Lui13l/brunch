@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Aviso, Boton, Cargando, RangoFechas, Vacio } from "../../components/ui";
-import { BarrasHorizontales, Columnas } from "../../components/Barras";
+import { BarrasHorizontales, Linea } from "../../components/Barras";
 import { useAuth } from "../../context/sesion";
 import { cantidad, diaCorto, ETIQUETA_PAGO, hoyISO, pesos, pesosCompactos } from "../../lib/formato";
 
@@ -24,10 +24,10 @@ export default function Reportes() {
     setCargando(true);
     try {
       // Un campo de fecha vacío no se envía: la API entiende "sin filtro" y
-      // responde con el día de hoy, en vez de rechazar la cadena vacía.
-      const query = new URLSearchParams(
-        Object.entries(rango).filter(([, v]) => v),
-      ).toString();
+      // responde con el día de hoy, en vez de rechazar la cadena vacía. Con
+      // los dos vacíos (atajo "Todo") se pide el informe de todo el tiempo.
+      const fechas = Object.entries(rango).filter(([, v]) => v);
+      const query = new URLSearchParams(fechas.length > 0 ? fechas : [["todo", "true"]]).toString();
       const datos = await pedir(`/api/admin/reportes/${pestana}?${query}`);
       setResultado({ tipo: pestana, datos });
       setError("");
@@ -118,12 +118,31 @@ function Fila({ izquierda, centro, derecha, resaltar }) {
 const cuentas = (n) => `${n} ${n === 1 ? "cuenta" : "cuentas"}`;
 const MAS_VENDIDOS = 10;
 
+// Con muchos días las columnas no caben ni se leen: se juntan por mes.
+const DIAS_POR_COLUMNAS = 45;
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+const mesCorto = (mes) => `${MESES[Number(mes.slice(5, 7)) - 1]} ${mes.slice(2, 4)}`;
+
+const agruparPorMes = (porDia) => {
+  const meses = new Map();
+  for (const dia of porDia) {
+    const clave = dia.fecha.slice(0, 7);
+    const mes = meses.get(clave) ?? { fecha: clave, comandas: 0, total: 0 };
+    mes.comandas += dia.comandas;
+    mes.total += dia.total;
+    meses.set(clave, mes);
+  }
+  return [...meses.values()];
+};
+
 function Ventas({ datos }) {
   const { resumen, porDia, porMetodoPago, porPlato } = datos;
 
   if (resumen.comandas === 0) return <Vacio>No hay cuentas cobradas en este rango.</Vacio>;
 
   const platos = [...porPlato].sort((a, b) => b.cantidad - a.cantidad);
+  const porMes = porDia.length > DIAS_POR_COLUMNAS;
+  const serie = porMes ? agruparPorMes(porDia) : porDia;
 
   return (
     <>
@@ -134,16 +153,17 @@ function Ventas({ datos }) {
         <Tarjeta titulo="Ticket promedio" valor={pesos(resumen.ticketPromedio)} />
       </div>
 
-      {porDia.length > 1 && (
-        <Bloque titulo="Ventas por día">
+      {serie.length > 1 && (
+        <Bloque titulo={porMes ? "Ventas por mes" : "Ventas por día"}>
           <div className="p-3 pt-8">
-            <Columnas
-              titulo="Ventas por día"
+            <Linea
+              titulo={porMes ? "Ventas por mes" : "Ventas por día"}
+              cada={porMes ? "mes" : "día"}
               formatoEje={pesosCompactos}
-              columnas={porDia.map((d) => ({
+              puntos={serie.map((d) => ({
                 clave: d.fecha,
-                etiqueta: diaCorto(d.fecha),
-                etiquetaCorta: porDia.length > 10 ? d.fecha.slice(8) : diaCorto(d.fecha),
+                etiqueta: porMes ? mesCorto(d.fecha) : diaCorto(d.fecha),
+                etiquetaCorta: porMes ? mesCorto(d.fecha) : serie.length > 10 ? d.fecha.slice(8) : diaCorto(d.fecha),
                 valor: d.total,
                 texto: pesos(d.total),
                 extra: cuentas(d.comandas),
@@ -162,6 +182,7 @@ function Ventas({ datos }) {
         <div className="p-2">
           <BarrasHorizontales
             titulo="Ventas por método de pago"
+            total={resumen.total}
             filas={porMetodoPago.map((m) => ({
               clave: m.metodoPago,
               etiqueta: ETIQUETA_PAGO[m.metodoPago] ?? m.metodoPago,
@@ -187,6 +208,7 @@ function Ventas({ datos }) {
         <div className="p-2">
           <BarrasHorizontales
             titulo="Platos más vendidos, por unidades"
+            total={resumen.platos}
             filas={platos.slice(0, MAS_VENDIDOS).map((p) => ({
               clave: p.nombre,
               etiqueta: p.nombre,
@@ -226,6 +248,7 @@ function Consumo({ datos }) {
           <p className="px-2 pb-1 text-[13px] text-tinta-2">Parte de las existencias que se gastó en este rango.</p>
           <BarrasHorizontales
             titulo="Parte de las existencias gastada, por insumo"
+            tope={1}
             filas={conGasto.map((i) => ({
               clave: i.insumoId,
               etiqueta: i.nombre,

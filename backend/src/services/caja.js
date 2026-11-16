@@ -1,5 +1,6 @@
 const { Arqueo, Comanda } = require("../models");
 const { redondear2 } = require("../utils/dinero");
+const { pagosDeComanda } = require("../utils/pagos");
 const { toArqueo } = require("../utils/serializar");
 const { publicar, TOPICS } = require("../ws/hub");
 
@@ -21,14 +22,17 @@ const calcularCuadre = async (arqueo, hastaFijo) => {
     estado: "CERRADA",
     fecha_cierre: { $gte: arqueo.fecha_apertura, $lte: hasta },
   })
-    .select("total metodo_pago")
+    .select("total metodo_pago pagos")
     .lean();
 
   const porMetodo = { EFECTIVO: 0, TARJETA: 0, TRANSFERENCIA: 0, [SIN_METODO]: 0 };
   for (const venta of ventas) {
-    // Una venta sin método no se descarta: se agrupa aparte para que se vea.
-    const clave = METODOS.includes(venta.metodo_pago) ? venta.metodo_pago : SIN_METODO;
-    porMetodo[clave] += Number(venta.total ?? 0);
+    // Una cuenta dividida reparte su total entre los métodos de cada parte.
+    for (const pago of pagosDeComanda(venta)) {
+      // Una venta sin método no se descarta: se agrupa aparte para que se vea.
+      const clave = METODOS.includes(pago.metodo) ? pago.metodo : SIN_METODO;
+      porMetodo[clave] += pago.monto;
+    }
   }
 
   // Entradas y salidas manuales, por método. Un movimiento sin método es de

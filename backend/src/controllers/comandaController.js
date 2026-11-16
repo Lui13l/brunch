@@ -4,6 +4,7 @@ const { toComanda } = require("../utils/serializar");
 const { conTransaccion } = require("../utils/transaccion");
 const { codigoCorto } = require("../utils/codigo");
 const { ROL } = require("../utils/roles");
+const { redondear2, pesos } = require("../utils/dinero");
 const { arqueoAbierto, publicarCaja } = require("../services/caja");
 const { registrar, SERVICIO } = require("../services/auditoria");
 const {
@@ -258,9 +259,9 @@ const entregarItem = async (req, res) => {
  */
 const cerrar = async (req, res) => {
   const { id } = req.valid.params;
-  const { metodoPago, forzar } = req.valid.body;
+  const { metodoPago, pagos: partes, forzar } = req.valid.body;
 
-  const { total, sinCaja, cancelados } = await conTransaccion(async (session) => {
+  const { total, pagos, sinCaja, cancelados } = await conTransaccion(async (session) => {
     const comanda = await Comanda.findById(id).session(session).lean();
     if (!comanda) throw new HttpError(404, "Comanda no encontrada");
     exigirAbierta(comanda);
@@ -283,13 +284,24 @@ const cerrar = async (req, res) => {
 
     const items = comanda.items.map((i) => (EN_COCINA.includes(i.estado) ? { ...i, estado: "CANCELADO" } : i));
     const total = calcularTotal(items);
+
+    // Los montos de una cuenta dividida vienen de la app: solo valen si suman
+    // exactamente el total que calcula el servidor.
+    const pagos = partes ?? [{ metodo: metodoPago, monto: total, etiqueta: null }];
+    const pagado = redondear2(pagos.reduce((suma, p) => suma + p.monto, 0));
+    if (pagado !== redondear2(total)) {
+      throw new HttpError(400, `Los pagos suman ${pesos(pagado)} y la cuenta es de ${pesos(total)}`);
+    }
+    const metodos = [...new Set(pagos.map((p) => p.metodo))];
+
     const arqueo = await arqueoAbierto(session).select("_id").lean();
     const r = await Comanda.updateOne(
       { _id: id, estado: "ABIERTA" },
       {
         $set: {
           estado: "CERRADA",
-          metodo_pago: metodoPago,
+          metodo_pago: metodos.length === 1 ? metodos[0] : Comanda.PAGO_MIXTO,
+          pagos,
           total,
           fecha_cierre: new Date(),
           arqueo_id: arqueo?._id ?? null,
@@ -300,8 +312,13 @@ const cerrar = async (req, res) => {
       { arrayFilters: [{ "c.estado": { $in: EN_COCINA } }], session }
     );
     if (r.modifiedCount === 0) throw new HttpError(409, "La comanda ya está cerrada");
-    return { total, sinCaja: !arqueo, cancelados: enCocina.length };
+    return { total, pagos, sinCaja: !arqueo, cancelados: enCocina.length };
   });
+
+  const comoPago =
+    pagos.length === 1
+      ? `en ${pagos[0].metodo}`
+      : `dividida en ${pagos.length} pagos (${pagos.map((p) => `${p.metodo} ${pesos(p.monto)}`).join(", ")})`;
 
   const json = toComanda(await cargar(id));
   publicar(TOPICS.salon, json);
@@ -314,7 +331,7 @@ const cerrar = async (req, res) => {
   await registrar(
     req.usuario,
     "CERRAR_COMANDA",
-    `Cerró la comanda ${codigoCorto(id)} (${nombreDeMesas(json)}) por ${total} en ${metodoPago}` +
+    `Cerró la comanda ${codigoCorto(id)} (${nombreDeMesas(json)}) por ${total} ${comoPago}` +
       `${cancelados ? ` cancelando ${cancelados} plato(s) en cocina` : ""}${sinCaja ? " (sin caja abierta)" : ""}`,
     SERVICIO.COMANDAS
   );

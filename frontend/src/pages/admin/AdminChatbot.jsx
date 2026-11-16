@@ -88,11 +88,14 @@ export default function AdminChatbot() {
         {intenciones.map((i) => (
           <li key={i._id} className={`adm-tarjeta${i.activa === false ? " is-apagada" : ""}`}>
             <div className="adm-tarjeta-cabeza">
-              <span className="adm-tarjeta-titulo">{i.nombre}</span>
+              {/* Manda la descripción: el nombre técnico solo sirve para reconocerla. */}
+              <span className="adm-tarjeta-titulo">{i.descripcion || i.nombre}</span>
               {i.activa === false && <Chip tono="apagado">Inactiva</Chip>}
-              <span className="adm-tarjeta-meta">{(i.respuestas ?? []).length} respuesta(s)</span>
             </div>
-            {i.descripcion && <p className="adm-tarjeta-meta">{i.descripcion}</p>}
+            <p className="adm-tarjeta-meta">
+              {i.descripcion && <span className="adm-tarjeta-clave">{i.nombre}</span>}{" "}
+              {(i.respuestas ?? []).length === 1 ? "1 respuesta" : `${(i.respuestas ?? []).length} respuestas`}
+            </p>
             <p style={{ display: "flex", flexWrap: "wrap", gap: "0.35rem" }}>
               {(i.palabras_clave ?? []).map((p) => (
                 <span key={p} className="adm-etiqueta">{p}</span>

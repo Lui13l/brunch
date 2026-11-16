@@ -4,11 +4,31 @@ import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/sesion";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { Cabecera, Pantalla } from "../components/Layout";
+import MesaIlustracion from "../components/MesaIlustracion";
+import PlanoSalon from "../components/PlanoSalon";
 import { Aviso, Boton, Cargando } from "../components/ui";
 import { sonarMesaLista } from "../lib/aviso";
 import { minutosDesde, pesos, resumenDeMesa, tituloDeMesas } from "../lib/formato";
+import { ubicada } from "../lib/plano";
 
 const TOPICS = ["/topic/salon"];
+
+// Cada quien mira el salón como le sirve; la elección se recuerda en el equipo.
+const CLAVE_VISTA = "brunch_staff_vista_salon";
+const vistaGuardada = () => {
+  try {
+    return localStorage.getItem(CLAVE_VISTA) === "plano" ? "plano" : "lista";
+  } catch {
+    return "lista";
+  }
+};
+
+// El color de una mesa dice su estado, igual en la lista que en el plano.
+const pielDeMesa = ({ comanda, elegida }) => {
+  if (elegida) return "bg-tibio text-tinta";
+  if (resumenDeMesa(comanda).estado === "completa") return "bg-listo text-white";
+  return comanda ? "bg-tinta text-white" : "bg-mantel text-tinta";
+};
 
 // El plano del salón. Se mira de pasada y desde lejos, así que el estado va en
 // el relleno de la baldosa, no en el borde: a tres metros el borde no existe.
@@ -28,6 +48,16 @@ export default function Mesas() {
   // Modo "juntar mesas": ids de las mesas libres elegidas para un grupo, en el
   // orden en que se tocaron (la primera es la principal). null = modo normal.
   const [juntando, setJuntando] = useState(null);
+  const [vista, setVista] = useState(vistaGuardada);
+
+  const elegirVista = (nueva) => {
+    setVista(nueva);
+    try {
+      localStorage.setItem(CLAVE_VISTA, nueva);
+    } catch {
+      // Sin almacenamiento (modo privado): la vista vale solo para esta visita.
+    }
+  };
 
   const cargar = useCallback(async () => {
     try {
@@ -106,6 +136,33 @@ export default function Mesas() {
   // baldosa, así que nada se pierde por cerrarlo.
   const descartar = (comandaId) => setListas((previas) => previas.filter((l) => l.comandaId !== comandaId));
 
+  // El plano solo existe si el administrador ubicó alguna mesa.
+  const enPlano = mesas.filter(ubicada);
+  const fueraDelPlano = mesas.filter((m) => !ubicada(m));
+  const verPlano = vista === "plano" && enPlano.length > 0;
+  const tocar = (mesa) => {
+    const comanda = porMesa.get(mesa.id);
+    if (comanda) return navigate(`/comanda/${comanda.id}`);
+    return juntando ? alternar(mesa) : abrir(mesa);
+  };
+
+  const baldosas = (lista) => (
+    <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">
+      {lista.map((mesa) => (
+        <Baldosa
+          key={mesa.id}
+          mesa={mesa}
+          comanda={porMesa.get(mesa.id)}
+          ocupado={abriendo === mesa.id}
+          eligiendo={Boolean(juntando)}
+          orden={juntando ? juntando.indexOf(mesa.id) + 1 : 0}
+          onAbrir={() => (juntando ? alternar(mesa) : abrir(mesa))}
+          onEntrar={(id) => navigate(`/comanda/${id}`)}
+        />
+      ))}
+    </div>
+  );
+
   return (
     <Pantalla>
       <Cabecera
@@ -152,23 +209,60 @@ export default function Mesas() {
         </p>
       )}
 
-      {cargando ? (
-        <Cargando />
-      ) : (
-        <div className="grid grid-cols-2 gap-3 p-4 sm:grid-cols-3 lg:grid-cols-4">
-          {mesas.map((mesa) => (
-            <Baldosa
-              key={mesa.id}
-              mesa={mesa}
-              comanda={porMesa.get(mesa.id)}
-              ocupado={abriendo === mesa.id}
-              eligiendo={Boolean(juntando)}
-              orden={juntando ? juntando.indexOf(mesa.id) + 1 : 0}
-              onAbrir={() => (juntando ? alternar(mesa) : abrir(mesa))}
-              onEntrar={(id) => navigate(`/comanda/${id}`)}
-            />
+      {!cargando && enPlano.length > 0 && (
+        <div role="tablist" aria-label="Cómo ver el salón" className="grid grid-cols-2 gap-2 px-4 pt-4">
+          {[
+            { valor: "lista", texto: "Lista" },
+            { valor: "plano", texto: "Plano" },
+          ].map((opcion) => (
+            <button
+              key={opcion.valor}
+              type="button"
+              role="tab"
+              aria-selected={vista === opcion.valor}
+              onClick={() => elegirVista(opcion.valor)}
+              className={`min-h-12 rounded-lg border-2 px-3 text-[15px] font-bold ${
+                vista === opcion.valor ? "border-tinta bg-tinta text-white" : "border-filete bg-mantel text-tinta"
+              }`}
+            >
+              {opcion.texto}
+            </button>
           ))}
         </div>
+      )}
+
+      {cargando ? (
+        <Cargando />
+      ) : verPlano ? (
+        <>
+          <div className="mx-auto w-full max-w-[44rem] p-4">
+            <PlanoSalon
+              mesas={enPlano}
+              pielDe={(mesa) => {
+                const comanda = porMesa.get(mesa.id);
+                const elegida = Boolean(juntando?.includes(mesa.id));
+                return `${pielDeMesa({ comanda, elegida })} ${comanda || elegida ? "" : "border-2 border-filete"}`;
+              }}
+              detalleDe={(mesa) => {
+                const comanda = porMesa.get(mesa.id);
+                if (juntando?.includes(mesa.id)) return `Grupo ${juntando.indexOf(mesa.id) + 1}`;
+                if (!comanda) return null;
+                return resumenDeMesa(comanda).estado === "completa" ? "Lista" : pesos(comanda.total);
+              }}
+              nombreDe={(mesa) => `Mesa ${mesa.numero}, ${porMesa.get(mesa.id) ? "ocupada" : "libre"}`}
+              deshabilitada={(mesa) => abriendo === mesa.id || (Boolean(juntando) && porMesa.has(mesa.id))}
+              onPulsar={tocar}
+            />
+          </div>
+          {fueraDelPlano.length > 0 && (
+            <>
+              <h2 className="px-4 text-[15px] font-extrabold text-tinta-2">Mesas sin ubicar en el plano</h2>
+              {baldosas(fueraDelPlano)}
+            </>
+          )}
+        </>
+      ) : (
+        baldosas(mesas)
       )}
 
       {juntando && (
@@ -222,13 +316,7 @@ function Baldosa({ mesa, comanda, ocupado, eligiendo, orden, onAbrir, onEntrar }
   // Las otras mesas con las que comparte la cuenta: "Con 5 y 6".
   const companeras = (mesa.grupo ?? []).filter((n) => n !== mesa.numero);
 
-  const piel = elegida
-    ? "bg-tibio text-tinta"
-    : completa
-      ? "bg-listo text-white"
-      : comanda
-        ? "bg-tinta text-white"
-        : "bg-mantel text-tinta";
+  const piel = pielDeMesa({ comanda, elegida });
   const tenue = comanda && !elegida ? "text-white/70" : "text-tinta-2";
 
   return (
@@ -236,11 +324,11 @@ function Baldosa({ mesa, comanda, ocupado, eligiendo, orden, onAbrir, onEntrar }
       disabled={ocupado || (eligiendo && Boolean(comanda))}
       aria-pressed={eligiendo ? elegida : undefined}
       onClick={() => (comanda ? onEntrar(comanda.id) : onAbrir())}
-      className={`flex min-h-36 flex-col justify-between rounded-2xl p-4 text-left transition active:scale-[0.98] disabled:opacity-60 ${piel} ${
+      className={`flex min-h-36 flex-col justify-between rounded-2xl p-4 text-left pulsable disabled:opacity-60 ${piel} ${
         comanda || elegida ? "" : "border border-filete"
       } ${eligiendo && comanda ? "disabled:opacity-35" : ""}`}
     >
-      <div className="flex items-baseline justify-between gap-2">
+      <div className="flex items-start justify-between gap-2">
         <span className="text-5xl leading-none font-extrabold tracking-[-0.04em]">{mesa.numero}</span>
         {elegida ? (
           <span className="flex size-8 shrink-0 items-center justify-center rounded-full bg-tinta text-base font-extrabold text-white">
@@ -249,7 +337,11 @@ function Baldosa({ mesa, comanda, ocupado, eligiendo, orden, onAbrir, onEntrar }
         ) : completa ? (
           <Check size={26} strokeWidth={3} className="shrink-0" />
         ) : (
-          <span className={`text-sm font-semibold ${tenue}`}>{mesa.capacidad}p</span>
+          // El dibujo dice de un vistazo qué mesa es: cuántos puestos y de qué forma.
+          <span className={`flex flex-col items-end ${tenue}`}>
+            <MesaIlustracion capacidad={mesa.capacidad} forma={mesa.forma} className="h-12 w-auto max-w-20" />
+            <span className="text-[13px] font-semibold">{mesa.capacidad} puestos</span>
+          </span>
         )}
       </div>
 

@@ -11,6 +11,7 @@ const SECCIONES = [
   { a: "/admin/categorias", texto: "Categorías" },
   { a: "/admin/reservas", texto: "Reservas" },
   { a: "/admin/pagos", texto: "Pagos" },
+  { a: "/admin/facturas", texto: "Facturas" },
   { a: "/admin/domiciliarios", texto: "Domiciliarios" },
   { a: "/admin/usuarios", texto: "Usuarios y roles" },
   { a: "/admin/chatbot", texto: "Chatbot" },

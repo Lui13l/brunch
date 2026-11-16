@@ -19,6 +19,8 @@ const {
   Category,
   DeliveryPerson,
   ChatIntent,
+  Factura,
+  Imagen,
 } = require("../src/models");
 
 const ids = async (Modelo, filtro) => (await Modelo.find(filtro).select("_id").lean()).map((d) => d._id);
@@ -43,6 +45,8 @@ const limpiarE2E = async ({ confirmar = false } = {}) => {
     usuarios: [User, { _id: { $in: usuarios } }],
     pedidos: [Order, { _id: { $in: pedidos } }],
     pagos: [Payment, { $or: [{ pedido_id: { $in: pedidos } }, { usuario_id: { $in: usuarios } }] }],
+    facturas: [Factura, { $or: [{ pedido_id: { $in: pedidos } }, { usuario_id: { $in: usuarios } }] }],
+    imagenes: [Imagen, { subida_por: { $in: usuarios } }],
     reservas: [Reservation, { usuario_id: { $in: usuarios } }],
     conversaciones: [ChatConversation, { usuario_id: { $in: usuarios } }],
     comandas: [Comanda, { $or: [{ mesa_id: { $in: mesas } }, { mesero_id: { $in: usuarios } }] }],

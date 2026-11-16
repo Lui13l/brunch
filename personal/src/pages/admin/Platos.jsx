@@ -1,5 +1,6 @@
-import { Pencil, Plus, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { Pencil, Plus, Trash2, Upload } from "lucide-react";
+import { useRef, useState } from "react";
+import { reducirImagen } from "../../lib/imagenes";
 import { AreaTexto, Aviso, Boton, Campo, Cargando, Casilla, Hoja, Selector, Vacio } from "../../components/ui";
 import { useAuth } from "../../context/sesion";
 import { useRecurso } from "../../hooks/useRecurso";
@@ -15,6 +16,80 @@ const VACIO = {
   visibleSalon: true,
   imagenUrl: "",
 };
+
+// La foto del plato: se sube desde el equipo (queda guardada en la base) o se
+// escribe la ruta de una que ya esté en la web.
+function CampoImagen({ valor, onCambiar, onError }) {
+  const { pedir } = useAuth();
+  const [subiendo, setSubiendo] = useState(false);
+  // Las fotos de la carta original ("/menu/…") son archivos de la web y aquí no
+  // cargan: en vez de un icono roto se muestra el recuadro vacío.
+  const [rota, setRota] = useState(null);
+  const archivo = useRef(null);
+
+  const elegir = async (e) => {
+    const elegido = e.target.files?.[0];
+    // Se vacía para que elegir otra vez el mismo archivo vuelva a avisar.
+    e.target.value = "";
+    if (!elegido) return;
+    setSubiendo(true);
+    onError("");
+    try {
+      const blob = await reducirImagen(elegido);
+      const { url } = await pedir("/api/admin/imagenes", {
+        method: "POST",
+        headers: { "Content-Type": blob.type },
+        body: blob,
+      });
+      onCambiar(url);
+    } catch (err) {
+      onError(err.message);
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
+  const visible = valor && rota !== valor;
+
+  return (
+    <div>
+      <span className="mb-1 block text-sm font-semibold text-tinta-2">Imagen</span>
+      <div className="mb-2 flex flex-wrap items-center gap-3">
+        {visible ? (
+          <img
+            src={valor}
+            alt="Vista previa de la foto del plato"
+            onError={() => setRota(valor)}
+            className="size-24 shrink-0 rounded-lg border border-filete object-cover"
+          />
+        ) : (
+          <span className="flex size-24 shrink-0 items-center justify-center rounded-lg border border-dashed border-filete px-2 text-center text-sm text-tinta-2">
+            {valor ? "Sin vista previa" : "Sin foto"}
+          </span>
+        )}
+        <div className="grid min-w-0 flex-1 gap-2">
+          <input ref={archivo} type="file" accept="image/*" hidden onChange={elegir} />
+          <Boton type="button" variante="secundario" cargando={subiendo} onClick={() => archivo.current?.click()}>
+            <span className="flex items-center justify-center gap-2">
+              <Upload size={18} aria-hidden /> Subir una foto
+            </span>
+          </Boton>
+          {valor && (
+            <Boton type="button" variante="secundario" disabled={subiendo} onClick={() => onCambiar("")}>
+              Quitar foto
+            </Boton>
+          )}
+        </div>
+      </div>
+      <Campo
+        etiqueta="O su dirección"
+        placeholder="/menu/pancakes.jpg"
+        value={valor ?? ""}
+        onChange={(e) => onCambiar(e.target.value)}
+      />
+    </div>
+  );
+}
 
 export default function Platos() {
   const { pedir } = useAuth();
@@ -154,10 +229,11 @@ export default function Platos() {
               value={editando.descripcion}
               onChange={(e) => setEditando({ ...editando, descripcion: e.target.value })}
             />
-            <Campo
-              etiqueta="Imagen (URL)"
-              value={editando.imagenUrl}
-              onChange={(e) => setEditando({ ...editando, imagenUrl: e.target.value })}
+            <CampoImagen
+              valor={editando.imagenUrl}
+              // La subida tarda: se aplica sobre el formulario de ese momento, no sobre el de cuando empezó.
+              onCambiar={(imagenUrl) => setEditando((actual) => actual && { ...actual, imagenUrl })}
+              onError={setError}
             />
 
             <div className="space-y-1 border-t border-filete pt-3">

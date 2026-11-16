@@ -4,6 +4,8 @@ import { CartProvider } from './context/CartContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import CartDrawer from './components/CartDrawer';
 import CartFloatingButton from './components/CartFloatingButton';
+import ChatFlotante from './components/ChatFlotante';
+import { ChatProvider } from './context/ChatContext';
 import ScrollToTop from './components/ScrollToTop';
 import Home from './pages/Home';
 import Menu from './pages/Menu';
@@ -22,6 +24,7 @@ import AdminMenu from './pages/admin/AdminMenu';
 import AdminCategorias from './pages/admin/AdminCategorias';
 import AdminReservas from './pages/admin/AdminReservas';
 import AdminPagos from './pages/admin/AdminPagos';
+import AdminFacturas from './pages/admin/AdminFacturas';
 import AdminDomiciliarios from './pages/admin/AdminDomiciliarios';
 import AdminUsuarios from './pages/admin/AdminUsuarios';
 import AdminChatbot from './pages/admin/AdminChatbot';
@@ -31,10 +34,12 @@ function App() {
   return (
     <AuthProvider>
       <CartProvider>
+        <ChatProvider>
         <BrowserRouter>
           <ScrollToTop />
           <CartDrawer />
           <CartFloatingButton />
+          <ChatFlotante />
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/menu" element={<Menu />} />
@@ -88,6 +93,7 @@ function App() {
               <Route path="categorias" element={<AdminCategorias />} />
               <Route path="reservas" element={<AdminReservas />} />
               <Route path="pagos" element={<AdminPagos />} />
+              <Route path="facturas" element={<AdminFacturas />} />
               <Route path="domiciliarios" element={<AdminDomiciliarios />} />
               <Route path="usuarios" element={<AdminUsuarios />} />
               <Route path="chatbot" element={<AdminChatbot />} />
@@ -95,6 +101,7 @@ function App() {
             </Route>
           </Routes>
         </BrowserRouter>
+        </ChatProvider>
       </CartProvider>
     </AuthProvider>
   );

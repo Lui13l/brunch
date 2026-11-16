@@ -28,7 +28,7 @@ const registrar = async (usuario, accion, detalle, servicio) => {
   }
 };
 
-const listar = async ({ servicio, usuarioId, desde, hasta, limite = 100 } = {}) => {
+const listar = async ({ servicio, usuarioId, desde, hasta, limite = 100, antes } = {}) => {
   const filtro = {};
   if (servicio) filtro.servicio = servicio;
   if (usuarioId) filtro.usuario_id = usuarioId;
@@ -36,6 +36,13 @@ const listar = async ({ servicio, usuarioId, desde, hasta, limite = 100 } = {}) 
     filtro.fecha = {};
     if (desde) filtro.fecha.$gte = desde;
     if (hasta) filtro.fecha.$lt = hasta;
+  }
+  // Página siguiente: lo que va después de `antes` en el mismo orden de la
+  // lista (fecha y, a igual fecha, _id). Con un salto por número de página se
+  // repetirían filas si entra una acción nueva mientras se lee.
+  if (antes) {
+    const ultimo = await AuditLog.findById(antes).select("fecha").lean();
+    if (ultimo) filtro.$or = [{ fecha: { $lt: ultimo.fecha } }, { fecha: ultimo.fecha, _id: { $lt: ultimo._id } }];
   }
   return AuditLog.find(filtro).sort({ fecha: -1, _id: -1 }).limit(limite).lean();
 };

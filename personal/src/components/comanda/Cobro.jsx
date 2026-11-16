@@ -1,13 +1,8 @@
 import { useState } from "react";
-import { Banknote, CreditCard, Smartphone } from "lucide-react";
 import { Boton } from "../ui";
+import Division from "./Division";
 import { EN_COCINA, pesos } from "../../lib/formato";
-
-const METODOS = [
-  { valor: "EFECTIVO", texto: "Efectivo", Icono: Banknote },
-  { valor: "TARJETA", texto: "Tarjeta", Icono: CreditCard },
-  { valor: "TRANSFERENCIA", texto: "Transferencia", Icono: Smartphone },
-];
+import { DIVISION_INICIAL, METODOS_PAGO, repartir, unidadesDe } from "../../lib/division";
 
 // Cerrar la mesa, en un solo paso: el total, cómo pagan y confirmar. Antes de
 // cobrar se resuelve lo que estorba: platos que no se enviaron y platos que
@@ -15,11 +10,20 @@ const METODOS = [
 export default function Cobro({ comanda, esAdmin, ocupado, onEnviar, onQuitarBorradores, onCobrar, onAnular, onVolver }) {
   const [metodo, setMetodo] = useState(null);
   const [forzar, setForzar] = useState(false);
+  // null: una sola cuenta. Con valor: cómo se está dividiendo.
+  const [division, setDivision] = useState(null);
 
   const borradores = comanda.items.filter((i) => i.estado === "BORRADOR");
   const enCocina = comanda.items.filter((i) => EN_COCINA.includes(i.estado));
   const cobrables = comanda.items.filter((i) => !["BORRADOR", "CANCELADO"].includes(i.estado));
   const plural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+
+  // Al forzar el cierre, lo que sigue en cocina se cancela y no se cobra: el
+  // total que se muestra y se reparte es el que va a calcular el servidor.
+  const porCobrar = forzar ? cobrables.filter((i) => !EN_COCINA.includes(i.estado)) : cobrables;
+  const total = forzar ? porCobrar.reduce((suma, i) => suma + i.subtotal, 0) : comanda.total;
+  const unidades = unidadesDe(porCobrar);
+  const reparto = division ? repartir(division, unidades, total) : null;
 
   // Nada servido: no hay qué cobrar. La mesa se cierra sin registrar una venta.
   if (cobrables.length === 0) {
@@ -47,14 +51,27 @@ export default function Cobro({ comanda, esAdmin, ocupado, onEnviar, onQuitarBor
 
   const bloqueado = borradores.length > 0 || (enCocina.length > 0 && !forzar);
 
+  // Qué le falta al cobro para poder confirmarse; el botón lo dice.
+  let falta = null;
+  if (!division) {
+    if (!metodo) falta = "Elige cómo pagan";
+  } else if (reparto.sinRepartir > 0) {
+    falta = reparto.sinRepartir === 1 ? "Falta 1 plato por repartir" : `Faltan ${reparto.sinRepartir} platos por repartir`;
+  } else if (!reparto.pagos) {
+    falta = "Elige cómo paga cada uno";
+  }
+
+  const confirmar = () =>
+    division ? onCobrar({ pagos: reparto.pagos, forzar }) : onCobrar({ metodoPago: metodo, forzar });
+
   return (
     <div className="space-y-4 p-4">
       <div className="rounded-2xl bg-rio p-5 text-white">
         <p className="text-base font-semibold text-white/75">Total a cobrar</p>
         <p className="mt-1 font-titulo text-6xl leading-none font-semibold tracking-[-0.03em] tabular-nums">
-          {pesos(comanda.total)}
+          {pesos(total)}
         </p>
-        <p className="mt-2 text-[15px] text-white/75">{plural(cobrables.length, "plato", "platos")} en la cuenta</p>
+        <p className="mt-2 text-[15px] text-white/75">{plural(porCobrar.length, "plato", "platos")} en la cuenta</p>
       </div>
 
       {borradores.length > 0 && (
@@ -97,16 +114,42 @@ export default function Cobro({ comanda, esAdmin, ocupado, onEnviar, onQuitarBor
         </div>
       )}
 
-      <fieldset>
+      {/* Dividir solo tiene sentido si hay algo que repartir. */}
+      {total > 0 && (
+        <div className="grid grid-cols-2 gap-2" role="group" aria-label="Una cuenta o dividida">
+          {[
+            { dividida: false, texto: "Una sola cuenta" },
+            { dividida: true, texto: "Dividir la cuenta" },
+          ].map((opcion) => (
+            <button
+              key={opcion.texto}
+              type="button"
+              aria-pressed={Boolean(division) === opcion.dividida}
+              onClick={() => setDivision(opcion.dividida ? (division ?? DIVISION_INICIAL) : null)}
+              className={`min-h-12 rounded-xl px-3 text-[15px] font-bold pulsable ${
+                Boolean(division) === opcion.dividida
+                  ? "bg-tinta text-white"
+                  : "border border-filete bg-mantel text-tinta"
+              }`}
+            >
+              {opcion.texto}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {division && <Division division={division} onCambiar={setDivision} unidades={unidades} reparto={reparto} />}
+
+      <fieldset hidden={Boolean(division)}>
         <legend className="mb-2 font-titulo text-2xl font-semibold tracking-[-0.02em] text-tinta">¿Cómo pagan?</legend>
         <div className="grid grid-cols-3 gap-2">
-          {METODOS.map((opcion) => (
+          {METODOS_PAGO.map((opcion) => (
             <button
               key={opcion.valor}
               type="button"
               aria-pressed={metodo === opcion.valor}
               onClick={() => setMetodo(opcion.valor)}
-              className={`flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl px-2 text-[15px] font-bold transition active:scale-[0.98] ${
+              className={`flex min-h-24 flex-col items-center justify-center gap-2 rounded-xl px-2 text-[15px] font-bold pulsable ${
                 metodo === opcion.valor ? "bg-tinta text-white" : "border border-filete bg-mantel text-tinta"
               }`}
             >
@@ -121,11 +164,12 @@ export default function Cobro({ comanda, esAdmin, ocupado, onEnviar, onQuitarBor
         <Boton
           variante="marca"
           className="min-h-14 text-[17px]"
-          disabled={!metodo || bloqueado}
+          disabled={Boolean(falta) || bloqueado}
           cargando={ocupado}
-          onClick={() => onCobrar(metodo, forzar)}
+          onClick={confirmar}
         >
-          {metodo ? `Confirmar cobro de ${pesos(comanda.total)}` : "Elige cómo pagan"}
+          {falta ??
+            `Confirmar cobro de ${pesos(total)}${division ? ` en ${plural(reparto.pagos.length, "pago", "pagos")}` : ""}`}
         </Boton>
         <Boton variante="secundario" onClick={onVolver}>
           Volver a la cuenta

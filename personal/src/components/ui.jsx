@@ -12,12 +12,13 @@ import { COLOR_ESTADO, ETIQUETA_ESTADO, rangoDias } from "../lib/formato";
 //    llevan radio porque no son tarjetas, son renglones.
 
 const VARIANTES = {
-  primario: "bg-tinta text-white active:bg-rio-hondo disabled:bg-filete disabled:text-tinta-2",
-  secundario: "bg-mantel text-tinta border border-filete active:bg-sala disabled:text-tinta-2",
-  peligro: "bg-brasa text-white active:brightness-90 disabled:bg-filete disabled:text-tinta-2",
-  dorado: "bg-rio text-white active:bg-rio-hondo disabled:bg-filete disabled:text-tinta-2",
+  primario: "bg-tinta text-white hover:bg-rio-hondo active:bg-rio-hondo disabled:bg-filete disabled:text-tinta-2",
+  secundario:
+    "bg-mantel text-tinta border-2 border-filete hover:border-tinta hover:bg-espera active:bg-sala disabled:text-tinta-2",
+  peligro: "bg-brasa text-white hover:brightness-110 active:brightness-90 disabled:bg-filete disabled:text-tinta-2",
+  dorado: "bg-rio text-white hover:bg-rio-hondo active:bg-rio-hondo disabled:bg-filete disabled:text-tinta-2",
   // "marca" se usa en Entregar, Cobrar y Cerrar caja; antes no existía y esos botones salían sin estilo.
-  marca: "bg-rio text-white active:bg-rio-hondo disabled:bg-filete disabled:text-tinta-2",
+  marca: "bg-rio text-white hover:bg-rio-hondo active:bg-rio-hondo disabled:bg-filete disabled:text-tinta-2",
 };
 
 export function Boton({ variante = "primario", cargando = false, className = "", children, ...props }) {
@@ -25,7 +26,7 @@ export function Boton({ variante = "primario", cargando = false, className = "",
     <button
       {...props}
       disabled={props.disabled || cargando}
-      className={`min-h-12 rounded-lg px-5 text-[15px] font-bold tracking-[-0.01em] transition disabled:cursor-not-allowed ${VARIANTES[variante]} ${className}`}
+      className={`pulsable min-h-12 rounded-lg px-5 text-[15px] font-bold tracking-[-0.01em] disabled:cursor-not-allowed ${VARIANTES[variante]} ${className}`}
     >
       {cargando ? <Loader2 className="mx-auto animate-spin" size={20} /> : children}
     </button>
@@ -69,8 +70,17 @@ export function Estado({ valor, etiquetas = ETIQUETA_ESTADO, colores = COLOR_EST
   );
 }
 
-// Desde / hasta con los atajos que de verdad se piden: hoy, 7 y 30 días.
+// Desde / hasta con los atajos que de verdad se piden: hoy, 7 y 30 días, y
+// "Todo" (sin fechas: el servidor no acota el rango).
+const ATAJOS = [
+  { texto: "Hoy", rango: () => rangoDias(1) },
+  { texto: "7 días", rango: () => rangoDias(7) },
+  { texto: "30 días", rango: () => rangoDias(30) },
+  { texto: "Todo", rango: () => ({ desde: "", hasta: "" }) },
+];
+
 export function RangoFechas({ rango, onCambiar }) {
+  const esTodo = !rango.desde && !rango.hasta;
   return (
     <div className="mb-4 rounded-xl border border-filete bg-white p-3">
       <div className="flex gap-2">
@@ -89,17 +99,25 @@ export function RangoFechas({ rango, onCambiar }) {
           onChange={(e) => onCambiar({ ...rango, hasta: e.target.value })}
         />
       </div>
-      <div className="mt-2 flex gap-4 text-sm">
-        <button onClick={() => onCambiar(rangoDias(1))} className="min-h-10 text-tinta-2 underline">
-          Hoy
-        </button>
-        <button onClick={() => onCambiar(rangoDias(7))} className="min-h-10 text-tinta-2 underline">
-          7 días
-        </button>
-        <button onClick={() => onCambiar(rangoDias(30))} className="min-h-10 text-tinta-2 underline">
-          30 días
-        </button>
+      <div className="mt-2 flex flex-wrap gap-2 text-sm">
+        {ATAJOS.map((atajo) => {
+          const activo = atajo.texto === "Todo" && esTodo;
+          return (
+            <button
+              key={atajo.texto}
+              type="button"
+              aria-pressed={activo}
+              onClick={() => onCambiar(atajo.rango())}
+              className={`min-h-10 rounded-lg border-2 px-3 font-bold ${
+                activo ? "border-tinta bg-tinta text-white" : "border-filete text-tinta-2 hover:border-tinta hover:text-tinta"
+              }`}
+            >
+              {atajo.texto}
+            </button>
+          );
+        })}
       </div>
+      {esTodo && <p className="mt-2 text-[13px] font-semibold text-tinta-2">Sin fechas: se muestra todo el historial.</p>}
     </div>
   );
 }
@@ -168,7 +186,7 @@ export function Hoja({ titulo, error, onCerrar, children }) {
 
   return (
     <div className="fixed inset-0 z-30 flex items-end justify-center sm:items-center">
-      <button aria-label="Cerrar" onClick={onCerrar} className="absolute inset-0 bg-tinta/50" />
+      <button aria-label="Cerrar" data-sin-hover onClick={onCerrar} className="absolute inset-0 bg-tinta/50" />
       <div className="relative max-h-[90vh] w-full overflow-y-auto rounded-t-2xl bg-mantel sm:max-w-lg sm:rounded-2xl">
         <div className="sticky top-0 flex items-center justify-between border-b border-filete bg-mantel px-5 py-4">
           <h2 className="text-xl font-extrabold tracking-[-0.02em] text-tinta">{titulo}</h2>

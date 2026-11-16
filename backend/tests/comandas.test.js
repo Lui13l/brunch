@@ -264,6 +264,63 @@ describe("Cerrar la cuenta", () => {
 
     expect((await abrir()).status).toBe(200);
   });
+
+  test("cuenta dividida: los pagos deben sumar el total y cada uno guarda su método", async () => {
+    const { body: c } = await abrir();
+    await agregar(c.id, CAFE(), { cantidad: 3 });
+    const { body: enviado } = await enviar(c.id);
+    await api().patch(`/api/cocina/items/${enviado.comanda.items[0].id}`).set(k()).send({ estado: "LISTO" });
+    const cerrar = (cuerpo) => api().post(`/api/comandas/${c.id}/cerrar`).set(m()).send(cuerpo);
+
+    const sinNada = await cerrar({});
+    expect(sinNada.status).toBe(400);
+    expect(sinNada.text).toBe("Indica el método de pago o los pagos de la cuenta dividida");
+
+    const lasDos = await cerrar({ metodoPago: "EFECTIVO", pagos: [{ metodo: "EFECTIVO", monto: 15000 }] });
+    expect(lasDos.status).toBe(400);
+
+    const enCero = await cerrar({ pagos: [{ metodo: "EFECTIVO", monto: 0 }, { metodo: "TARJETA", monto: 15000 }] });
+    expect(enCero.status).toBe(400);
+    expect(enCero.text).toBe("El monto de cada pago debe ser mayor que 0");
+
+    const descuadrada = await cerrar({ pagos: [{ metodo: "EFECTIVO", monto: 5000 }, { metodo: "TARJETA", monto: 5000 }] });
+    expect(descuadrada.status).toBe(400);
+    expect(descuadrada.text).toMatch(/^Los pagos suman .* y la cuenta es de /);
+    expect((await Comanda.findById(c.id)).estado).toBe("ABIERTA");
+
+    const res = await cerrar({
+      pagos: [
+        { metodo: "EFECTIVO", monto: 5000, etiqueta: "Persona 1" },
+        { metodo: "TARJETA", monto: 10000, etiqueta: "Persona 2" },
+      ],
+    });
+    expect(res.status).toBe(200);
+    expect(res.body.total).toBe(15000);
+    expect(res.body.metodoPago).toBe("MIXTO");
+    expect(res.body.pagos).toEqual([
+      { metodo: "EFECTIVO", monto: 5000, etiqueta: "Persona 1" },
+      { metodo: "TARJETA", monto: 10000, etiqueta: "Persona 2" },
+    ]);
+  });
+
+  test("una cuenta sin dividir guarda un solo pago por el total", async () => {
+    const { body: c } = await abrir();
+    await agregar(c.id, CAFE());
+    const { body: enviado } = await enviar(c.id);
+    await api().patch(`/api/cocina/items/${enviado.comanda.items[0].id}`).set(k()).send({ estado: "LISTO" });
+
+    const res = await api().post(`/api/comandas/${c.id}/cerrar`).set(m()).send({ metodoPago: "TRANSFERENCIA" });
+    expect(res.body.pagos).toEqual([{ metodo: "TRANSFERENCIA", monto: 5000, etiqueta: null }]);
+
+    // Dividida, pero todos pagan igual: el resumen es ese método, no MIXTO.
+    const { body: otra } = await abrir();
+    await agregar(otra.id, CAFE(), { cantidad: 2 });
+    const { body: enviada } = await enviar(otra.id);
+    await api().patch(`/api/cocina/items/${enviada.comanda.items[0].id}`).set(k()).send({ estado: "LISTO" });
+    const iguales = await api().post(`/api/comandas/${otra.id}/cerrar`).set(m())
+      .send({ pagos: [{ metodo: "TARJETA", monto: 5000 }, { metodo: "TARJETA", monto: 5000 }] });
+    expect(iguales.body.metodoPago).toBe("TARJETA");
+  });
 });
 
 describe("Cierre forzado con platos en cocina", () => {

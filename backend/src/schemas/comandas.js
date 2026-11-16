@@ -1,6 +1,6 @@
 const { z } = require("zod");
 const { Comanda } = require("../models");
-const { objectId, textoOpcional } = require("../utils/validar");
+const { objectId, textoOpcional, dinero } = require("../utils/validar");
 
 // Validación de las rutas del salón y la cocina (mismos mensajes que la API anterior).
 
@@ -35,11 +35,33 @@ const agregarItemSchema = z.object({
 
 const editarItemSchema = z.object({ cantidad: cantidadPlato, notas: textoOpcional("Las notas") });
 
-const cerrarSchema = z.object({
-  metodoPago: z.enum(Comanda.METODOS_PAGO, { error: "El método de pago debe ser EFECTIVO, TARJETA o TRANSFERENCIA" }),
-  // Salida de emergencia para el admin: cerrar aunque queden platos en cocina.
-  forzar: z.boolean().default(false),
+const metodoPago = z.enum(Comanda.METODOS_PAGO, {
+  error: "El método de pago debe ser EFECTIVO, TARJETA o TRANSFERENCIA",
 });
+
+// Una parte de la cuenta dividida. El monto lo propone la app, pero el servidor
+// exige que la suma dé el total que él mismo calcula.
+const pagoSchema = z.object({
+  metodo: metodoPago,
+  monto: dinero("El monto de cada pago", { minimo: 0 }).refine((v) => v > 0, "El monto de cada pago debe ser mayor que 0"),
+  etiqueta: textoOpcional("La etiqueta del pago", 40),
+});
+
+// Se cobra de una vez (`metodoPago`) o dividido (`pagos`), no las dos cosas.
+const cerrarSchema = z
+  .object({
+    metodoPago: metodoPago.optional(),
+    pagos: z
+      .array(pagoSchema, { error: "Los pagos deben ser una lista" })
+      .min(1, "Indica al menos un pago")
+      .max(20, "No se puede dividir la cuenta en más de 20 pagos")
+      .optional(),
+    // Salida de emergencia para el admin: cerrar aunque queden platos en cocina.
+    forzar: z.boolean().default(false),
+  })
+  .refine((d) => Boolean(d.metodoPago) !== Boolean(d.pagos), {
+    message: "Indica el método de pago o los pagos de la cuenta dividida",
+  });
 
 const estadoCocinaSchema = z.object({
   estado: z.enum(["PREPARANDO", "LISTO"], { error: "La cocina solo puede marcar PREPARANDO o LISTO" }),

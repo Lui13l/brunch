@@ -65,7 +65,7 @@ export default function MesasDeLaCuenta({ comanda, onGuardado, onCerrar }) {
                     type="button"
                     aria-pressed={elegida}
                     onClick={() => alternar(mesa.id)}
-                    className={`relative flex min-h-20 flex-col items-center justify-center rounded-xl transition active:scale-[0.98] ${
+                    className={`relative flex min-h-20 flex-col items-center justify-center rounded-xl pulsable ${
                       elegida ? "bg-tibio text-tinta" : "border border-filete bg-mantel text-tinta"
                     }`}
                   >

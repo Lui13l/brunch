@@ -19,8 +19,9 @@ const admin = () => bearer(d.tokenAdmin);
 const abrirCaja = (baseInicial = 50000) =>
   api().post("/api/admin/caja/abrir").set(admin()).send({ baseInicial, notas: null });
 
-// Cobra una cuenta de `cantidad` cafés (5000 c/u) con el método indicado.
-const cobrar = async (metodoPago, cantidad = 1) => {
+// Cobra una cuenta de `cantidad` cafés (5000 c/u) con el método indicado, o
+// dividida en `pagos`.
+const cobrar = async (metodoPago, cantidad = 1, pagos = null) => {
   const m = bearer(mesero.token);
   const { body: c } = await api().post("/api/comandas").set(m).send({ mesaId: mesa.id });
   await api().post(`/api/comandas/${c.id}/items`).set(m).send({ menuItemId: String(d.cafe._id), cantidad });
@@ -29,7 +30,7 @@ const cobrar = async (metodoPago, cantidad = 1) => {
   for (const item of enviado.comanda.items) {
     await api().patch(`/api/cocina/items/${item.id}`).set(admin()).send({ estado: "LISTO" });
   }
-  return api().post(`/api/comandas/${c.id}/cerrar`).set(admin()).send({ metodoPago });
+  return api().post(`/api/comandas/${c.id}/cerrar`).set(admin()).send(pagos ? { pagos } : { metodoPago });
 };
 
 describe("Caja", () => {
@@ -150,6 +151,33 @@ describe("Caja", () => {
     expect(sinConcepto.text).toBe("El concepto es obligatorio");
   });
 
+  test("una cuenta dividida reparte su total entre los métodos de cada parte", async () => {
+    await abrirCaja(50000);
+    const res = await cobrar(null, 4, [
+      { metodo: "EFECTIVO", monto: 5000, etiqueta: "Parte 1 de 3" },
+      { metodo: "EFECTIVO", monto: 5000, etiqueta: "Parte 2 de 3" },
+      { metodo: "TRANSFERENCIA", monto: 10000, etiqueta: "Parte 3 de 3" },
+    ]);
+    expect(res.status).toBe(200);
+
+    const { body } = await api().get("/api/admin/caja").set(admin());
+    expect(body.cuadre.ventas).toEqual({ EFECTIVO: 10000, TARJETA: 0, TRANSFERENCIA: 10000, SIN_REGISTRAR: 0 });
+    expect(body.cuadre.comandas).toBe(1);
+    expect(body.cuadre.esperado).toEqual({ EFECTIVO: 60000, TARJETA: 0, TRANSFERENCIA: 10000 });
+
+    // Alguien cambia el total después de cobrar: lo que no cuadra se ve aparte.
+    await Comanda.updateMany({ estado: "CERRADA" }, { total: 23000 });
+    const tocada = await api().get("/api/admin/caja").set(admin());
+    expect(tocada.body.cuadre.ventas.SIN_REGISTRAR).toBe(3000);
+
+    const reporte = await api().get("/api/admin/reportes/ventas").set(admin());
+    expect(reporte.body.porMetodoPago).toEqual([
+      { metodoPago: "EFECTIVO", comandas: 1, total: 10000 },
+      { metodoPago: "TRANSFERENCIA", comandas: 1, total: 10000 },
+      { metodoPago: "SIN_REGISTRAR", comandas: 1, total: 3000 },
+    ]);
+  });
+
   test("una comanda cobrada con caja abierta queda ligada al arqueo", async () => {
     const { body: caja } = await abrirCaja();
     const res = await cobrar("EFECTIVO");
@@ -180,6 +208,28 @@ describe("Reportes", () => {
     expect(el10.body.porDia[0].fecha).toBe("2026-03-10");
     const el11 = await api().get("/api/admin/reportes/ventas?desde=2026-03-11").set(admin());
     expect(el11.body.resumen.comandas).toBe(0);
+  });
+
+  test("con todo=true el informe no acota por fecha", async () => {
+    await cobrar("EFECTIVO", 1);
+    await cobrar("TARJETA", 1);
+    const [vieja] = await Comanda.find().sort({ _id: 1 }).limit(1);
+    await Comanda.updateOne({ _id: vieja._id }, { fecha_cierre: new Date("2020-05-05T17:00:00Z") });
+
+    const hoy = await api().get("/api/admin/reportes/ventas").set(admin());
+    expect(hoy.body.resumen.comandas).toBe(1);
+
+    const todo = await api().get("/api/admin/reportes/ventas?todo=true").set(admin());
+    expect(todo.status).toBe(200);
+    expect(todo.body.desde).toBe(null);
+    expect(todo.body.resumen.comandas).toBe(2);
+    expect(todo.body.porDia.map((d) => d.fecha)[0]).toBe("2020-05-05");
+
+    const consumo = await api().get("/api/admin/reportes/consumo?todo=true").set(admin());
+    expect(consumo.status).toBe(200);
+
+    const raro = await api().get("/api/admin/reportes/ventas?todo=quizas").set(admin());
+    expect(raro.status).toBe(400);
   });
 
   test("rangos inválidos dan 400 en texto", async () => {

@@ -1,7 +1,7 @@
 .sw-wrapper {
   position: fixed;
   top: 60px;
-  right: 24px;
+  right: -14px;
   width: 110px;
   z-index: 25;
   pointer-events: none;
@@ -22,5 +22,5 @@
 }
 
 @media (max-width: 600px) {
-  .sw-wrapper { width: 75px; right: 12px; }
+  .sw-wrapper { width: 75px; right: -10px; }
 }

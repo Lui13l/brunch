@@ -2,7 +2,7 @@ const { describe, test, before, after, beforeEach } = require("node:test");
 const { conectar, desconectar, limpiar, api, datosBase, bearer, expect } = require("./helpers");
 const { ChatIntent, Comanda, Mesa, Reservation, User } = require("../src/models");
 const { sincronizarIntenciones } = require("../scripts/sincronizarIntenciones");
-const { normalizar, detectarIntencion } = require("../src/services/chatbot");
+const { normalizar, detectarIntencion, respuestasRapidas } = require("../src/services/chatbot");
 const INTENCIONES = require("../src/data/intenciones");
 const { hoyLocal } = require("../src/utils/tiempo");
 
@@ -272,7 +272,8 @@ describe("Chatbot: detección de intenciones", () => {
   test("sin coincidencias responde con la intención desconocida", async () => {
     const res = await enviar(d.tokenCliente, "xyz abc");
     expect(res.body.intencion).toBe("desconocida");
-    incluye(res.body.respuesta, "entendí bien");
+    // Hay varias formas de decir "no entendí".
+    expect(res.body.respuesta).toMatch(/entendí|haberte entendido/);
   });
 
   test("sin intenciones cargadas usa una respuesta por defecto", async () => {
@@ -307,7 +308,9 @@ describe("Chatbot: conversaciones", () => {
     expect(horario.body.intencion).toBe("horario");
 
     const despedida = await visitante("chao");
-    expect(despedida.body.respuesta).toBe("¡Hasta pronto! Que disfrutes tu brunch.");
+    // Hay varias despedidas; sin sesión, ninguna lleva nombre ni la coma que lo precede.
+    expect(despedida.body.intencion).toBe("despedida");
+    expect(despedida.body.respuesta).toMatch(/^¡(Hasta pronto|Chao|Nos vemos)! /);
 
     const { ChatConversation } = require("../src/models");
     expect(await ChatConversation.countDocuments()).toBe(0);
@@ -527,7 +530,183 @@ describe("Chatbot: validaciones nuevas", () => {
   });
 });
 
+describe("Chatbot: charla, variedad y sugerencias", () => {
+  const visitante = (mensaje, anterior) => api().post("/api/chat/mensaje").send({ mensaje, anterior });
+
+  test("si saluda y además pregunta algo, gana la pregunta y se devuelve el saludo", async () => {
+    const res = await visitante("hola, a que hora abren?");
+    expect(res.body.intencion).toBe("horario");
+    expect(res.body.respuesta.startsWith("¡Hola! ")).toBe(true);
+
+    const conSesion = await enviar(d.tokenCliente, "buenas, gracias, quiero ver el menu");
+    expect(conSesion.body.intencion).toBe("menu");
+    expect(conSesion.body.respuesta.startsWith("¡Hola, Ana! Este es nuestro menú")).toBe(true);
+
+    // Solo charla: sigue siendo charla.
+    expect((await visitante("muchas gracias")).body.intencion).toBe("agradecimiento");
+    expect((await visitante("hola, que tal")).body.intencion).toBe("como_estas");
+  });
+
+  test("no repite la respuesta que acaba de dar", async () => {
+    // Sin sesión, la página manda lo último que dijo el bot.
+    let anterior;
+    for (let i = 0; i < 8; i += 1) {
+      const res = await visitante("gracias", anterior);
+      expect(res.body.respuesta === anterior).toBe(false);
+      anterior = res.body.respuesta;
+    }
+
+    // Con sesión, lo recuerda la conversación guardada.
+    let ultima;
+    for (let i = 0; i < 8; i += 1) {
+      const res = await enviar(d.tokenCliente, "gracias");
+      expect(res.body.respuesta === ultima).toBe(false);
+      ultima = res.body.respuesta;
+    }
+
+    // Con una sola respuesta posible no hay más remedio que repetirla.
+    const pago = await visitante("donde quedan");
+    expect((await visitante("donde quedan", pago.body.respuesta)).body.respuesta).toBe(pago.body.respuesta);
+  });
+
+  test("cada sugerencia lleva a la intención que promete", async () => {
+    const DESTINO = {
+      "Ver el menú": "menu",
+      "Quiero hacer una reserva": "crear_reserva",
+      "¿Cuál es el horario?": "horario",
+      "¿Qué me recomiendas?": "recomendacion",
+      "¿Cómo hago un pedido?": "hacer_pedido",
+      "¿Qué métodos de pago aceptan?": "metodos_pago",
+      "¿Dónde quedan?": "ubicacion",
+      "¿Cómo va mi pedido?": "estado_pedido",
+      "Editar mi reserva": "editar_reserva",
+      "Cancelar mi reserva": "cancelar_reserva",
+    };
+    const usadas = new Set(INTENCIONES.flatMap((i) => i.sugerencias ?? []));
+    // Se prueba como lo haría la página (sin sesión, cada mensaje va solo): las
+    // de reservas no las decide la detección de intenciones sino su propio flujo.
+    for (const sugerencia of usadas) {
+      const { body } = await visitante(sugerencia);
+      expect(`${sugerencia} -> ${body.intencion}`).toBe(`${sugerencia} -> ${DESTINO[sugerencia]}`);
+    }
+  });
+
+  test("la respuesta trae sugerencias: las del tema o lo que pide contestar", async () => {
+    const horario = await visitante("cual es el horario");
+    expect(horario.body.sugerencias).toEqual(["Quiero hacer una reserva", "¿Dónde quedan?"]);
+
+    const rara = await visitante("xyzzy plugh");
+    expect(rara.body.intencion).toBe("desconocida");
+    expect(rara.body.sugerencias).toHaveLength(4);
+
+    // Un paso de la reserva: los botones salen de lo que la respuesta pone entre « ».
+    const reserva = await enviar(d.tokenCliente, "quiero reservar");
+    expect(reserva.body.sugerencias).toEqual(["Mañana"]);
+    expect(respuestasRapidas("Dime «sí» para seguir o «no» para conservarla. Repito: «sí».")).toEqual(["Sí", "No"]);
+    expect(respuestasRapidas("Sin opciones")).toEqual([]);
+  });
+
+  test("recomienda un plato de la carta de la web", async () => {
+    const res = await visitante("que me recomiendas?");
+    expect(res.body.intencion).toBe("recomendacion");
+    expect(/(Huevos \(\$20\.000\)|Café \(\$5\.000\))/.test(res.body.respuesta)).toBe(true);
+    expect(res.body.respuesta.includes("Viejo")).toBe(false);
+  });
+});
+
+describe("Chatbot: preguntas sobre la carta", () => {
+  const visitante = async (mensaje) => (await api().post("/api/chat/mensaje").send({ mensaje })).body;
+
+  // La carta de las pruebas: Huevos ($20.000, plato) y Café ($5.000, bebida).
+  test("si lo que piden está en la carta, lo dice con su precio", async () => {
+    for (const pregunta of ["venden cafe?", "¿Tienen café?", "cuanto cuesta el café", "un cafe porfa", "cafes"]) {
+      const res = await visitante(pregunta);
+      expect(`${pregunta} -> ${res.intencion}`).toBe(`${pregunta} -> consulta_producto`);
+      expect(res.respuesta).toBe("¡Sí! Tenemos Café a $5.000.");
+    }
+    expect((await visitante("hola, venden huevos?")).respuesta).toBe("¡Hola! ¡Sí! Tenemos Huevos a $20.000.");
+    // "Precio" solo activaría el menú entero; nombrando el plato responde por él.
+    expect((await visitante("precio del cafe")).respuesta).toBe("¡Sí! Tenemos Café a $5.000.");
+  });
+
+  test("si no está, avisa que no se vende y ofrece lo que hay de ese tipo", async () => {
+    const cerveza = await visitante("venden cerveza?");
+    expect(cerveza.intencion).toBe("consulta_producto");
+    expect(cerveza.respuesta).toBe("Por ahora no vendemos cerveza. En bebidas tenemos Café ($5.000).");
+    expect(cerveza.sugerencias).toEqual(["Ver el menú", "¿Qué me recomiendas?"]);
+
+    // Sin "venden": basta con que sea una comida o bebida conocida.
+    expect((await visitante("cerveza?")).respuesta).toMatch(/^Por ahora no vendemos cerveza\./);
+    expect((await visitante("tienen pizza?")).respuesta).toBe("Por ahora no vendemos pizza. En platos tenemos Huevos ($20.000).");
+    // De ese tipo no hay nada en la carta.
+    expect((await visitante("venden helado?")).respuesta).toBe("Por ahora no vendemos helado. Si quieres, te muestro lo que sí tenemos.");
+    // Pregunta clara de venta por algo que no está en el vocabulario.
+    expect((await visitante("venden zapatos?")).respuesta).toMatch(/^Por ahora no vendemos zapatos\./);
+  });
+
+  test("ofrece lo parecido y las secciones enteras", async () => {
+    const parecido = await visitante("venden cafe helado?");
+    expect(parecido.respuesta).toBe("No tenemos exactamente «cafe helado», pero esto se le parece:\n- Café: $5.000");
+
+    const seccion = await visitante("que bebidas tienen?");
+    expect(seccion.respuesta).toBe("¡Claro! Esto es lo que tenemos:\n- Café: $5.000");
+  });
+
+  test("lo que está oculto en la web no se ofrece", async () => {
+    await api().post("/api/admin/menu").set(bearer(d.tokenAdmin)).send({
+      nombre: "Cerveza artesanal", precio: 12000, disponible: true, visibleWeb: false, visibleSalon: true,
+      categoriaId: String(d.categoria._id), imagenUrl: null, descripcion: "",
+    });
+    expect((await visitante("venden cerveza?")).respuesta).toMatch(/^Por ahora no vendemos cerveza\./);
+  });
+
+  test("no se mete donde no es una pregunta por un producto", async () => {
+    const intencionDe = async (mensaje) => (await visitante(mensaje)).intencion;
+    // Cosas que no son comida, con verbos que también se usan para comida.
+    expect(await intencionDe("tienen parqueadero?")).toBe("desconocida");
+    expect(await intencionDe("quiero hablar con alguien")).toBe("desconocida");
+    // Otros temas, aunque usen "tienen", "hay" o nombren un plato.
+    expect(await intencionDe("que tienen en el menu")).toBe("menu");
+    expect(await intencionDe("a que hora abren")).toBe("horario");
+    expect(await intencionDe("como va mi pedido de huevos")).toBe("estado_pedido");
+    expect(await intencionDe("muchas gracias")).toBe("agradecimiento");
+    expect(await intencionDe("tienen mesa para mañana?")).toBe("crear_reserva");
+    // Una frase larga que nombra un plato no es una pregunta por él.
+    expect((await intencionDe("ayer me atendieron muy mal con el cafe")) === "consulta_producto").toBe(false);
+  });
+});
+
 describe("Chatbot: sincronizar intenciones con la base", () => {
+  test("con --respuestas agrega las respuestas y sugerencias que falten, sin borrar las del admin", async () => {
+    await ChatIntent.updateOne(
+      { nombre: "agradecimiento" },
+      { $set: { respuestas: [{ tipo: "texto", respuesta: "Texto del admin" }, { tipo: "texto", respuesta: "¡Con gusto! ¿Te ayudo con algo más?" }] } }
+    );
+    await ChatIntent.updateOne({ nombre: "horario" }, { $set: { sugerencias: [] } });
+    await ChatIntent.updateOne({ nombre: "saludo" }, { $set: { sugerencias: ["La del admin"] } });
+
+    // Sin la opción, las respuestas no se miran.
+    expect(await sincronizarIntenciones()).toEqual([]);
+
+    const simulacion = await sincronizarIntenciones({ respuestas: true });
+    expect(simulacion.map((c) => `${c.intencion}: ${c.cambio}`).sort()).toEqual([
+      "agradecimiento: agregar respuestas",
+      "horario: poner sugerencias",
+    ]);
+
+    await sincronizarIntenciones({ respuestas: true, confirmar: true });
+    const gracias = await ChatIntent.findOne({ nombre: "agradecimiento" }).lean();
+    expect(gracias.respuestas.map((r) => r.respuesta)).toEqual([
+      "Texto del admin",
+      "¡Con gusto! ¿Te ayudo con algo más?",
+      "¡A ti! Aquí sigo si necesitas algo más.",
+      "¡Para eso estoy! Si se te ocurre otra cosa, me escribes.",
+    ]);
+    expect((await ChatIntent.findOne({ nombre: "horario" }).lean()).sugerencias).toHaveLength(2);
+    expect((await ChatIntent.findOne({ nombre: "saludo" }).lean()).sugerencias).toEqual(["La del admin"]);
+    expect(await sincronizarIntenciones({ respuestas: true })).toEqual([]);
+  });
+
   test("agrega lo que falta sin pisar lo que el admin editó", async () => {
     // Estado de una base antigua: falta una intención y otra tiene menos palabras clave y una respuesta editada.
     await ChatIntent.deleteOne({ nombre: "admin_ventas_hoy" });

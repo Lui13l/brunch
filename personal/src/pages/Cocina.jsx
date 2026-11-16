@@ -194,7 +194,7 @@ function Contenedor({ contenedor, onMarcar, ocupado }) {
                   <button
                     disabled={ocupado === plato.id}
                     onClick={() => onMarcar(plato, enMarcha ? "LISTO" : "PREPARANDO")}
-                    className={`flex min-h-14 min-w-28 shrink-0 items-center justify-center gap-1.5 rounded-lg px-4 text-lg font-extrabold transition active:scale-[0.98] disabled:opacity-60 ${
+                    className={`flex min-h-14 min-w-28 shrink-0 items-center justify-center gap-1.5 rounded-lg px-4 text-lg font-extrabold pulsable disabled:opacity-60 ${
                       tarde ? "bg-white text-brasa" : enMarcha ? "bg-listo text-white" : "bg-tinta text-white"
                     }`}
                   >

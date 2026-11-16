@@ -156,4 +156,25 @@ describe("Auditoría", () => {
     const malo = await api().get("/api/admin/auditoria?limite=9999").set(admin());
     expect(malo.status).toBe(400);
   });
+
+  test("sin fechas trae todo el historial y 'antes' pide la página siguiente", async () => {
+    for (const numero of [11, 12, 13, 14, 15]) {
+      await api().post("/api/admin/mesas").set(admin()).send({ numero });
+    }
+    // Una acción vieja: sin rango también tiene que aparecer.
+    const { AuditLog } = require("../src/models");
+    await AuditLog.updateOne({ detalle: "Creó la mesa 11" }, { fecha: new Date("2020-01-01T12:00:00Z") });
+
+    const primera = await api().get("/api/admin/auditoria?limite=2").set(admin());
+    expect(primera.body.map((a) => a.detalle)).toEqual(["Creó la mesa 15", "Creó la mesa 14"]);
+
+    const segunda = await api().get(`/api/admin/auditoria?limite=2&antes=${primera.body[1].id}`).set(admin());
+    expect(segunda.body.map((a) => a.detalle)).toEqual(["Creó la mesa 13", "Creó la mesa 12"]);
+
+    const tercera = await api().get(`/api/admin/auditoria?limite=2&antes=${segunda.body[1].id}`).set(admin());
+    expect(tercera.body.map((a) => a.detalle)).toEqual(["Creó la mesa 11"]);
+
+    const mala = await api().get("/api/admin/auditoria?antes=xyz").set(admin());
+    expect(mala.status).toBe(400);
+  });
 });

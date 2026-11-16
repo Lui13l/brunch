@@ -10,6 +10,8 @@ const listarSchema = z.object({
   usuarioId: objectId.optional(),
   desde: fecha.optional(),
   hasta: fecha.optional(),
+  // Id del último registro ya mostrado: pide los que siguen ("Cargar más").
+  antes: objectId.optional(),
   limite: z.coerce
     .number({ error: "El límite debe ser un número" })
     .int("El límite debe ser entero")
@@ -20,9 +22,9 @@ const listarSchema = z.object({
 
 // Historial de acciones del personal, del más reciente al más antiguo.
 const listar = async (req, res) => {
-  const { servicio, usuarioId, desde, hasta, limite } = req.valid.query;
+  const { servicio, usuarioId, desde, hasta, limite, antes } = req.valid.query;
   const { inicio, fin } = rangoLocal(desde, hasta);
-  const logs = await listarAuditoria({ servicio, usuarioId, desde: inicio, hasta: fin, limite });
+  const logs = await listarAuditoria({ servicio, usuarioId, desde: inicio, hasta: fin, limite, antes });
   res.json(logs.map(toAuditLog));
 };
 

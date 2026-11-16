@@ -2,7 +2,7 @@ const { describe, test, before, after, beforeEach } = require("node:test");
 const {
   conectar, desconectar, limpiar, api, datosBase, bearer, expect, crearPersonal, ID_INEXISTENTE,
 } = require("./helpers");
-const { Category, MenuItem, AuditLog } = require("../src/models");
+const { Category, MenuItem, AuditLog, Imagen } = require("../src/models");
 
 let d;
 let mesero;
@@ -72,6 +72,95 @@ describe("Mesas", () => {
     const sinToken = await api().get("/api/admin/mesas");
     expect(sinToken.status).toBe(401);
     expect(sinToken.type).toBe("text/plain");
+  });
+});
+
+describe("Plano del salón", () => {
+  const crearMesa = async (datos) => (await api().post("/api/admin/mesas").set(admin()).send(datos)).body;
+  const plano = (mesas) => api().put("/api/admin/mesas/plano").set(admin()).send({ mesas });
+
+  test("una mesa nueva no está ubicada y trae su forma", async () => {
+    const mesa = await crearMesa({ numero: 1, forma: "redonda", capacidad: 6 });
+    expect(mesa.forma).toBe("redonda");
+    expect(mesa.x).toBe(null);
+    expect(mesa.y).toBe(null);
+    expect(mesa.rotacion).toBe(0);
+
+    const porDefecto = await crearMesa({ numero: 2 });
+    expect(porDefecto.forma).toBe("cuadrada");
+  });
+
+  test("guarda las posiciones y el mesero las ve", async () => {
+    const a = await crearMesa({ numero: 1 });
+    const b = await crearMesa({ numero: 2, forma: "rectangular", capacidad: 6 });
+
+    const res = await plano([
+      { id: a.id, x: 0, y: 0 },
+      { id: b.id, x: 4, y: 2, rotacion: 90 },
+    ]);
+    expect(res.status).toBe(200);
+
+
+    const salon = await api().get("/api/mesas").set(bearer(mesero.token));
+    const [uno, dos] = salon.body;
+    expect([uno.x, uno.y, uno.rotacion]).toEqual([0, 0, 0]);
+    expect([dos.x, dos.y, dos.rotacion]).toEqual([4, 2, 90]);
+
+    // Quitar una mesa del plano: las dos coordenadas en null.
+    const fuera = await plano([{ id: a.id, x: null, y: null }]);
+    expect(fuera.status).toBe(200);
+    expect(fuera.body[0].x).toBe(null);
+  });
+
+  test("rechaza mesas encimadas, fuera del plano o desconocidas", async () => {
+    const a = await crearMesa({ numero: 1 }); // 2 x 2
+    const b = await crearMesa({ numero: 2, forma: "rectangular", capacidad: 10 }); // 4 x 2
+
+    const encima = await plano([
+      { id: a.id, x: 3, y: 3 },
+      { id: b.id, x: 1, y: 4 },
+    ]);
+    expect(encima.status).toBe(409);
+    expect(encima.text).toBe("Las mesas 1 y 2 quedan encimadas");
+
+    const afuera = await plano([{ id: b.id, x: 9, y: 0 }]);
+    expect(afuera.status).toBe(400);
+    expect(afuera.text).toBe("La mesa 2 se sale del plano");
+
+    const media = await plano([{ id: a.id, x: 2, y: null }]);
+    expect(media.status).toBe(400);
+
+    const desconocida = await plano([{ id: ID_INEXISTENTE, x: 0, y: 0 }]);
+    expect(desconocida.status).toBe(404);
+
+    // Nada de lo anterior se guardó.
+    const todas = await api().get("/api/admin/mesas").set(admin());
+    expect(todas.body.every((m) => m.x === null)).toBe(true);
+  });
+
+  test("si al editar la mesa ya no cabe, sale del plano", async () => {
+    const a = await crearMesa({ numero: 1 });
+    const b = await crearMesa({ numero: 2 });
+    await plano([
+      { id: a.id, x: 0, y: 0 },
+      { id: b.id, x: 2, y: 0 },
+    ]);
+
+    // Con 8 puestos la mesa 1 pasa de 2 x 2 a 3 x 3 y pisa a la 2.
+    const editada = await api().put(`/api/admin/mesas/${a.id}`).set(admin()).send({ numero: 1, capacidad: 8 });
+    expect(editada.status).toBe(200);
+    expect(editada.body.x).toBe(null);
+
+    // Un cambio que no altera el tamaño la deja donde estaba.
+    const otra = await api().put(`/api/admin/mesas/${b.id}`).set(admin()).send({ numero: 2, nombre: "Ventana" });
+    expect([otra.body.x, otra.body.y]).toEqual([2, 0]);
+  });
+
+  test("solo el admin arma el plano", async () => {
+    const a = await crearMesa({ numero: 1 });
+
+    const res = await api().put("/api/admin/mesas/plano").set(bearer(mesero.token)).send({ mesas: [{ id: a.id, x: 0, y: 0 }] });
+    expect(res.status).toBe(403);
   });
 });
 
@@ -148,6 +237,63 @@ describe("Carta del admin y del salón", () => {
     const nombres = res.body[0].items.map((i) => i.nombre).sort();
     expect(nombres).toEqual(["Café", "Huevos"]);
     expect(typeof res.body[0].items[0].precio).toBe("number");
+  });
+
+  describe("Imágenes de platos", () => {
+    // Cabecera de PNG y relleno: al servidor le basta para reconocer el formato.
+    const PNG = Buffer.concat([Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), Buffer.alloc(64, 1)]);
+    const subir = (datos, tipo = "image/png", quien = admin()) =>
+      api().post("/api/admin/imagenes").set(quien).set("Content-Type", tipo).send(datos);
+
+    test("el admin sube una imagen y cualquiera la puede ver", async () => {
+      const res = await subir(PNG);
+      expect(res.status).toBe(201);
+      expect(res.body.url).toBe(`/api/imagenes/${res.body.id}`);
+
+      const vista = await api().get(res.body.url);
+      expect(vista.status).toBe(200);
+      expect(vista.headers["content-type"]).toBe("image/png");
+      expect(vista.headers["cross-origin-resource-policy"]).toBe("cross-origin");
+      expect(vista.headers["cache-control"]).toMatch(/immutable/);
+      expect(Buffer.compare(vista.body, PNG)).toBe(0);
+
+      expect((await api().get(`/api/imagenes/${ID_INEXISTENTE}`)).status).toBe(404);
+    });
+
+    test("rechaza lo que no es imagen, lo que pesa demasiado y a quien no es admin", async () => {
+      // Dice ser PNG pero el contenido no lo es.
+      const disfrazada = await subir(Buffer.from("<script>alert(1)</script>"));
+      expect(disfrazada.status).toBe(400);
+      expect(disfrazada.text).toBe("Envía una imagen en formato WebP, JPEG o PNG");
+
+      const comoJson = await api().post("/api/admin/imagenes").set(admin()).send({ imagen: "x" });
+      expect(comoJson.status).toBe(400);
+
+      const enorme = await subir(Buffer.concat([PNG, Buffer.alloc(1024 * 1024)]));
+      expect(enorme.status).toBe(413);
+
+      expect((await subir(PNG, "image/png", bearer(mesero.token))).status).toBe(403);
+      expect(await Imagen.countDocuments()).toBe(0);
+    });
+
+    test("al cambiar la foto de un plato se borra la anterior si nadie más la usa", async () => {
+      const { body: primera } = await subir(PNG);
+      const { body: segunda } = await subir(PNG);
+      const { body: waffle } = await api().post("/api/admin/menu").set(admin()).send(plato({ imagenUrl: primera.url }));
+      const { body: otro } = await api().post("/api/admin/menu").set(admin())
+        .send(plato({ nombre: "Otro", imagenUrl: primera.url }));
+
+      // Otro plato sigue usando la primera: no se borra.
+      await api().put(`/api/admin/menu/${waffle.id}`).set(admin()).send(plato({ imagenUrl: segunda.url }));
+      expect(await Imagen.countDocuments()).toBe(2);
+
+      // Ya nadie la usa. Una ruta de la carta original no es una subida: se deja.
+      await api().put(`/api/admin/menu/${otro.id}`).set(admin())
+        .send(plato({ nombre: "Otro", imagenUrl: "/menu/pancakes.jpg" }));
+      expect(await Imagen.countDocuments()).toBe(1);
+      expect((await api().get(primera.url)).status).toBe(404);
+      expect((await api().get(segunda.url)).status).toBe(200);
+    });
   });
 
   test("la auditoría registra quién hizo el cambio", async () => {

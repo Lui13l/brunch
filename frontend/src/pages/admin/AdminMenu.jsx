@@ -1,6 +1,7 @@
-import { useCallback, useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import { useCallback, useRef, useState } from "react";
+import { Pencil, Plus, Trash2, Upload } from "lucide-react";
 import * as svc from "../../services/adminService";
+import { reducirImagen, urlImagen } from "../../utils/imagenes";
 import { Aviso, Campo, Cargando, Encabezado, Modal, Selector, Vacio } from "./comun";
 import { pesos, useCarga } from "./util";
 
@@ -24,6 +25,60 @@ const VACIO = {
   visibleWeb: true,
   visibleSalon: true,
 };
+
+// La foto del plato: se sube desde el computador (queda guardada en la base)
+// o se escribe la ruta de una que ya esté en la web.
+function CampoImagen({ valor, onCambiar, onError }) {
+  const [subiendo, setSubiendo] = useState(false);
+  const archivo = useRef(null);
+
+  const elegir = async (e) => {
+    const elegido = e.target.files?.[0];
+    // Se vacía para que elegir otra vez el mismo archivo vuelva a avisar.
+    e.target.value = "";
+    if (!elegido) return;
+    setSubiendo(true);
+    onError("");
+    try {
+      const { url } = await svc.subirImagen(await reducirImagen(elegido));
+      onCambiar(url);
+    } catch (err) {
+      onError(err.message);
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
+  return (
+    <div className="field">
+      <span className="label adm-label">Imagen</span>
+      <div className="adm-imagen">
+        {valor ? (
+          <img className="adm-imagen-vista" src={urlImagen(valor)} alt="Vista previa de la foto del plato" />
+        ) : (
+          <span className="adm-imagen-vista adm-imagen-vacia">Sin foto</span>
+        )}
+        <div className="adm-imagen-acciones">
+          <input ref={archivo} type="file" accept="image/*" hidden onChange={elegir} />
+          <button type="button" className={`button${subiendo ? " is-loading" : ""}`} disabled={subiendo} onClick={() => archivo.current?.click()}>
+            <Upload size={16} aria-hidden="true" />
+            <span>Subir desde el computador</span>
+          </button>
+          {valor && (
+            <button type="button" className="button" disabled={subiendo} onClick={() => onCambiar("")}>Quitar foto</button>
+          )}
+        </div>
+      </div>
+      <input
+        className="input"
+        aria-label="Dirección de la imagen"
+        placeholder="O escribe su dirección, por ejemplo /menu/pancakes.jpg"
+        value={valor ?? ""}
+        onChange={(e) => onCambiar(e.target.value)}
+      />
+    </div>
+  );
+}
 
 // Carta: lo que se vende en la web y en el salón (comandas).
 export default function AdminMenu() {
@@ -144,7 +199,12 @@ export default function AdminMenu() {
             <Campo etiqueta="Precio"><input className="input" type="number" min="0" step="100" required {...campo("precio")} /></Campo>
             <Selector etiqueta="Categoría" opciones={opcionesCategoria} value={editando.categoriaId} onChange={(v) => setEditando({ ...editando, categoriaId: v })} required />
             <Campo etiqueta="Descripción"><textarea className="textarea" rows={3} {...campo("descripcion")} /></Campo>
-            <Campo etiqueta="Imagen (URL)" ayuda="Por ejemplo /menu/pancakes.jpg"><input className="input" {...campo("imagenUrl")} /></Campo>
+            <CampoImagen
+              valor={editando.imagenUrl}
+              // La subida tarda: se aplica sobre el formulario de ese momento, no sobre el de cuando empezó.
+              onCambiar={(imagenUrl) => setEditando((actual) => actual && { ...actual, imagenUrl })}
+              onError={setErrorModal}
+            />
             <div className="field">
               <label className="checkbox"><input type="checkbox" {...casilla("disponible")} /> Disponible (sin esto no se vende en ningún lado)</label>
             </div>

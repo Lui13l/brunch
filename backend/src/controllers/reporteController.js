@@ -3,13 +3,19 @@ const { Comanda, MovimientoInventario } = require("../models");
 const { fecha } = require("../utils/validar");
 const { id } = require("../utils/serializar");
 const { redondear2, redondear3 } = require("../utils/dinero");
+const { pagosDeComanda } = require("../utils/pagos");
 const { diaLocal, hoyLocal, inicioDiaLocal, rangoLocal } = require("../utils/tiempo");
 
 const MAX_DIAS = 366;
 
 // Rango inclusivo en los dos extremos ("del 1 al 30" incluye el 30), en días del restaurante.
 const rangoSchema = z
-  .object({ desde: fecha.optional(), hasta: fecha.optional() })
+  .object({
+    desde: fecha.optional(),
+    hasta: fecha.optional(),
+    // "Todo el tiempo": el informe no acota por fecha.
+    todo: z.enum(["true"], { error: "'todo' solo admite el valor true" }).optional(),
+  })
   .refine((v) => !v.desde || !v.hasta || v.desde <= v.hasta, {
     error: "La fecha inicial no puede ser posterior a la final",
     path: ["desde"],
@@ -21,6 +27,7 @@ const rangoSchema = z
 
 // Por defecto, hoy: el informe se mira casi siempre al cerrar el día.
 const resolverRango = (query) => {
+  if (query.todo) return { desde: null, hasta: null, inicio: undefined, fin: undefined };
   const desde = query.desde ?? hoyLocal();
   const hasta = query.hasta ?? desde;
   return { desde, hasta, ...rangoLocal(desde, hasta) };
@@ -31,10 +38,14 @@ const acumular = (mapa, clave, inicial) => {
   return mapa.get(clave);
 };
 
+// Condición de fechas para Mongo; vacía cuando el informe es de todo el tiempo.
+const entre = (campo, inicio, fin) =>
+  inicio || fin ? { [campo]: { ...(inicio && { $gte: inicio }), ...(fin && { $lt: fin }) } } : {};
+
 // Solo cuentan las comandas CERRADAS, con el total congelado al cobrar.
 const ventas = async (req, res) => {
   const { desde, hasta, inicio, fin } = resolverRango(req.valid.query);
-  const comandas = await Comanda.find({ estado: "CERRADA", fecha_cierre: { $gte: inicio, $lt: fin } })
+  const comandas = await Comanda.find({ estado: "CERRADA", ...entre("fecha_cierre", inicio, fin) })
     .sort({ fecha_cierre: 1 })
     .lean();
 
@@ -54,9 +65,16 @@ const ventas = async (req, res) => {
     dia.comandas += 1;
     dia.total += importe;
 
-    const metodo = acumular(porMetodo, comanda.metodo_pago ?? "SIN_REGISTRAR", () => ({ comandas: 0, total: 0 }));
-    metodo.comandas += 1;
-    metodo.total += importe;
+    // Una cuenta dividida suma a cada método lo que le tocó. `comandas` cuenta
+    // la cuenta una vez por método, aunque varias personas pagaran igual.
+    const vistos = new Set();
+    for (const pago of pagosDeComanda(comanda)) {
+      const clave = pago.metodo ?? "SIN_REGISTRAR";
+      const metodo = acumular(porMetodo, clave, () => ({ comandas: 0, total: 0 }));
+      if (!vistos.has(clave)) metodo.comandas += 1;
+      vistos.add(clave);
+      metodo.total += pago.monto;
+    }
 
     for (const item of comanda.items) {
       if (item.estado === "CANCELADO") continue; // no se cobró ni se vendió
@@ -89,7 +107,7 @@ const ventas = async (req, res) => {
 // Lo que se gastó de verdad, leído del libro de movimientos y no de las recetas.
 const consumo = async (req, res) => {
   const { desde, hasta, inicio, fin } = resolverRango(req.valid.query);
-  const movimientos = await MovimientoInventario.find({ fecha: { $gte: inicio, $lt: fin } })
+  const movimientos = await MovimientoInventario.find(entre("fecha", inicio, fin))
     .populate("insumo_id", "nombre unidad stock stock_minimo")
     .sort({ fecha: 1, _id: 1 })
     .lean();

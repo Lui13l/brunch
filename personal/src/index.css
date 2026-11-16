@@ -5,7 +5,8 @@
 @theme {
   --color-sala: #faf6ef;
   --color-mantel: #fffdf9;
-  --color-filete: #e6dacb;
+  /* Más oscuro que antes: los bordes tienen que verse firmes, no insinuados. */
+  --color-filete: #d6c7b4;
 
   --color-tinta: #2b1a10;
   --color-tinta-2: #6b584a;
@@ -22,8 +23,64 @@
   --color-listo: #16794a;
 
   --font-sans: "Archivo", "Segoe UI", system-ui, -apple-system, sans-serif;
-  /* Títulos de la cuenta y el cobro: la tipografía de la web. */
-  --font-titulo: "Fraunces", "Iowan Old Style", Georgia, serif;
+  /* Títulos de la cuenta y el cobro: la misma Archivo, condensada (ver
+     .font-titulo más abajo). */
+  --font-titulo: "Archivo", "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  /* Esquinas casi rectas en toda la app: es una herramienta de trabajo, no
+     una tarjeta de invitación. Se cambian aquí y no en cada pantalla. */
+  --radius-md: 2px;
+  --radius-lg: 3px;
+  --radius-xl: 3px;
+  --radius-2xl: 4px;
+  --radius-3xl: 4px;
+}
+
+.font-titulo {
+  font-stretch: 82%;
+}
+
+/* Todo lo pulsable responde al mouse con dos señales sencillas: la mano y un
+   velo del color de su propio texto, que oscurece una pieza clara y aclara una
+   oscura. Sin aros, sombras ni saltos. Solo con mouse: en pantallas táctiles
+   el "hover" se queda pegado tras el toque. */
+@layer base {
+  /* Tailwind 4 deja los botones con la flecha: sin la mano no se sabe si se
+     pueden pulsar. */
+  :where(button, a[href], summary, select, label[for], [role="button"]):where(:not(:disabled)) {
+    cursor: pointer;
+  }
+
+  :where(button, select, input):disabled {
+    cursor: not-allowed;
+  }
+
+  :where(button, a[href], summary) {
+    transition:
+      box-shadow 110ms ease-out,
+      background-color 110ms ease-out,
+      border-color 110ms ease-out,
+      color 110ms ease-out,
+      transform 110ms ease-out;
+  }
+
+  @media (hover: hover) {
+    :where(button, a[href], summary):where(:not(:disabled, [data-sin-hover])):hover {
+      background-image: linear-gradient(
+        color-mix(in srgb, currentColor 9%, transparent),
+        color-mix(in srgb, currentColor 9%, transparent)
+      );
+    }
+  }
+}
+
+/* Piezas grandes (botones, baldosas de mesa, accesos): al pulsar se hunden
+   apenas, para que el toque se sienta. Al pasar el mouse solo llevan el velo
+   de arriba, como todo lo demás. */
+@utility pulsable {
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
 }
 
 html,
@@ -52,6 +109,31 @@ body {
 :where(button, a, input, select, textarea):focus-visible {
   outline: 3px solid var(--color-caramelo);
   outline-offset: 2px;
+}
+
+/* Entrada de las gráficas: las barras crecen desde su base. */
+@keyframes barra-avanza {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+/* La línea de ventas se descubre de izquierda a derecha, como si se dibujara. */
+@keyframes linea-entra {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Plano del salón: una mesa recién puesta aparece creciendo un poco. */
+@keyframes mesa-llega {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

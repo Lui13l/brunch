@@ -7,6 +7,8 @@ module.exports = {
   Arqueo: require("./Arqueo"),
   AuditLog: require("./AuditLog"),
   Comanda: require("./Comanda"),
+  Factura: require("./Factura"),
+  Imagen: require("./Imagen"),
   Insumo: require("./Insumo"),
   Mesa: require("./Mesa"),
   MovimientoInventario: require("./MovimientoInventario"),

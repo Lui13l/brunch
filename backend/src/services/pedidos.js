@@ -4,6 +4,7 @@ const { conTransaccion } = require("../utils/transaccion");
 const eventos = require("./eventosPedido");
 const { enviarPedido, devolverPedido } = require("./cocinaWeb");
 const { avisarInventario } = require("./inventario");
+const { facturarAlEntregar } = require("./facturas");
 const { publicar, TOPICS } = require("../ws/hub");
 
 const { TRANSICIONES } = Order;
@@ -50,6 +51,8 @@ const aplicarEstado = async (pedido, estado, usuarioId) => {
 
   pedido.set("estado", estado);
   if (estado === "entregado" || estado === "cancelado") await liberarDomiciliario(actualizado);
+  // Pagado por transferencia y entregado: sale su comprobante por correo.
+  if (estado === "entregado") await facturarAlEntregar(actualizado);
 
   // Avisos, ya con todo guardado.
   const tocoCocina = cocina?.enviado || cocina?.cancelados > 0;

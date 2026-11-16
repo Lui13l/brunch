@@ -6,6 +6,7 @@ const { objectId, texto, textoOpcional } = require("../utils/validar");
 const { toPlato, toCategoriaSalon, toAuditLog } = require("../utils/serializar");
 const { registrar, listar: listarAuditoria, SERVICIO } = require("../services/auditoria");
 const { desactivarProducto } = require("../services/menu");
+const { borrarSiNadieLaUsa } = require("../services/imagenes");
 
 const platoSchema = z.object({
   nombre: texto("El nombre"),
@@ -76,10 +77,12 @@ const editar = async (req, res) => {
   const item = await buscar(req.valid.params.id);
   await asegurarCategoria(datos.categoriaId);
 
+  const imagenAnterior = item.img_url;
   // Los campos que la app manda vacíos (null) quedan sin valor.
   Object.assign(item, aCampos(datos));
   if (datos.tipo) item.tipo = datos.tipo;
   await item.save();
+  if (imagenAnterior && imagenAnterior !== item.img_url) await borrarSiNadieLaUsa(imagenAnterior);
 
   await registrar(req.usuario, "EDITAR_PRODUCTO", `Editó el producto "${item.nombre}"`, SERVICIO.MENU);
   res.json(toPlato(item));

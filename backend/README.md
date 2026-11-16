@@ -27,7 +27,7 @@ La primera vez que se ejecuta `npm test` se descarga el binario de MongoDB (~1,3
 
 ## Variables de entorno
 
-Ver [.env.example](.env.example). Las obligatorias son `MONGO_URI` y `JWT_SECRET`. Para activar el login con Google, define `GOOGLE_CLIENT_ID` con el ID de cliente OAuth 2.0 de tipo aplicación web.
+Ver [.env.example](.env.example). Las obligatorias son `MONGO_URI` y `JWT_SECRET`. Para activar el login con Google, define `GOOGLE_CLIENT_ID` con el ID de cliente OAuth 2.0 de tipo aplicación web. Para que los comprobantes de pedidos salgan por correo, define `GMAIL_USUARIO` y `GMAIL_CLAVE_APP` (Gmail, sin dominio) o `RESEND_API_KEY` y `CORREO_REMITENTE` ([Resend](https://resend.com), con dominio verificado); sin ninguna, el comprobante se emite y queda "sin enviar".
 
 ## Seguridad
 
@@ -50,13 +50,15 @@ src/
   routes/          definición de endpoints (admin/ y salon.js son las de la app del personal)
   controllers/     leen la petición, llaman a los servicios y responden
   services/        reglas de negocio compartidas: comandas, inventario, caja, pedidos,
-                   cuentas (cambio de rol seguro), menu (desactivar), auditoría, chatbot
+                   cuentas (cambio de rol seguro), menu (desactivar), auditoría, chatbot,
+                   facturas (PDF y correo), imagenes (fotos de platos)
   schemas/         esquemas zod de las rutas de comandas
   data/            menú inicial, intenciones del chatbot y etiquetas e2e
   middleware/      autenticación, roles, errores (JSON o texto), límites y auditar()
   utils/           HttpError, validar (zod), serializar (contrato del personal), tiempo
                    (hora de Bogotá, rangoLocal), horarioReservas, dinero, roles (ROL),
-                   codigo (#XXXXXX), transaccion (conTransaccion)
+                   codigo (#XXXXXX), transaccion (conTransaccion), pagos (partes de un cobro),
+                   plano (celdas del salón)
   ws/              WebSocket: hub (temas y permisos) e index (protocolo)
 tests/             tests de integración (node:test + supertest)
 ```
@@ -126,6 +128,30 @@ Flujo de estados (`Order.TRANSICIONES`): `pendiente → confirmado → preparand
 | GET | `/pagos/:id` | Dueño / admin | Detalle |
 | PATCH | `/pagos/:id/estado` | Admin | `{estado: "aprobado" \| "rechazado"}`. Aprobar confirma el pedido pendiente |
 
+### Facturas (comprobantes en PDF, solo admin)
+| Método | Ruta | Descripción |
+|---|---|---|
+| GET | `/facturas` | Últimos 200 comprobantes (`?estado=sin_enviar\|enviada\|error`). Cada uno trae `numero` ("BC-000001"), `pedidoId`, `cliente`, `total`, `metodoPago` y `envio {estado, detalle, fecha, intentos}` |
+| GET | `/facturas/pendientes` | Pedidos entregados que todavía no tienen comprobante |
+| POST | `/facturas` | `{pedidoId}`. Genera el comprobante de un pedido entregado y lo envía (201). Si ya existía, responde ese mismo sin reenviarlo (200) |
+| POST | `/facturas/:id/enviar` | Vuelve a enviar el correo |
+| GET | `/facturas/:id/pdf` | El PDF (`application/pdf`) |
+
+- Es un comprobante del pedido, **no una factura electrónica ante la DIAN**.
+- Al pasar un pedido a `entregado` con un pago por transferencia aprobado, el comprobante se emite y se envía solo. Los demás se generan desde el panel.
+- El comprobante guarda una copia de los platos, el total y los datos del cliente; el PDF se arma con eso cada vez que se pide (`pdfkit`), así que no cambia si luego se edita la carta.
+- El correo sale por Gmail (SMTP con `nodemailer` y una contraseña de aplicación; no necesita dominio) o por la API de Resend (necesita un dominio verificado: sin él solo entrega al correo de su propia cuenta). Si están configurados los dos, se usa Gmail. Si falla o no hay ninguno, el pedido queda entregado igual y el motivo se ve en `envio.detalle`.
+
+### Imágenes de platos
+| Método | Ruta | Acceso | Descripción |
+|---|---|---|---|
+| POST | `/admin/imagenes` | Admin | El cuerpo es la imagen (`Content-Type: image/webp`, `image/jpeg` o `image/png`; máximo 1 MB). Responde `{id, url}`; la `url` (`/api/imagenes/:id`) es la que se guarda en `imagenUrl` del plato. Errores en texto plano |
+| GET | `/imagenes/:id` | Público | La imagen, con caché de un año |
+
+- Las fotos se guardan en la base (colección `imagenes`). El panel y la app las reducen a WebP de 1200 px antes de subirlas.
+- El formato se comprueba con los primeros bytes del archivo, no con la cabecera.
+- Al cambiar la foto de un plato, la anterior se borra si era una subida y ningún otro plato la usa.
+
 ### Reservas
 | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|
@@ -152,12 +178,12 @@ Las reservas deben ser futuras y estar dentro del horario de atención: lunes a 
 ### Chatbot
 | Método | Ruta | Acceso | Descripción |
 |---|---|---|---|
-| POST | `/chat/mensaje` | Público | `{mensaje, conversacion_id?}` → `{conversacion_id, intencion, respuesta}`. Sin sesión responde pero no guarda la conversación (`conversacion_id: null`) |
+| POST | `/chat/mensaje` | Público | `{mensaje, conversacion_id?, anterior?}` → `{conversacion_id, intencion, respuesta, sugerencias}`. Sin sesión responde pero no guarda la conversación (`conversacion_id: null`); `anterior` es la última respuesta del bot, para no repetirla |
 | GET | `/chat/conversaciones` | Usuario | Conversaciones propias, sin mensajes (`?estado=`). Admin: `?todas=true` |
 | GET | `/chat/conversaciones/:id` | Dueño / admin | Conversación con todos sus mensajes |
 | PATCH | `/chat/conversaciones/:id/finalizar` | Dueño / admin | Cierra la conversación |
 | GET | `/chat/intenciones` | Admin | Lista las intenciones |
-| POST | `/chat/intenciones` | Admin | `{nombre, palabras_clave: [], respuestas: [{respuesta}], descripcion?, activa?}` |
+| POST | `/chat/intenciones` | Admin | `{nombre, palabras_clave: [], respuestas: [{respuesta}], sugerencias?: [], descripcion?, activa?}` |
 | PUT | `/chat/intenciones/:id` | Admin | Actualiza campos (por ejemplo `{activa: false}`) |
 | DELETE | `/chat/intenciones/:id` | Admin | Elimina |
 
@@ -166,7 +192,10 @@ Las reservas deben ser futuras y estar dentro del horario de atención: lunes a 
 - **Visitantes:** sin sesión el bot responde igual (menú, horario, pagos…). `{nombre}` se omite y `{ultimo_pedido}` / `{mis_reservas}` piden iniciar sesión.
 - **Detección:** el texto se compara palabra por palabra con las `palabras_clave` de cada intención activa. No importan mayúsculas, tildes ni plurales ("reservas" = "reserva"), y se tolera un error de escritura en palabras de 5 letras o más ("resevar", "horaro"). Gana la que más palabras coinciden, así que "hacer un pedido" gana a "pedido"; una coincidencia exacta le gana a una aproximada. Si ninguna coincide se usa la intención `desconocida`.
 - **Validaciones:** `conversacion_id` debe ser un id válido (400 si no), se quitan los caracteres de control del mensaje y no se agendan reservas a más de 90 días.
-- **Respuesta:** si la intención tiene varias respuestas, se elige una al azar.
+- **Preguntas sobre la carta:** "¿venden cerveza?", "¿cuánto cuesta el latte?", "un café porfa". Antes de responder que no entendió, el bot busca en la carta de la web: si el producto está, lo dice con su precio; si hay algo parecido o una sección entera ("¿qué bebidas tienen?"), lo lista; si no, avisa que no se vende y ofrece lo que hay de ese tipo. La respuesta sale con `intencion: "consulta_producto"`. Solo afirma que algo no se vende si la pregunta es claramente de venta ("venden", "cuánto cuesta"…) o lo buscado es una comida o bebida conocida; el vocabulario está en [src/data/carta.js](src/data/carta.js).
+- **Charla:** saludos, "¿cómo estás?", gracias y despedidas ceden ante una pregunta de verdad: "hola, ¿a qué hora abren?" responde el horario, y empieza devolviendo el saludo.
+- **Respuesta:** si la intención tiene varias respuestas, se elige una al azar y no se repite la que el bot acaba de dar (la recuerda la conversación guardada o, sin sesión, el campo `anterior`).
+- **Sugerencias:** cada respuesta trae hasta 4 textos para mostrar como botones: las `sugerencias` de la intención o, si no tiene, lo que la propia respuesta pide contestar entre « » ("dime «sí» o «no»" → `["Sí", "No"]`).
 - **Reservas:** un usuario con sesión puede indicar fecha (`DD/MM/AAAA` o mañana), hora y cantidad (puede responder con un número solo cuando el bot pregunta cuántas personas). El bot valida horario de atención, fechas y horas pasadas, y el límite de 30 personas; pregunta y guarda la ocasión y las notas adicionales antes de confirmar. La reserva se guarda como pendiente. También puede editar o cancelar sus reservas pendientes o confirmadas desde el chat. Los visitantes deben iniciar sesión.
 - **Variables:** una respuesta puede incluir variables que se rellenan con datos reales:
 
@@ -174,13 +203,14 @@ Las reservas deben ser futuras y estar dentro del horario de atención: lunes a 
 |---|---|
 | `{nombre}` | Nombre del usuario |
 | `{menu}` | Productos activos agrupados por categoría, con precio |
+| `{recomendacion}` | Un plato al azar de la carta de la web, con su precio |
 | `{ultimo_pedido}` | Productos, total y estado del último pedido |
 | `{mis_reservas}` | Reservas próximas pendientes o confirmadas |
 | `{reservas_hoy}` | **Solo admin:** reservas pendientes y confirmadas de hoy, con hora, personas y nombre. Un cliente recibe solo las suyas |
 | `{pedidos_pendientes}` | **Solo admin:** cuántos pedidos web activos hay en cada estado. Un cliente recibe su último pedido |
 | `{ventas_hoy}` | **Solo admin:** cuentas cobradas hoy en el salón y su total. Un cliente recibe "Esa información es solo para el equipo del restaurante." |
 
-Las intenciones iniciales están en [src/data/intenciones.js](src/data/intenciones.js). Volver a ejecutar el seed solo crea las que falten y no sobrescribe las que el admin haya editado. Para llevar a una base ya sembrada las palabras clave nuevas, usa `npm run chat:sincronizar`.
+Las intenciones iniciales están en [src/data/intenciones.js](src/data/intenciones.js). Volver a ejecutar el seed solo crea las que falten y no sobrescribe las que el admin haya editado. Para llevar a una base ya sembrada las palabras clave nuevas, usa `npm run chat:sincronizar`; con `-- --respuestas` agrega también las respuestas que falten y pone sugerencias donde no haya. Sin `--confirmar` solo muestra lo que cambiaría.
 
 ## Salón y administración (app `personal`)
 
@@ -193,17 +223,18 @@ La app del personal ([../personal](../personal)) usa estas rutas. Responden en c
 | `POST /api/usuarios/login` | público | Login del personal: `{email, password}` → usuario plano + `token` |
 | `GET /api/mesas` | mesero, cocina, admin | Mesas activas con `comandaAbiertaId`, `grupo` (números de las mesas que comparten su cuenta) y `principal` |
 | `GET /api/salon/menu` | mesero, cocina, admin | Carta del salón. Cada plato trae `agotado` y `faltan` (insumos de su receta que no alcanzan para una unidad). Es un aviso: se puede vender igual |
-| `/api/comandas` | mesero, admin | Abrir cuenta (`mesasExtra: [id]` junta hasta 6 mesas más), agregar, editar y quitar platos en borrador, `enviar` a cocina (descuenta inventario por receta), `cancelar`, `entregar`, `cerrar` (cobro) |
+| `/api/comandas` | mesero, admin | Abrir cuenta (`mesasExtra: [id]` junta hasta 6 mesas más), agregar, editar y quitar platos en borrador, `enviar` a cocina (descuenta inventario por receta), `cancelar`, `entregar`, `cerrar` (cobro: `{metodoPago}` o, dividida, `{pagos: [{metodo, monto, etiqueta?}]}`) |
 | `PATCH /api/comandas/:id/mesas` | mesero, admin | `{mesasExtra: [id]}` reemplaza las mesas juntadas a una cuenta abierta |
 | `POST /api/comandas/:id/anular` | mesero, admin | Cierra sin cobrar una cuenta sin platos servidos (vacía, solo borradores o todo cancelado). No cuenta como venta |
 | `/api/cocina` | cocina, admin | `GET /pendientes` (platos de mesas **y de pedidos web**, cada uno con su `contenedor {tipo, id, titulo}`) y `PATCH /items/:id {estado: PREPARANDO\|LISTO}` |
-| `/api/admin/mesas`, `/api/admin/menu` | admin | Mesas y carta (`disponible`, `visibleWeb`, `visibleSalon`) |
+| `/api/admin/mesas`, `/api/admin/menu` | admin | Mesas (`forma`: cuadrada, redonda o rectangular) y carta (`disponible`, `visibleWeb`, `visibleSalon`) |
+| `PUT /api/admin/mesas/plano` | admin | `{mesas: [{id, x, y, rotacion}]}` guarda el plano del salón en celdas (`x` e `y` en `null` saca la mesa del plano). Rechaza mesas encimadas o fuera del plano |
 | `/api/admin/insumos`, `/api/admin/recetas` | admin | Inventario (ajustes y movimientos) y recetas por plato |
 | `/api/admin/caja` | admin | Abrir y cerrar caja, entradas y salidas (`metodo`: EFECTIVO, TARJETA o TRANSFERENCIA; por defecto efectivo), cuadre, historial |
-| `/api/admin/reportes/ventas\|consumo` | admin | `?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` (por defecto, hoy) |
+| `/api/admin/reportes/ventas\|consumo` | admin | `?desde=AAAA-MM-DD&hasta=AAAA-MM-DD` (por defecto, hoy) o `?todo=true` para todo el tiempo |
 | `/api/admin/personal` | admin | Crear meseros y cocina, cambiar rol, activar o desactivar, poner contraseña |
 | `/api/admin/pedidos` | admin | Pedidos web (`?activos=true`, `?estado=`, fechas) y `PATCH /:id/estado` |
-| `/api/admin/auditoria` | admin | Quién hizo qué: `?servicio=&usuarioId=&desde=&hasta=&limite=` |
+| `/api/admin/auditoria` | admin | Quién hizo qué: `?servicio=&usuarioId=&desde=&hasta=&limite=`. Sin fechas trae todo; `?antes=<id>` pide la página siguiente (los anteriores a ese registro) |
 
 Reglas importantes:
 - Una mesa solo puede tener una cuenta abierta, y solo puede haber una caja abierta (índices únicos parciales).
@@ -212,6 +243,7 @@ Reglas importantes:
 - Enviar a cocina nunca se bloquea por falta de stock. El stock queda en negativo y se avisa con `faltantes`.
 - Enviar, cancelar y cobrar usan **transacciones**, que necesitan un replica set. Atlas ya lo es; un MongoDB local suelto no.
 - Cobrar con platos todavía en cocina exige `forzar: true` (solo admin): esos platos pasan a `CANCELADO`, se devuelve su inventario y desaparecen de la pantalla de cocina. No se cobran.
+- Una cuenta se puede dividir: `pagos` lleva una parte por persona, cada una con su método, y la suma debe dar exactamente el total que calcula el servidor (400 si no). La comanda guarda `pagos` y `metodoPago` queda como resumen (`MIXTO` si hubo más de un método). La caja y el reporte de ventas reparten el total entre los métodos de cada parte.
 
 ### Tiempo real (WebSocket en `/ws`)
 

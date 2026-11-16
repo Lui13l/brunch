@@ -9,6 +9,7 @@ router.use(enTexto, auth, requireRole(ROL.ADMIN));
 
 router.use("/mesas", require("./mesas"));
 router.use("/menu", require("./menu"));
+router.use("/imagenes", require("./imagenes"));
 
 const { insumosRouter, recetasRouter } = require("./inventario");
 router.use("/insumos", insumosRouter);

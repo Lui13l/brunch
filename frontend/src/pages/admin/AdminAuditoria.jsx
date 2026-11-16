@@ -23,7 +23,7 @@ const diaLegible = (dia) => {
   return t.charAt(0).toUpperCase() + t.slice(1);
 };
 
-const LIMITES = [100, 200, 500].map((n) => ({ valor: String(n), texto: `${n} más recientes` }));
+const LIMITES = [100, 200, 500].map((n) => ({ valor: String(n), texto: `De a ${n}` }));
 
 // Quién hizo qué, tanto en la web como en la app de comandas.
 export default function AdminAuditoria() {
@@ -34,7 +34,33 @@ export default function AdminAuditoria() {
     [filtros, rango],
   );
   const { datos, error, cargando, recargar } = useCarga(cargar);
-  const [registros, usuarios] = datos ?? [[], []];
+  const [primeros, usuarios] = datos ?? [[], []];
+
+  // Páginas pedidas con "Cargar más". Se guardan junto a la carga a la que
+  // pertenecen: al cambiar un filtro llega otra carga y estas dejan de contar.
+  const [extra, setExtra] = useState({ de: null, filas: [], hayMas: false });
+  const [cargandoMas, setCargandoMas] = useState(false);
+  const [errorMas, setErrorMas] = useState("");
+  const mias = extra.de === datos ? extra : null;
+  const registros = mias ? [...primeros, ...mias.filas] : primeros;
+  const hayMas = mias ? mias.hayMas : primeros.length === Number(filtros.limite);
+
+  const cargarMas = async () => {
+    setCargandoMas(true);
+    setErrorMas("");
+    try {
+      const pagina = await svc.listarAuditoria({ ...filtros, ...rango, antes: registros.at(-1)?.id });
+      setExtra({
+        de: datos,
+        filas: [...(mias?.filas ?? []), ...pagina],
+        hayMas: pagina.length === Number(filtros.limite),
+      });
+    } catch (err) {
+      setErrorMas(err.message);
+    } finally {
+      setCargandoMas(false);
+    }
+  };
 
   const personal = usuarios.filter((u) => u.rol_id !== "cliente");
   const dias = [];
@@ -101,8 +127,14 @@ export default function AdminAuditoria() {
         </section>
       ))}
 
-      {registros.length > 0 && registros.length === Number(filtros.limite) && (
-        <p className="adm-vacio">Se muestran los {filtros.limite} más recientes; acota el rango para ver más.</p>
+      <Aviso>{errorMas}</Aviso>
+      {registros.length > 0 && hayMas && (
+        <p className="adm-vacio">
+          Van {registros.length} acciones. Hay más antiguas.{" "}
+          <button type="button" className="button is-small" onClick={cargarMas} disabled={cargandoMas}>
+            {cargandoMas ? "Cargando…" : "Cargar más"}
+          </button>
+        </p>
       )}
     </>
   );

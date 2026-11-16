@@ -13,6 +13,8 @@ const {
 } = require("../services/reservas");
 
 const MAX_LARGO_MENSAJE = 500;
+// Tope de `anterior` (la última respuesta del bot que manda un visitante).
+const MAX_LARGO_ANTERIOR = 4000;
 // Hasta cuántos días por delante se puede reservar desde el chat.
 const MAX_DIAS_RESERVA = 90;
 const OBJECT_ID = /^[a-f\d]{24}$/i;
@@ -617,6 +619,7 @@ const enviarMensaje = async (req, res) => {
         conversacion_id: null,
         intencion: resultadoCancelacion.intencion,
         respuesta: resultadoCancelacion.respuesta,
+        sugerencias: chatbot.respuestasRapidas(resultadoCancelacion.respuesta),
       });
     }
     const resultadoEdicion = await procesarEdicionChat(mensaje, null, {});
@@ -625,6 +628,7 @@ const enviarMensaje = async (req, res) => {
         conversacion_id: null,
         intencion: resultadoEdicion.intencion,
         respuesta: resultadoEdicion.respuesta,
+        sugerencias: chatbot.respuestasRapidas(resultadoEdicion.respuesta),
       });
     }
     const resultadoReserva = await procesarReservaChat(mensaje, null, {});
@@ -633,10 +637,14 @@ const enviarMensaje = async (req, res) => {
         conversacion_id: null,
         intencion: resultadoReserva.intencion,
         respuesta: resultadoReserva.respuesta,
+        sugerencias: chatbot.respuestasRapidas(resultadoReserva.respuesta),
       });
     }
-    const { intencion, respuesta } = await chatbot.responder(mensaje, null);
-    return res.json({ conversacion_id: null, intencion, respuesta });
+    // Sin conversación guardada, lo último que dijo el bot lo recuerda la
+    // página y lo manda en `anterior`: solo sirve para no repetir la respuesta.
+    const anterior = typeof req.body?.anterior === "string" ? req.body.anterior.slice(0, MAX_LARGO_ANTERIOR) : undefined;
+    const { intencion, respuesta, sugerencias } = await chatbot.responder(mensaje, null, { evitar: anterior });
+    return res.json({ conversacion_id: null, intencion, respuesta, sugerencias });
   }
 
   const conversacion = await obtenerConversacion(req, req.body.conversacion_id);
@@ -648,8 +656,17 @@ const enviarMensaje = async (req, res) => {
   const resultadoReserva = resultadoCancelacion || resultadoEdicion
     ? null
     : await procesarReservaChat(mensaje, req.usuario, datosContexto);
-  const resultado = resultadoCancelacion || resultadoEdicion || resultadoReserva || (await chatbot.responder(mensaje, req.usuario));
+  // Lo último que dijo el bot en esta conversación, para no repetirlo.
+  const ultimoDelBot = conversacion.mensajes.findLast((m) => m.tipo === "bot")?.mensaje;
+  const resultado =
+    resultadoCancelacion ||
+    resultadoEdicion ||
+    resultadoReserva ||
+    (await chatbot.responder(mensaje, req.usuario, { evitar: ultimoDelBot }));
   const { intencion, respuesta } = resultado;
+  // Los pasos de una reserva no traen sugerencias: salen de lo que la misma
+  // respuesta pide contestar ("dime «sí» o «no»").
+  const sugerencias = resultado.sugerencias ?? chatbot.respuestasRapidas(respuesta);
   const ahora = new Date();
 
   conversacion.mensajes.push(
@@ -667,7 +684,7 @@ const enviarMensaje = async (req, res) => {
   conversacion.contexto = { datos: datosNuevos };
   await conversacion.save();
 
-  res.json({ conversacion_id: conversacion.id, intencion, respuesta });
+  res.json({ conversacion_id: conversacion.id, intencion, respuesta, sugerencias });
 };
 
 // Las propias. Un admin puede ver todas con ?todas=true. Filtro: ?estado=
@@ -701,7 +718,7 @@ const finalizarConversacion = async (req, res) => {
   res.json(conversacion);
 };
 
-const CAMPOS_INTENCION = ["nombre", "descripcion", "activa", "palabras_clave", "respuestas"];
+const CAMPOS_INTENCION = ["nombre", "descripcion", "activa", "palabras_clave", "respuestas", "sugerencias"];
 
 const listarIntenciones = async (req, res) => {
   const intenciones = await ChatIntent.find().sort({ nombre: 1 });

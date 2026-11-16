@@ -14,6 +14,8 @@ export const listarPlatos = () => api.get("/admin/menu");
 export const crearPlato = (datos) => api.post("/admin/menu", datos);
 export const editarPlato = (id, datos) => api.put(`/admin/menu/${id}`, datos);
 export const eliminarPlato = (id) => api.delete(`/admin/menu/${id}`);
+// Responde { id, url }; la url es la que se guarda en el plato.
+export const subirImagen = (archivo) => api.subir("/admin/imagenes", archivo);
 
 export const listarCategorias = () => api.get("/categorias");
 export const crearCategoria = (datos) => api.post("/categorias", datos);
@@ -30,6 +32,13 @@ export const cambiarEstadoReserva = (id, estado) => api.patch(`/reservas/${id}/e
 
 export const listarPagos = (filtros) => api.get(`/pagos${qs(filtros)}`);
 export const cambiarEstadoPago = (id, estado) => api.patch(`/pagos/${id}/estado`, { estado });
+
+// Comprobantes en PDF de los pedidos web.
+export const listarFacturas = (filtros) => api.get(`/facturas${qs(filtros)}`);
+export const pedidosSinFactura = () => api.get("/facturas/pendientes");
+export const generarFactura = (pedidoId) => api.post("/facturas", { pedidoId });
+export const reenviarFactura = (id) => api.post(`/facturas/${id}/enviar`);
+export const descargarFactura = (id) => api.descargar(`/facturas/${id}/pdf`);
 
 export const listarDomiciliarios = (filtros) => api.get(`/domiciliarios${qs(filtros)}`);
 export const crearDomiciliario = (datos) => api.post("/domiciliarios", datos);

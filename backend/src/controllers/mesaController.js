@@ -1,7 +1,8 @@
 const { z } = require("zod");
 const { Mesa, Comanda } = require("../models");
 const { HttpError } = require("../utils/http");
-const { textoOpcional } = require("../utils/validar");
+const { textoOpcional, objectId } = require("../utils/validar");
+const { LADO, FORMAS, caja, dentro, seCruzan, ubicada, cabe } = require("../utils/plano");
 const { toMesa } = require("../utils/serializar");
 const { registrar, SERVICIO } = require("../services/auditoria");
 const { publicar, TOPICS } = require("../ws/hub");
@@ -24,6 +25,33 @@ const mesaSchema = z.object({
     .nullish()
     .transform((v) => v ?? 4),
   activa: z.boolean({ error: "'activa' debe ser verdadero o falso" }).default(true),
+  // Opcional: si no llega, la mesa conserva la forma que tenía.
+  forma: z.enum(FORMAS, { error: "La forma debe ser cuadrada, redonda o rectangular" }).optional(),
+});
+
+const celda = z
+  .number({ error: "La posición debe ser un número" })
+  .int("La posición debe ser una celda entera")
+  .min(0, "La posición no puede ser negativa")
+  .max(LADO - 1, "La posición se sale del plano")
+  .nullable();
+
+// Todas las mesas que se movieron, de una vez: así el plano se valida entero
+// y no queda a medias si una posición no sirve.
+const planoSchema = z.object({
+  mesas: z
+    .array(
+      z
+        .object({
+          id: objectId,
+          x: celda,
+          y: celda,
+          rotacion: z.union([z.literal(0), z.literal(90)], { error: "La rotación debe ser 0 o 90" }).default(0),
+        })
+        .refine((m) => (m.x === null) === (m.y === null), { error: "Una mesa lleva las dos coordenadas o ninguna" })
+    )
+    .min(1, "El plano no trae mesas")
+    .max(300, "Demasiadas mesas en un solo plano"),
 });
 
 // id de mesa -> { comandaId, grupo, principal } de su cuenta abierta. Una
@@ -94,6 +122,15 @@ const editar = async (req, res) => {
   }
 
   Object.assign(previa, datos);
+  // La forma y la capacidad deciden cuánto ocupa la mesa en el plano. Si con
+  // el cambio ya no cabe donde estaba, sale del plano en vez de quedar encimada.
+  if (ubicada(previa)) {
+    const otras = await Mesa.find({ _id: { $ne: previa._id }, pos_x: { $ne: null } }).lean();
+    if (!cabe(previa, otras)) {
+      previa.pos_x = null;
+      previa.pos_y = null;
+    }
+  }
   try {
     await previa.save();
   } catch (err) {
@@ -119,4 +156,47 @@ const eliminar = async (req, res) => {
   res.status(204).end();
 };
 
-module.exports = { mesaSchema, listar, listarTodas, crear, editar, eliminar };
+// Guarda dónde va cada mesa en el plano del salón. Las mesas que no vienen en
+// la petición conservan su lugar, pero cuentan para saber si algo se encima.
+const guardarPlano = async (req, res) => {
+  const pedidas = new Map(req.valid.body.mesas.map((m) => [m.id, m]));
+  if (pedidas.size !== req.valid.body.mesas.length) throw new HttpError(400, "Hay mesas repetidas en el plano");
+
+  const todas = await Mesa.find().lean();
+  const conocidas = new Set(todas.map((m) => String(m._id)));
+  for (const id of pedidas.keys()) {
+    if (!conocidas.has(id)) throw new HttpError(404, "Mesa no encontrada");
+  }
+
+  const finales = todas.map((m) => {
+    const p = pedidas.get(String(m._id));
+    return p ? { ...m, pos_x: p.x, pos_y: p.y, rotacion: p.rotacion } : m;
+  });
+  const ubicadas = finales.filter(ubicada);
+  for (const mesa of ubicadas) {
+    if (!dentro(caja(mesa))) throw new HttpError(400, `La mesa ${mesa.numero} se sale del plano`);
+  }
+  for (let i = 0; i < ubicadas.length; i += 1) {
+    for (let j = i + 1; j < ubicadas.length; j += 1) {
+      if (seCruzan(caja(ubicadas[i]), caja(ubicadas[j]))) {
+        throw new HttpError(409, `Las mesas ${ubicadas[i].numero} y ${ubicadas[j].numero} quedan encimadas`);
+      }
+    }
+  }
+
+  await Mesa.bulkWrite(
+    [...pedidas.values()].map((p) => ({
+      updateOne: { filter: { _id: p.id }, update: { $set: { pos_x: p.x, pos_y: p.y, rotacion: p.rotacion } } },
+    }))
+  );
+  await registrar(
+    req.usuario,
+    "EDITAR_PLANO",
+    `Reorganizó el plano del salón (${ubicadas.length} mesa(s) ubicadas)`,
+    SERVICIO.COMANDAS
+  );
+  avisarMesas();
+  res.json(await serializarTodas(await Mesa.find().sort({ numero: 1 }).lean()));
+};
+
+module.exports = { mesaSchema, planoSchema, listar, listarTodas, crear, editar, eliminar, guardarPlano };

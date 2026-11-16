@@ -55,6 +55,11 @@ const toMesa = (m, comandaAbiertaId = null, { grupo = [], principal = true } = {
   nombre: o(m.nombre),
   capacidad: m.capacidad ?? 4,
   activa: m.activa !== false,
+  // Plano del salón: x e y en celdas; null si la mesa no está ubicada.
+  forma: m.forma ?? "cuadrada",
+  x: m.pos_x ?? null,
+  y: m.pos_y ?? null,
+  rotacion: m.rotacion ?? 0,
   comandaAbiertaId: comandaAbiertaId ? String(comandaAbiertaId) : null,
   grupo,
   principal,
@@ -139,6 +144,8 @@ const toComanda = (c) => {
     // Mientras está abierta el total se calcula al vuelo; al cerrar se congela.
     total: c.total != null ? num(c.total) : totalDeItems(items),
     metodoPago: c.metodo_pago ?? null,
+    // Las partes del cobro. Vacío mientras está abierta y en cuentas antiguas.
+    pagos: (c.pagos ?? []).map((p) => ({ metodo: p.metodo, monto: num(p.monto), etiqueta: o(p.etiqueta) })),
     tieneFaltante: Boolean(c.tiene_faltante),
     fechaApertura: fechaLocal(c.fecha_apertura),
     fechaCierre: fechaLocal(c.fecha_cierre),

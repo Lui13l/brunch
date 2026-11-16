@@ -7,7 +7,9 @@ import "./SandwichFalling.css";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const SandwichFalling = ({ heroSelector = ".hero-bg", rightOffset = 24 }) => {
+// `rightOffset` negativo: las imágenes traen margen transparente, así que el
+// pan se ve pegado al borde y deja libre el contenido de la página.
+const SandwichFalling = ({ heroSelector = ".hero-bg", rightOffset = -14 }) => {
   const wrapperRef = useRef(null);
   const volandoRef = useRef(null);
   const caidoRef   = useRef(null);
@@ -27,7 +29,14 @@ const SandwichFalling = ({ heroSelector = ".hero-bg", rightOffset = 24 }) => {
 
     ScrollTrigger.refresh();
 
-    gsap.set(wrapper, { position: "fixed", top: 60, right: rightOffset, left: "auto", x: 0, y: -80, rotation: -12, opacity: 0 });
+    // En el celular el pan es más chico y su margen transparente también.
+    const derecha = window.matchMedia("(max-width: 600px)").matches ? Math.round(rightOffset * 0.7) : rightOffset;
+    // Apoyado en el pie deja de ser fijo: fuera de la página crearía scroll horizontal.
+    const derechaApoyado = Math.max(derecha, 0);
+    // Mientras vuela se corre hacia adentro para que el giro no lo corte contra el borde.
+    const vuelo = derecha < 0 ? derecha : 0;
+
+    gsap.set(wrapper, { position: "fixed", top: 60, right: derecha, left: "auto", x: vuelo, y: -80, rotation: -12, opacity: 0 });
     gsap.set(caido,   { opacity: 0, scale: 0.8 });
 
     const tl = gsap.timeline({
@@ -51,7 +60,7 @@ const SandwichFalling = ({ heroSelector = ".hero-bg", rightOffset = 24 }) => {
           gsap.set(wrapper, {
             position: "absolute",
             top: footerTop - window.innerHeight + 60,
-            right: rightOffset,
+            right: derechaApoyado,
             left: "auto",
             x: 0, rotation: 0, opacity: 1,
           });
@@ -64,7 +73,7 @@ const SandwichFalling = ({ heroSelector = ".hero-bg", rightOffset = 24 }) => {
           gsap.killTweensOf(wrapper, "top");
           gsap.set(wrapper, {
             position: "fixed",
-            top: 60, right: rightOffset, left: "auto",
+            top: 60, right: derecha, left: "auto",
             y: "57vh", x: 0, rotation: 0, opacity: 1,
           });
           gsap.set(volando, { opacity: 0 });
@@ -74,8 +83,8 @@ const SandwichFalling = ({ heroSelector = ".hero-bg", rightOffset = 24 }) => {
         onLeaveBack: () => {
           gsap.set(wrapper, {
             position: "fixed",
-            top: 60, right: rightOffset, left: "auto",
-            opacity: 0, y: -80, rotation: -12,
+            top: 60, right: derecha, left: "auto",
+            opacity: 0, x: vuelo, y: -80, rotation: -12,
           });
           gsap.set(caido,   { opacity: 0, scale: 0.8 });
           gsap.set(volando, { opacity: 1 });
@@ -84,15 +93,15 @@ const SandwichFalling = ({ heroSelector = ".hero-bg", rightOffset = 24 }) => {
     });
 
     tl.to(wrapper, {
-      opacity: 1, y: 0, rotation: -5,
+      opacity: 1, x: vuelo, y: 0, rotation: -5,
       duration: 0.2, ease: "power1.out",
     })
     .to(wrapper, {
-      y: "20vh", x: 10, rotation: 5,
+      y: "20vh", x: vuelo, rotation: 5,
       ease: "none", duration: 0.25,
     })
     .to(wrapper, {
-      y: "55vh", x: 20, rotation: 28,
+      y: "55vh", x: vuelo, rotation: 28,
       ease: "power1.in", duration: 0.4,
     })
     .to(volando, { opacity: 0, duration: 0.05 }, "-=0.05")

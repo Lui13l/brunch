@@ -1,6 +1,7 @@
-const { describe, test, before, after, beforeEach } = require("node:test");
+const { describe, test, before, after, beforeEach, afterEach } = require("node:test");
 const { conectar, desconectar, limpiar, api, datosBase, bearer, expect, crearPersonal } = require("./helpers");
-const { Insumo, Order, MovimientoInventario } = require("../src/models");
+const nodemailer = require("nodemailer");
+const { Insumo, Order, MovimientoInventario, Factura, MenuItem } = require("../src/models");
 
 let d;
 let cocina;
@@ -173,5 +174,229 @@ describe("Pedidos web en cocina", () => {
     expect(platos).toHaveLength(2);
     expect(platos[0].id).toMatch(/^[a-f\d]{24}$/);
     expect((await marcar(platos[0].id, "LISTO")).status).toBe(200);
+  });
+});
+
+describe("Comprobantes de pedidos web", () => {
+  // Pedido pagado con el método indicado (pago aprobado) y llevado hasta entregado.
+  const entregar = async (metodo) => {
+    const pedido = await pedir();
+    if (metodo) {
+      const pago = await api().post("/api/pagos").set(cliente()).send({ pedido_id: pedido.id, metodo });
+      // Aprobar el pago confirma el pedido.
+      await api().patch(`/api/pagos/${pago.body.id}/estado`).set(admin()).send({ estado: "aprobado" });
+    } else {
+      await estado(pedido.id, "confirmado");
+    }
+    for (const paso of ["preparando", "en_camino", "entregado"]) {
+      expect((await estado(pedido.id, paso)).status).toBe(200);
+    }
+    return pedido;
+  };
+  const facturas = async (query = "") => (await api().get(`/api/facturas${query}`).set(admin())).body;
+
+  test("al entregar un pedido pagado por transferencia se emite su comprobante", async () => {
+    const pedido = await entregar("transferencia");
+
+    const lista = await facturas();
+    expect(lista).toHaveLength(1);
+    expect(lista[0].numero).toBe("BC-000001");
+    expect(lista[0].pedidoId).toBe(pedido.id);
+    expect(lista[0].total).toBe(45000);
+    expect(lista[0].metodoPago).toBe("transferencia");
+    expect(lista[0].cliente.correo).toBe(d.cliente.correo);
+    // Sin clave de correo queda emitido y sin enviar, con el motivo a la vista.
+    expect(lista[0].envio.estado).toBe("sin_enviar");
+    expect(lista[0].envio.detalle).toMatch(/RESEND_API_KEY/);
+
+    const doc = await Factura.findOne({ pedido_id: pedido.id });
+    expect(doc.items.map((i) => [i.nombre, i.cantidad, i.subtotal])).toEqual([["Huevos", 2, 40000], ["Café", 1, 5000]]);
+  });
+
+  test("efectivo o sin pago no se factura solo: se genera desde el panel, una sola vez", async () => {
+    const enEfectivo = await entregar("efectivo");
+    const sinPago = await entregar(null);
+    expect(await facturas()).toHaveLength(0);
+
+    const pendientes = await api().get("/api/facturas/pendientes").set(admin());
+    expect(pendientes.body.map((p) => p.pedidoId).sort()).toEqual([enEfectivo.id, sinPago.id].sort());
+
+    const generada = await api().post("/api/facturas").set(admin()).send({ pedidoId: enEfectivo.id });
+    expect(generada.status).toBe(201);
+    expect(generada.body.numero).toBe("BC-000001");
+    expect(generada.body.metodoPago).toBe("efectivo");
+
+    // Otra vez el mismo pedido: responde el mismo comprobante, no uno nuevo.
+    const repetida = await api().post("/api/facturas").set(admin()).send({ pedidoId: enEfectivo.id });
+    expect(repetida.status).toBe(200);
+    expect(repetida.body.id).toBe(generada.body.id);
+    expect(await Factura.countDocuments()).toBe(1);
+
+    const otra = await api().post("/api/facturas").set(admin()).send({ pedidoId: sinPago.id });
+    expect(otra.body.numero).toBe("BC-000002");
+    expect(otra.body.metodoPago).toBe(null);
+    expect((await api().get("/api/facturas/pendientes").set(admin())).body).toHaveLength(0);
+  });
+
+  test("solo se factura lo entregado, y solo el admin entra al panel", async () => {
+    const pedido = await pedir();
+    const antes = await api().post("/api/facturas").set(admin()).send({ pedidoId: pedido.id });
+    expect(antes.status).toBe(409);
+    expect(antes.body.mensaje).toBe("El comprobante se genera cuando el pedido ya está entregado");
+
+    expect((await api().get("/api/facturas").set(cliente())).status).toBe(403);
+    expect((await api().get("/api/facturas")).status).toBe(401);
+    expect((await api().post("/api/facturas").set(admin()).send({ pedidoId: "nada" })).status).toBe(400);
+  });
+
+  test("el PDF se descarga y el comprobante no cambia aunque cambie la carta", async () => {
+    const pedido = await entregar("transferencia");
+    const [factura] = await facturas();
+    await MenuItem.updateMany({}, { precio: 1, nombre: "Otro nombre" });
+
+    const pdf = await api().get(`/api/facturas/${factura.id}/pdf`).set(admin()).buffer(true).parse((res, fin) => {
+      const trozos = [];
+      res.on("data", (t) => trozos.push(t));
+      res.on("end", () => fin(null, Buffer.concat(trozos)));
+    });
+    expect(pdf.status).toBe(200);
+    expect(pdf.headers["content-type"]).toBe("application/pdf");
+    expect(pdf.headers["content-disposition"]).toBe('inline; filename="comprobante-BC-000001.pdf"');
+    expect(pdf.body.subarray(0, 5).toString()).toBe("%PDF-");
+
+    expect((await Factura.findOne({ pedido_id: pedido.id })).total).toBe(45000);
+    expect((await api().get(`/api/facturas/${factura.id}/pdf`).set(cliente())).status).toBe(403);
+  });
+
+  describe("con el correo configurado", () => {
+    const fetchReal = global.fetch;
+    let enviados;
+    let respuesta;
+
+    beforeEach(() => {
+      process.env.RESEND_API_KEY = "re_prueba";
+      process.env.CORREO_REMITENTE = "Brunch <pedidos@e2e.brunch.test>";
+      enviados = [];
+      respuesta = { ok: true, status: 200, json: async () => ({ id: "correo-1" }) };
+      // Nada sale a internet: se captura lo que se le mandaría a Resend.
+      global.fetch = async (url, opciones) => {
+        enviados.push({ url, cuerpo: JSON.parse(opciones.body), autorizacion: opciones.headers.Authorization });
+        return respuesta;
+      };
+    });
+    afterEach(() => {
+      delete process.env.RESEND_API_KEY;
+      delete process.env.CORREO_REMITENTE;
+      global.fetch = fetchReal;
+    });
+
+    test("se envía al cliente con el PDF adjunto", async () => {
+      await entregar("transferencia");
+
+      expect(enviados).toHaveLength(1);
+      expect(enviados[0].url).toBe("https://api.resend.com/emails");
+      expect(enviados[0].autorizacion).toBe("Bearer re_prueba");
+      expect(enviados[0].cuerpo.to).toEqual([d.cliente.correo]);
+      expect(enviados[0].cuerpo.subject).toMatch(/BC-000001/);
+      const [adjunto] = enviados[0].cuerpo.attachments;
+      expect(adjunto.filename).toBe("comprobante-BC-000001.pdf");
+      expect(Buffer.from(adjunto.content, "base64").subarray(0, 5).toString()).toBe("%PDF-");
+
+      const [factura] = await facturas("?estado=enviada");
+      expect(factura.envio.intentos).toBe(1);
+    });
+
+    test("si el correo falla, el pedido igual queda entregado y se puede reenviar", async () => {
+      respuesta = { ok: false, status: 422, json: async () => ({ message: "Dominio sin verificar" }) };
+      const pedido = await entregar("transferencia");
+      expect((await Order.findById(pedido.id)).estado).toBe("entregado");
+
+      const [factura] = await facturas("?estado=error");
+      expect(factura.envio.detalle).toBe("Dominio sin verificar");
+
+      respuesta = { ok: true, status: 200, json: async () => ({ id: "correo-2" }) };
+      const reenviada = await api().post(`/api/facturas/${factura.id}/enviar`).set(admin());
+      expect(reenviada.status).toBe(200);
+      expect(reenviada.body.envio.estado).toBe("enviada");
+      expect(reenviada.body.envio.intentos).toBe(2);
+      expect(enviados).toHaveLength(2);
+    });
+  });
+
+  describe("con Gmail configurado", () => {
+    const crearReal = nodemailer.createTransport;
+    const fetchReal = global.fetch;
+    let conexiones;
+    let correos;
+    let fallo;
+
+    beforeEach(() => {
+      // Como la muestra Google: en grupos de cuatro, con espacios.
+      process.env.GMAIL_USUARIO = "brunch@e2e.brunch.test";
+      process.env.GMAIL_CLAVE_APP = "abcd efgh ijkl mnop";
+      conexiones = [];
+      correos = [];
+      fallo = null;
+      // Nada sale a internet: se captura lo que se le entregaría a Gmail.
+      nodemailer.createTransport = (opciones) => {
+        conexiones.push(opciones);
+        return {
+          sendMail: async (correo) => {
+            if (fallo) throw fallo;
+            correos.push(correo);
+            return { messageId: "<prueba>" };
+          },
+          close: () => {},
+        };
+      };
+    });
+    afterEach(() => {
+      delete process.env.GMAIL_USUARIO;
+      delete process.env.GMAIL_CLAVE_APP;
+      delete process.env.RESEND_API_KEY;
+      delete process.env.CORREO_REMITENTE;
+      nodemailer.createTransport = crearReal;
+      global.fetch = fetchReal;
+    });
+
+    test("sale por Gmail con el PDF adjunto, aunque Resend también esté configurado", async () => {
+      process.env.RESEND_API_KEY = "re_prueba";
+      process.env.CORREO_REMITENTE = "Brunch <pedidos@e2e.brunch.test>";
+      let porResend = 0;
+      global.fetch = async () => {
+        porResend += 1;
+        return { ok: true, status: 200, json: async () => ({}) };
+      };
+
+      await entregar("transferencia");
+
+      expect(porResend).toBe(0);
+      expect(conexiones[0].service).toBe("gmail");
+      expect(conexiones[0].auth).toEqual({ user: "brunch@e2e.brunch.test", pass: "abcdefghijklmnop" });
+      expect(correos).toHaveLength(1);
+      expect(correos[0].from).toEqual({ name: "Brunch & Co.", address: "brunch@e2e.brunch.test" });
+      expect(correos[0].to).toBe(d.cliente.correo);
+      expect(correos[0].subject).toMatch(/BC-000001/);
+      const [adjunto] = correos[0].attachments;
+      expect(adjunto.filename).toBe("comprobante-BC-000001.pdf");
+      expect(adjunto.content.subarray(0, 5).toString()).toBe("%PDF-");
+
+      const [factura] = await facturas("?estado=enviada");
+      expect(factura.envio.intentos).toBe(1);
+    });
+
+    test("si Gmail rechaza la contraseña, el pedido queda entregado y el motivo se ve", async () => {
+      fallo = Object.assign(new Error("Invalid login: 535-5.7.8 Username and Password not accepted"), { code: "EAUTH" });
+      const pedido = await entregar("transferencia");
+      expect((await Order.findById(pedido.id)).estado).toBe("entregado");
+
+      const [factura] = await facturas("?estado=error");
+      expect(factura.envio.detalle).toBe("Gmail rechazó el usuario o la contraseña de aplicación");
+
+      fallo = null;
+      const reenviada = await api().post(`/api/facturas/${factura.id}/enviar`).set(admin());
+      expect(reenviada.body.envio.estado).toBe("enviada");
+      expect(correos).toHaveLength(1);
+    });
   });
 });

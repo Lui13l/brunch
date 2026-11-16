@@ -131,9 +131,10 @@ export default function Comanda() {
       }
     });
 
-  const cobrar = (metodoPago, forzar) =>
+  // `cobro` es { metodoPago, forzar } o, si la cuenta se dividió, { pagos, forzar }.
+  const cobrar = (cobro) =>
     accion(async () => {
-      await pedir(`/api/comandas/${id}/cerrar`, { method: "POST", body: JSON.stringify({ metodoPago, forzar }) });
+      await pedir(`/api/comandas/${id}/cerrar`, { method: "POST", body: JSON.stringify(cobro) });
       navigate("/mesas");
     });
 

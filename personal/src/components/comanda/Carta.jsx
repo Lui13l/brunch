@@ -56,7 +56,7 @@ export default function Carta({ carta, enCuenta, onAgregar, onCerrar, onCobrar, 
             <button
               key={c.id}
               onClick={() => setCategoria(c.id)}
-              className={`min-h-11 shrink-0 rounded-full px-4 font-bold transition ${
+              className={`min-h-11 shrink-0 rounded-lg px-4 font-bold transition ${
                 activa?.id === c.id ? "bg-rio text-white" : "border border-filete bg-mantel text-tinta active:bg-sala"
               }`}
             >
@@ -101,11 +101,11 @@ export default function Carta({ carta, enCuenta, onAgregar, onCerrar, onCobrar, 
                     )}
                   </div>
                   {pedidos > 0 && (
-                    <span className="shrink-0 rounded-full bg-tibio px-2.5 py-1 text-[13px] font-extrabold text-tinta tabular-nums">
+                    <span className="shrink-0 rounded-lg bg-tibio px-2.5 py-1 text-[13px] font-extrabold text-tinta tabular-nums">
                       {pedidos} por enviar
                     </span>
                   )}
-                  <span className="flex size-11 shrink-0 items-center justify-center rounded-full bg-rio text-white">
+                  <span className="flex size-11 shrink-0 items-center justify-center rounded-lg bg-rio text-white">
                     <Plus size={22} />
                   </span>
                 </button>

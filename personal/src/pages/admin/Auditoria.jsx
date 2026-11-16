@@ -6,7 +6,7 @@ import { useRecurso } from "../../hooks/useRecurso";
 import { ETIQUETA_SERVICIO, NOMBRE_ROL, hoyISO } from "../../lib/formato";
 
 const SERVICIOS = [{ valor: "", texto: "Todos" }, ...Object.entries(ETIQUETA_SERVICIO).map(([valor, texto]) => ({ valor, texto }))];
-const LIMITES = [100, 200, 500].map((n) => ({ valor: String(n), texto: `${n} más recientes` }));
+const LIMITES = [100, 200, 500].map((n) => ({ valor: String(n), texto: `De a ${n}` }));
 
 // Quién hizo qué: caja, inventario, carta, comandas, pedidos web y personal.
 export default function Auditoria() {
@@ -16,13 +16,18 @@ export default function Auditoria() {
   const [registros, setRegistros] = useState([]);
   const [error, setError] = useState("");
   const [cargando, setCargando] = useState(true);
+  // Si la última página vino llena, puede haber más registros detrás.
+  const [hayMas, setHayMas] = useState(false);
+  const [cargandoMas, setCargandoMas] = useState(false);
   const { datos: personal } = useRecurso("/api/admin/personal");
 
   const cargar = useCallback(async () => {
     setCargando(true);
     try {
       const query = new URLSearchParams(Object.entries({ ...filtros, ...rango }).filter(([, v]) => v)).toString();
-      setRegistros(await pedir(`/api/admin/auditoria?${query}`));
+      const pagina = await pedir(`/api/admin/auditoria?${query}`);
+      setRegistros(pagina);
+      setHayMas(pagina.length === Number(filtros.limite));
       setError("");
     } catch (err) {
       setError(err.message);
@@ -30,6 +35,25 @@ export default function Auditoria() {
       setCargando(false);
     }
   }, [pedir, filtros, rango]);
+
+  // Sigue desde el último registro que ya está en pantalla.
+  const cargarMas = async () => {
+    setCargandoMas(true);
+    try {
+      const antes = registros.at(-1)?.id;
+      const query = new URLSearchParams(
+        Object.entries({ ...filtros, ...rango, antes }).filter(([, v]) => v),
+      ).toString();
+      const pagina = await pedir(`/api/admin/auditoria?${query}`);
+      setRegistros((previos) => [...previos, ...pagina]);
+      setHayMas(pagina.length === Number(filtros.limite));
+      setError("");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCargandoMas(false);
+    }
+  };
 
   useEffect(() => {
     cargar();
@@ -108,10 +132,13 @@ export default function Auditoria() {
         </section>
       ))}
 
-      {registros.length > 0 && registros.length === Number(filtros.limite) && (
-        <p className="text-center text-sm text-tinta-2">
-          Se muestran los {filtros.limite} más recientes; acota el rango para ver más.
-        </p>
+      {registros.length > 0 && hayMas && (
+        <div className="grid justify-items-center gap-2">
+          <p className="text-sm text-tinta-2">Van {registros.length} acciones. Hay más antiguas.</p>
+          <Boton variante="secundario" cargando={cargandoMas} onClick={cargarMas}>
+            Cargar más
+          </Boton>
+        </div>
       )}
     </div>
   );

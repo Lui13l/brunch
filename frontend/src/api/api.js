@@ -1,6 +1,9 @@
 // Cliente de la API del backend. La URL se configura con VITE_API_URL (ver .env.example).
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000/api";
 
+// Origen del backend, sin "/api": las fotos subidas llegan como "/api/imagenes/…".
+export const ORIGEN_API = API_URL.replace(/\/api\/?$/, "");
+
 const TOKEN_KEY = "brunch_token";
 
 export const getToken = () => {
@@ -32,14 +35,16 @@ const request = async (method, path, body) => {
   const headers = {};
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  // Un archivo (Blob) viaja tal cual, con su propio tipo; lo demás va como JSON.
+  const archivo = body instanceof Blob;
+  if (body !== undefined) headers["Content-Type"] = archivo ? body.type : "application/json";
 
   let res;
   try {
     res = await fetch(`${API_URL}${path}`, {
       method,
       headers,
-      body: body === undefined ? undefined : JSON.stringify(body),
+      body: body === undefined || archivo ? body : JSON.stringify(body),
     });
   } catch {
     throw new ApiError(0, "No se pudo conectar con el servidor. Inténtalo de nuevo en un momento.");
@@ -65,11 +70,30 @@ const request = async (method, path, body) => {
   return data;
 };
 
+// Descarga un archivo que pide sesión (un PDF). Un enlace normal no manda el
+// token, así que se pide con fetch y se devuelve como Blob.
+const descargar = async (path) => {
+  const token = getToken();
+  let res;
+  try {
+    res = await fetch(`${API_URL}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+  } catch {
+    throw new ApiError(0, "No se pudo conectar con el servidor. Inténtalo de nuevo en un momento.");
+  }
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new ApiError(res.status, data?.mensaje || "No se pudo descargar el archivo");
+  }
+  return res.blob();
+};
+
 export const api = {
+  descargar,
   get: (path) => request("GET", path),
   post: (path, body = {}) => request("POST", path, body),
   put: (path, body = {}) => request("PUT", path, body),
   patch: (path, body = {}) => request("PATCH", path, body),
   delete: (path) => request("DELETE", path),
+  subir: (path, archivo) => request("POST", path, archivo),
 };
 

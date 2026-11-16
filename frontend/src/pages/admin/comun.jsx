@@ -108,6 +108,14 @@ export function RangoFechas({ rango, onCambiar }) {
         <button type="button" onClick={() => onCambiar(rangoDias(1))}>Hoy</button>
         <button type="button" onClick={() => onCambiar(rangoDias(7))}>7 días</button>
         <button type="button" onClick={() => onCambiar(rangoDias(30))}>30 días</button>
+        {/* Sin fechas el servidor no acota: se ve todo el historial. */}
+        <button
+          type="button"
+          aria-pressed={!rango.desde && !rango.hasta}
+          onClick={() => onCambiar({ desde: "", hasta: "" })}
+        >
+          Todo
+        </button>
       </div>
     </div>
   );

@@ -1,8 +1,9 @@
 /* Panel de administración: "la libreta del encargado".
    La trastienda de un brunch es papel —la carta impresa, las comandas de
-   cocina, el libro de reservas— y el panel se dibuja así. Misma tipografía
-   que la web: Fraunces (títulos y datos) y Figtree (navegación y
-   botones). */
+   cocina, el libro de reservas— y el panel se dibuja así. Todo el panel va
+   en Figtree, la fuente de texto de la web: la serifa de los títulos se
+   leía mal en tablas y tarjetas llenas de datos. La jerarquía la dan el
+   peso y el tamaño. */
 
 .adm-main {
   --tinta: #391903;
@@ -21,7 +22,7 @@
   padding: 2.5rem 1.25rem 4rem;
   color: var(--tinta);
   background-color: var(--crema);
-  font-family: "Fraunces", serif;
+  font-family: var(--fuente-texto);
   font-size: 1rem;
   font-variant-numeric: tabular-nums;
 }
@@ -43,12 +44,11 @@
 
 .adm-h1 {
   margin: 0;
-  font-family: "Fraunces", serif;
-  font-size: clamp(2.2rem, 5vw, 3.2rem);
-  font-weight: 700;
-  font-optical-sizing: auto;
-  line-height: 1;
-  letter-spacing: -0.02em;
+  font-family: var(--fuente-texto);
+  font-size: clamp(2rem, 4.5vw, 2.8rem);
+  font-weight: 800;
+  line-height: 1.05;
+  letter-spacing: -0.03em;
 }
 
 .adm-fecha {
@@ -127,10 +127,11 @@
 
 .adm-titulo {
   margin: 0;
-  font-family: "Fraunces", serif;
-  font-size: 2rem;
-  font-weight: 700;
+  font-family: var(--fuente-texto);
+  font-size: 1.75rem;
+  font-weight: 800;
   line-height: 1.1;
+  letter-spacing: -0.02em;
 }
 
 .adm-descripcion {
@@ -176,7 +177,7 @@
   border-color: #e3d9cd;
   border-radius: 10px;
   box-shadow: none;
-  font-family: "Fraunces", serif;
+  font-family: var(--fuente-texto);
 }
 
 .adm-main .select:not(.is-multiple):not(.is-loading)::after {
@@ -197,7 +198,7 @@
 
 .adm-main .checkbox {
   color: var(--tinta);
-  font-family: "Fraunces", serif;
+  font-family: var(--fuente-texto);
 }
 
 .adm-main .checkbox input {
@@ -231,8 +232,14 @@
   cursor: pointer;
 }
 
-.adm-atajos button:hover {
+.adm-atajos button:hover,
+.adm-atajos button[aria-pressed="true"] {
   color: var(--tinta);
+}
+
+.adm-atajos button[aria-pressed="true"] {
+  font-weight: 700;
+  text-decoration-color: var(--tinta);
 }
 
 /* --- Pestañas (Activos / Historial) --- */
@@ -418,10 +425,22 @@
 }
 
 .adm-tarjeta-titulo {
-  font-family: "Fraunces", serif;
-  font-size: 1.35rem;
+  font-family: var(--fuente-texto);
+  font-size: 1.15rem;
   font-weight: 700;
-  line-height: 1.15;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+/* Nombre técnico de una intención del chatbot: dato de apoyo, no título. */
+.adm-tarjeta-clave {
+  padding: 0.1rem 0.45rem;
+  color: var(--tinta-suave);
+  background-color: var(--linea-suave);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
 }
 
 .adm-tarjeta-meta {
@@ -504,7 +523,7 @@
   align-items: center;
   gap: 1rem;
   margin-bottom: 0.75rem;
-  font-family: "Fraunces", serif;
+  font-family: var(--fuente-texto);
   font-size: 1.55rem;
   font-weight: 700;
 }
@@ -556,6 +575,60 @@
   display: flex;
   gap: 0.15rem;
   margin-left: 0.25rem;
+}
+
+/* --- Bloque con título propio dentro de una página (pendientes de facturar) --- */
+
+.adm-bloque {
+  margin-bottom: 1.75rem;
+}
+
+.adm-subtitulo {
+  margin: 0 0 0.75rem;
+  font-family: var(--fuente-texto);
+  font-size: 1.1rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* --- Foto del plato en el formulario: vista previa y botones al lado --- */
+
+.adm-imagen {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.85rem;
+  margin-bottom: 0.6rem;
+}
+
+.adm-imagen-vista {
+  flex: none;
+  width: 104px;
+  height: 104px;
+  object-fit: cover;
+  background: var(--crema);
+  border: 1px solid var(--linea);
+  border-radius: 8px;
+}
+
+.adm-imagen-vacia {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--tinta-suave);
+  font-size: 0.9rem;
+  border-style: dashed;
+}
+
+.adm-imagen-acciones {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.45rem;
+}
+
+.adm-imagen-acciones .button {
+  gap: 0.45rem;
 }
 
 /* --- Tablas tipo libro contable --- */
@@ -630,7 +703,7 @@
 
 .adm-dia {
   margin: 1.75rem 0 0.6rem;
-  font-family: "Fraunces", serif;
+  font-family: var(--fuente-texto);
   font-size: 1.2rem;
   font-weight: 700;
 }
@@ -663,7 +736,7 @@
 
 .adm-main .modal-card-title {
   color: var(--tinta);
-  font-family: "Fraunces", serif;
+  font-family: var(--fuente-texto);
   font-size: 1.5rem;
   font-weight: 700;
 }
