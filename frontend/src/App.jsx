@@ -6,6 +6,7 @@ import CartDrawer from './components/CartDrawer';
 import CartFloatingButton from './components/CartFloatingButton';
 import ChatFlotante from './components/ChatFlotante';
 import { ChatProvider } from './context/ChatContext';
+import { CargaProvider } from './context/CargaContext';
 import ScrollToTop from './components/ScrollToTop';
 import Home from './pages/Home';
 import Menu from './pages/Menu';
@@ -32,6 +33,7 @@ import AdminAuditoria from './pages/admin/AdminAuditoria';
 
 function App() {
   return (
+    <CargaProvider>
     <AuthProvider>
       <CartProvider>
         <ChatProvider>
@@ -104,6 +106,7 @@ function App() {
         </ChatProvider>
       </CartProvider>
     </AuthProvider>
+    </CargaProvider>
   );
 }
 

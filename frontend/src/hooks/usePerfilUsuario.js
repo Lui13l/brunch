@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { usePantallaCarga } from "../context/CargaContext";
 import { actualizarPerfil } from "../services/usuarioService";
 import { misPedidos, obtenerPedido } from "../services/pedidosService";
 import { actualizarReserva, cancelarReserva, misReservas } from "../services/reservasService";
@@ -17,6 +18,7 @@ export default function usePerfilUsuario() {
   const [seccion, setSeccion] = useState("perfil");
   const { user, setUser, logout } = useAuth();
   const navigate = useNavigate();
+  const { cubrir } = usePantallaCarga();
   const [form, setForm] = useState(() => FORMULARIO_INICIAL(user));
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
@@ -113,6 +115,8 @@ export default function usePerfilUsuario() {
     setError("");
     setCerrandoSesion(true);
     try {
+      // Primero se tapa la página: al salir, el perfil deja de poder mostrarse.
+      await cubrir("¡Hasta pronto!");
       await logout();
       navigate("/login", { replace: true });
     } catch (err) {

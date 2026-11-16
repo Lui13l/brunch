@@ -5,8 +5,10 @@ import Footer from "../components/Footer";
 import { ArrowLeft } from "lucide-react";
 import tostada from "../assets/tostada.jpg";
 import { useAuth } from "../context/AuthContext";
+import { usePantallaCarga } from "../context/CargaContext";
 import "./Login.css";
 
+const MENSAJE_AL_ENTRAR = "Preparando tu mesa…";
 const REGISTRO_VACIO = { nombre: "", correo: "", celular: "", password: "", confirmar: "" };
 const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 let googleScriptPromise;
@@ -49,6 +51,7 @@ const Login = () => {
   const googleButtonRef = useRef(null);
   const { user, login, loginWithGoogle, register } = useAuth();
   const navigate = useNavigate();
+  const { cubrir } = usePantallaCarga();
   const location = useLocation();
 
   // Vuelve a la página que pidió el login (por ejemplo /reservas o /checkout).
@@ -77,6 +80,7 @@ const Login = () => {
             setEnviando(true);
             try {
               await loginWithGoogle(credential);
+              await cubrir(MENSAJE_AL_ENTRAR);
               navigate(destino, { replace: true });
             } catch (err) {
               setError(err.message);
@@ -108,7 +112,7 @@ const Login = () => {
       activo = false;
       googleButton?.replaceChildren();
     };
-  }, [mode, loginWithGoogle, navigate, destino]);
+  }, [mode, loginWithGoogle, navigate, destino, cubrir]);
 
   if (user && !enviando) return <Navigate to={destino} replace />;
 
@@ -122,6 +126,10 @@ const Login = () => {
     setEnviando(true);
     try {
       await accion();
+      // La pantalla de carga sale solo cuando ya entró: con una contraseña
+      // mal escrita no tiene sentido tapar el formulario. Se cambia de página
+      // cuando ya la cubre.
+      await cubrir(MENSAJE_AL_ENTRAR);
       navigate(destino, { replace: true });
     } catch (err) {
       setError(err.message);

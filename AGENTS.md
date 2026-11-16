@@ -100,7 +100,8 @@ La lista completa de endpoints está en [backend/README.md](backend/README.md). 
   - `sobreFoto`: la página empieza con foto o video; el navbar va en blanco.
   - `alRas`: la página dibuja su propio fondo bajo el navbar, sin espaciador.
   - Las portadas con video de Menú y Contacto usan `components/PortadaPagina.jsx`.
-- **Animación:** GSAP se usa en la portada, el carrusel de favoritos (`Favorites.jsx`), el pan que cae (`SandwichFalling.jsx`) y la entrada de las tarjetas del menú. Respeta siempre `prefers-reduced-motion`. En desarrollo React monta los efectos dos veces (StrictMode): las animaciones deben limpiar lo suyo y no depender del estado que dejó el montaje anterior.
+- **Pantalla de carga:** `components/PantallaCarga.jsx` (el pancito caminando, con una sola línea de tiempo de GSAP) y `context/CargaContext.jsx`. Se usa como transición: `await cubrir("mensaje")` de `usePantallaCarga()` se cumple cuando el telón ya tapa la página, y ahí se navega; se va sola. Sale al entrar (solo si el login fue bien), al salir, al pagar y al abrir el panel de admin. Si ya hay una puesta, `cubrir` devuelve esa misma. La hoja del pancito tiene 8 cuadros en 4 columnas y 2 filas (`assets/pancito-sprite-set-transparente.webp`).
+- **Animación:** GSAP se usa en la pantalla de carga, la portada, el carrusel de favoritos (`Favorites.jsx`), el pan que cae (`SandwichFalling.jsx`) y la entrada de las tarjetas del menú. Respeta siempre `prefers-reduced-motion`. En desarrollo React monta los efectos dos veces (StrictMode): las animaciones deben limpiar lo suyo y no depender del estado que dejó el montaje anterior.
 - **Panel de admin** (`pages/admin/`): tiene su propio estilo en `admin.css` ("la libreta del encargado"). El botón "Abrir comandas" abre la app del personal en `/entrar#token=…`.
 - **Textos de la interfaz:** frases cortas en tono cálido y cercano. Botones con verbos que dicen lo que pasa ("Reservar mesa", "Ir a pagar"). Sin MAYÚSCULAS sostenidas.
 

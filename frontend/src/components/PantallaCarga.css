@@ -1,0 +1,174 @@
+/* Pantalla de carga con el pancito. El movimiento lo pone GSAP
+   (PantallaCarga.jsx); aquí solo está cómo se ve cada pieza en reposo. */
+
+.carga {
+  position: fixed;
+  inset: 0;
+  /* Por encima de todo, incluido el carrito (1000). */
+  z-index: 2000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+/* Dos telones, uno sobre otro: el caramelo se asoma un instante antes y
+   después de la crema, que es el fondo sobre el que camina el pancito. */
+.carga-telon {
+  position: absolute;
+  inset: 0;
+  will-change: clip-path;
+}
+
+.carga-telon--caramelo {
+  background-color: var(--caramelo);
+}
+
+.carga-telon--crema {
+  background-color: var(--crema);
+}
+
+.carga-contenido {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: min(100% - 2rem, 28rem);
+  text-align: center;
+}
+
+/* --- La escena: plato, pancito, sombra y suelo --- */
+
+.carga-escena {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(190px, 46vw, 260px);
+  aspect-ratio: 1;
+}
+
+.carga-plato {
+  position: absolute;
+  inset: 0;
+  background-color: var(--mantequilla);
+  border-radius: 50%;
+}
+
+.carga-plato-borde {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  fill: none;
+  stroke: var(--caramelo-claro);
+  stroke-width: 1.2;
+  stroke-dasharray: 2 7;
+  stroke-linecap: round;
+}
+
+.carga-pan-caja {
+  position: relative;
+  width: 58%;
+  /* Un poco arriba del centro: le deja sitio a la sombra y al suelo. */
+  margin-bottom: 8%;
+}
+
+/* Un cuadro de la hoja: la hoja mide 4 cuadros de ancho y 2 de alto. */
+.carga-pan {
+  width: 100%;
+  aspect-ratio: 180 / 190;
+  background-repeat: no-repeat;
+  background-position: 0% 0%;
+  background-size: 400% 200%;
+}
+
+.carga-pan-quieto {
+  display: none;
+  width: 100%;
+  height: auto;
+}
+
+.carga-sombra {
+  position: absolute;
+  bottom: 17%;
+  left: 50%;
+  width: 40%;
+  height: 5%;
+  background-color: rgba(57, 25, 3, 0.22);
+  border-radius: 50%;
+  translate: -50% 0;
+}
+
+/* Migas en fila: al correr hacia atrás hacen que el pancito parezca avanzar.
+   Se desvanecen en los bordes para que no se vea dónde empiezan. */
+.carga-suelo {
+  position: absolute;
+  bottom: 13%;
+  left: 12%;
+  width: 76%;
+  height: 4px;
+  background-image: radial-gradient(circle, var(--caramelo-claro) 1.6px, transparent 1.8px);
+  background-size: 22px 4px;
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 25%, #000 75%, transparent);
+  mask-image: linear-gradient(to right, transparent, #000 25%, #000 75%, transparent);
+}
+
+/* --- El mensaje y la barra --- */
+
+.carga-mensaje {
+  margin: 1.5rem 0 0;
+  font-family: var(--fuente-titulo);
+  font-size: clamp(1.35rem, 4.6vw, 1.75rem);
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--espresso);
+  letter-spacing: -0.01em;
+}
+
+.carga-letra {
+  display: inline-block;
+  will-change: transform;
+}
+
+.carga-solo-lector {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.carga-barra {
+  width: min(13rem, 60%);
+  height: 4px;
+  margin-top: 1.1rem;
+  overflow: hidden;
+  background-color: var(--mantequilla);
+  border-radius: var(--radio-pildora);
+}
+
+/* De mantequilla a tostado, como el pan. */
+.carga-barra-relleno {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to right, var(--yema), var(--caramelo));
+  border-radius: inherit;
+  transform-origin: left center;
+}
+
+/* Sin animaciones: el pancito quieto y nada que se mueva solo. */
+@media (prefers-reduced-motion: reduce) {
+  .carga-pan,
+  .carga-suelo,
+  .carga-barra {
+    display: none;
+  }
+
+  .carga-pan-quieto {
+    display: block;
+  }
+
+  .carga-telon--caramelo {
+    display: none;
+  }
+}

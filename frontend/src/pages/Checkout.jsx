@@ -5,6 +5,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useCart } from "../context/CartContext";
 import { useAuth } from "../context/AuthContext";
+import { usePantallaCarga } from "../context/CargaContext";
 import { formatearPrecio } from "../utils/formato";
 import { crearPedido, crearPago } from "../services/pedidosService";
 import { actualizarPerfil } from "../services/usuarioService";
@@ -22,6 +23,7 @@ const Checkout = () => {
   const { items, total, clearCart } = useCart();
   const { user, setUser } = useAuth();
   const navigate = useNavigate();
+  const { cubrir } = usePantallaCarga();
   const [direccion, setDireccion] = useState(user?.direccion || "");
   const [telefono, setTelefono] = useState(user?.celular || "");
   const [metodo, setMetodo] = useState("efectivo");
@@ -59,6 +61,8 @@ const Checkout = () => {
         if (perfil) setUser(perfil);
       }
 
+      // Ya está pagado: la confirmación aparece detrás de la pantalla de carga.
+      await cubrir("Llevando tu pedido a la cocina…");
       clearCart();
       setConfirmado({ total: pedido.total, metodo: pago.metodo });
     } catch (err) {

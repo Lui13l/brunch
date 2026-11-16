@@ -71,6 +71,10 @@ El detalle de cada fase (archivos, endpoints y pruebas) está más abajo, en "Qu
 | `backend/src/services/chatbot.js` (`consultarCarta`), `data/carta.js` | El chat busca en la carta antes de decir "no entendí": "¿venden cerveza?" responde que no y ofrece las bebidas que sí hay |
 | `frontend/src/context/ChatContext.jsx`, `components/ChatFlotante.jsx`, `ChatBox.jsx` | Chat flotante en todas las páginas de clientes, con la misma conversación de la página de contacto |
 
+## Cuarta ronda (2026-11-15): pantalla de carga
+
+`frontend/src/components/PantallaCarga.jsx` y `context/CargaContext.jsx`: telón en dos capas, el pancito caminando (hoja de 8 cuadros con `steps`) y salida con saltito. Enganchada en `Login.jsx`, `Navbar.jsx` (salir y botón del panel), `usePerfilUsuario.js`, `Checkout.jsx` y `AdminLayout.jsx`. La hoja en WebP se generó con `sharp` desde el PNG que agregó la persona; los dos PNG originales quedaron en `assets/` sin usarse. Revisada en pantalla con la API simulada. **Sin commit todavía.**
+
 ## Qué sigue
 
 Todo lo que queda necesita a la persona:

@@ -1,8 +1,10 @@
+import { useLayoutEffect } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ExternalLink } from "lucide-react";
 import Navbar from "../../components/Navbar";
 import Footer from "../../components/Footer";
 import { abrirComandas } from "../../services/adminService";
+import { usePantallaCarga } from "../../context/CargaContext";
 import "./admin.css";
 
 const SECCIONES = [
@@ -26,6 +28,15 @@ const hoy = () => {
 // Panel de administración de la web: la libreta del encargado. Desde aquí
 // también se abre la app de comandas con la sesión ya iniciada.
 export default function AdminLayout() {
+  const { cubrir } = usePantallaCarga();
+
+  // Al entrar al panel escribiendo la dirección o recargando: la pantalla de
+  // carga aparece ya puesta, antes de que se pinte nada. Si se llegó desde el
+  // botón del menú o desde el login, ya hay una y esta llamada no hace nada.
+  useLayoutEffect(() => {
+    cubrir("Abriendo el panel…", { inmediata: true });
+  }, [cubrir]);
+
   return (
     <>
       <Navbar />

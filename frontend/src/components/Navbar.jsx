@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { LayoutDashboard } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { usePantallaCarga } from "../context/CargaContext";
 import "./Navbar.css";
 
 // Navbar transparente y fijo. `sobreFoto`: la página empieza con una foto o
@@ -22,6 +23,7 @@ const claseEnlace = ({ isActive }) => `navbar-item nav-link${isActive ? " nav-li
 
 const Navbar = ({ sobreFoto = false, alRas = false }) => {
   const { user, logout } = useAuth();
+  const { cubrir } = usePantallaCarga();
   const navigate = useNavigate();
   // Menú desplegable en pantallas pequeñas (Bulma oculta el menú por debajo de 1024px).
   // Cada página monta su propio Navbar, así que al navegar el menú vuelve a cerrarse.
@@ -50,9 +52,18 @@ const Navbar = ({ sobreFoto = false, alRas = false }) => {
   if (conFondo) tono = "nav-con-fondo";
   else if (sobreFoto) tono = "nav-sobre-foto";
 
-  const handleLogout = () => {
+  // Primero se tapa la página y después se sale: así no se ve cómo cambia el
+  // menú ni la página protegida que estuviera abierta.
+  const handleLogout = async () => {
+    await cubrir("¡Hasta pronto!");
     logout();
     navigate("/");
+  };
+
+  const irAlPanel = async (e) => {
+    e.preventDefault();
+    await cubrir("Abriendo el panel…");
+    navigate("/admin");
   };
 
   return (
@@ -90,7 +101,7 @@ const Navbar = ({ sobreFoto = false, alRas = false }) => {
               <>
                 {user.rol_id === "admin" && (
                   <div className="navbar-item nav-item-icono">
-                    <Link to="/admin" className="nav-icono-btn" aria-label="Administración" title="Administración">
+                    <Link to="/admin" className="nav-icono-btn" aria-label="Administración" title="Administración" onClick={irAlPanel}>
                       <LayoutDashboard size={20} strokeWidth={1.8} aria-hidden="true" />
                       <span className="nav-icono-texto">Administración</span>
                     </Link>
