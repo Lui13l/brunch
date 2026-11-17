@@ -95,6 +95,15 @@ Nueve puntos que el equipo encontró probando, más la pantalla de carga en coma
 
 Decisiones que tomó el asistente sin preguntar (la persona puede cambiarlas): los pedidos web cuentan en caja al **aprobar el pago** y no al entregar; un pedido cancelado deja de contar (la devolución no se registra aparte); las opciones de tarjeta y transferencia en los movimientos manuales se dejaron, con explicación.
 
+## Despliegue (2026-11-17, preparado, sin desplegar)
+
+La persona pidió dejarlo listo para Vercel. La web y la app del personal van en Vercel, en dos proyectos del mismo repo. El backend va en Render, porque el WebSocket no funciona en las funciones de Vercel. Los pasos están en [DESPLIEGUE.md](DESPLIEGUE.md).
+
+- Archivos nuevos: `frontend/vercel.json`, `personal/vercel.json`, `render.yaml`, `personal/src/lib/api.js` (`urlApi`, `urlWs` con `VITE_BACKEND_URL`).
+- Cambios: `AuthContext.jsx` (fetch), `useWebSocket.js` y `Platos.jsx` (vista previa de la foto) en la app del personal. En desarrollo no cambia nada: sin la variable, todo sigue pasando por el proxy de Vite.
+- Verificado: lint y build de `personal`, build de `frontend`. Falta que la persona cree las cuentas en Render y Vercel y pruebe en línea.
+- Resend necesita un dominio propio: `*.vercel.app` no sirve. Mientras tanto queda Gmail.
+
 ## Qué sigue
 
 Todo lo que queda necesita a la persona:

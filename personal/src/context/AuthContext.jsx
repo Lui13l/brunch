@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { urlApi } from "../lib/api";
 import { SesionContext } from "./sesion";
 
 // Claves propias: esta app y la web del restaurante son orígenes distintos y
@@ -68,7 +69,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = useCallback(async (email, password) => {
     try {
-      const res = await fetch("/api/usuarios/login", {
+      const res = await fetch(urlApi("/api/usuarios/login"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -102,7 +103,7 @@ export const AuthProvider = ({ children }) => {
   // pregunta al servidor quién es (y si de verdad es personal del restaurante).
   const entrarConToken = useCallback(async (nuevoToken) => {
     try {
-      const res = await fetch("/api/usuarios/yo", { headers: { Authorization: `Bearer ${nuevoToken}` } });
+      const res = await fetch(urlApi("/api/usuarios/yo"), { headers: { Authorization: `Bearer ${nuevoToken}` } });
       if (!res.ok) return { ok: false, error: "La sesión de la web ya no es válida. Entra con tu correo." };
       const usuario = await res.json();
       if (usuario.rol === "USUARIO") {
@@ -125,7 +126,7 @@ export const AuthProvider = ({ children }) => {
     const actual = tokenRef.current;
     if (!actual) return;
     try {
-      const res = await fetch("/api/usuarios/yo", { headers: { Authorization: `Bearer ${actual}` } });
+      const res = await fetch(urlApi("/api/usuarios/yo"), { headers: { Authorization: `Bearer ${actual}` } });
       if (tokenRef.current !== actual) return; // entró otra sesión mientras tanto
       if (res.status === 401) {
         logout("Tu sesión expiró o fue cerrada. Vuelve a entrar.");
@@ -168,7 +169,7 @@ export const AuthProvider = ({ children }) => {
       if (actual) headers.set("Authorization", `Bearer ${actual}`);
       if (options.body && !headers.has("Content-Type")) headers.set("Content-Type", "application/json");
 
-      const res = await fetch(url, { ...options, headers });
+      const res = await fetch(urlApi(url), { ...options, headers });
       if (res.status === 401 && actual) logout("Tu sesión expiró o fue cerrada. Vuelve a entrar.");
       return res;
     },

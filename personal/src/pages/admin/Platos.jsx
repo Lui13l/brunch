@@ -1,5 +1,6 @@
 import { Pencil, Plus, Trash2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
+import { urlApi } from "../../lib/api";
 import { reducirImagen } from "../../lib/imagenes";
 import { AreaTexto, Aviso, Boton, Campo, Cargando, Casilla, Hoja, Selector, Vacio } from "../../components/ui";
 import { useAuth } from "../../context/sesion";
@@ -57,7 +58,7 @@ function CampoImagen({ valor, onCambiar, onError }) {
       <div className="mb-2 flex flex-wrap items-center gap-3">
         {visible ? (
           <img
-            src={valor}
+            src={urlApi(valor)}
             alt="Vista previa de la foto del plato"
             onError={() => setRota(valor)}
             className="size-24 shrink-0 rounded-lg border border-filete object-cover"

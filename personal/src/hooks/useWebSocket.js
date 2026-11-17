@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { urlWs } from "../lib/api";
 
 /**
  * Cliente WebSocket con protocolo JSON por topic.
@@ -46,8 +47,7 @@ function conectar() {
   const token = localStorage.getItem("brunch_staff_token");
   if (!token) return; // sin sesión no hay nada que escuchar
 
-  const protocolo = window.location.protocol === "https:" ? "wss:" : "ws:";
-  socket = new WebSocket(`${protocolo}//${window.location.host}/ws`);
+  socket = new WebSocket(urlWs("/ws"));
 
   socket.addEventListener("open", () => {
     autenticado = false;

@@ -82,6 +82,8 @@ Recorrido de una petición: `routes/` → middleware → `controllers/` → `ser
 
 La lista completa de endpoints está en [backend/README.md](backend/README.md). Si cambias un endpoint, actualiza esa tabla.
 
+**Despliegue:** web y app del personal en Vercel (`vercel.json` en cada carpeta, Root Directory `frontend` o `personal`); backend en Render con [render.yaml](render.yaml), una sola instancia por el WebSocket. Los pasos están en [DESPLIEGUE.md](DESPLIEGUE.md).
+
 ## Frontend (web de clientes)
 
 - **Tema:** los colores, las fuentes y las piezas compartidas viven en [frontend/src/index.css](frontend/src/index.css).
@@ -109,7 +111,7 @@ La lista completa de endpoints está en [backend/README.md](backend/README.md). 
 ## App del personal
 
 - **Tema:** Tailwind 4, con el tema en el bloque `@theme` de [personal/src/index.css](personal/src/index.css). Comparte el espresso y la crema de la web, con la fuente Archivo. Los nombres `rio` y `rio-hondo` se conservaron por compatibilidad, pero son el espresso de marca. El foco de los campos usa `caramelo`. Los colores de estado (`espera`, `tibio`, `brasa`, `listo`) indican cuánto lleva esperando algo.
-- **Conexión con el backend:** Vite hace de proxy de `/api` y `/ws` hacia el backend (`API_TARGET`, por defecto `http://localhost:3000`). Por eso no hay CORS en desarrollo.
+- **Conexión con el backend:** Vite hace de proxy de `/api` y `/ws` hacia el backend (`API_TARGET`, por defecto `http://localhost:3000`). Por eso no hay CORS en desarrollo. En producción no hay proxy: `lib/api.js` (`urlApi`, `urlWs`) antepone `VITE_BACKEND_URL` a toda llamada, foto o socket; no escribas `fetch("/api/…")` sin pasar por ahí.
 - **Inicio por rol:** cada rol entra a una pantalla distinta (`INICIO_POR_ROL` en `lib/formato.js`). Mesero va a `/mesas`, cocina a `/cocina` y admin a `/admin`.
 - **Avisos en vivo:** llegan por WebSocket con `hooks/useWebSocket.js`. Algunos mensajes de `/topic/salon` solo llevan `tipo` (`carta`, `mesas`, `mesaCompleta`): cada pantalla ignora los que no le sirven.
 - **Sesión:** `context/AuthContext.jsx` confirma la sesión guardada con `GET /api/usuarios/yo` al abrir, al volver a la pestaña y cada 5 minutos. Mientras `verificando` es true, `RutaProtegida` no pinta la pantalla.
