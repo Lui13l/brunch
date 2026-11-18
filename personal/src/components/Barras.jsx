@@ -138,12 +138,13 @@ function Muestra({ className }) {
  *    siguen siendo lo vendido cada día y la línea muestra la tendencia.
  *  - Con dos trazos o más hay leyenda; el detalle de cada día sale al señalarlo.
  *
- * @param puntos [{ clave, etiqueta, etiquetaCorta?, valor, texto, extra? }]
+ * @param puntos [{ clave, etiqueta, etiquetaCorta?, valor, texto, extra?, marca? }]
  *   `extra` son los renglones del detalle (texto o lista de textos).
+ *   `marca` (verdadero) dibuja un aro alrededor del punto: un festivo.
  * @param linea Valores por donde pasa la línea, uno por punto. Por defecto,
  *   los mismos de los puntos.
  * @param comparada Valores del otro periodo, uno por punto (null donde no hay).
- * @param leyenda { puntos, linea?, comparada? } Cómo se llama cada trazo.
+ * @param leyenda { puntos, linea?, comparada?, marca? } Cómo se llama cada trazo.
  * @param rotular Qué punto lleva su valor escrito: "mayor" o "ultimo".
  * @param conPromedio Dibuja la línea punteada del promedio de los puntos.
  * @param formatoEje Cómo escribir los números del eje (compactos).
@@ -194,7 +195,8 @@ export function SerieTiempo({
   const senalado = lugares.find((l) => l.clave === activa);
   // La sombra bajo la línea solo cuando está sola: con otro periodo encima estorba.
   const conSombra = !comparada && !linea;
-  const conLeyenda = Boolean(comparada || leyenda.linea);
+  const conMarcas = puntos.some((p) => p.marca);
+  const conLeyenda = Boolean(comparada || leyenda.linea || conMarcas);
 
   return (
     <figure aria-label={titulo} className="m-0">
@@ -214,6 +216,12 @@ export function SerieTiempo({
             <li className="flex items-center gap-2">
               <Muestra className="border-dashed border-comparado" />
               {leyenda.comparada}
+            </li>
+          )}
+          {conMarcas && (
+            <li className="flex items-center gap-2">
+              <span aria-hidden className="size-4 shrink-0 rounded-full border-2 border-tinta/55" />
+              {leyenda.marca ?? "Día especial"}
             </li>
           )}
         </ul>
@@ -301,6 +309,21 @@ export function SerieTiempo({
                 style={{ left: `${senalado.x}%`, top: `${y(comparada[senalado.i])}%` }}
               />
             )}
+
+            {/* Días especiales (festivos): un aro alrededor del punto. No es
+                color: se distingue igual en blanco y negro. */}
+            {lugares
+              .filter((l) => l.marca)
+              .map((l) => (
+                <span
+                  key={`marca-${l.clave}`}
+                  aria-hidden
+                  className={`pointer-events-none absolute size-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-tinta/55 ${
+                    activa !== null && l.clave !== activa ? "opacity-45" : ""
+                  }`}
+                  style={{ left: `${l.x}%`, top: `${l.y}%` }}
+                />
+              ))}
 
             {/* El borde claro separa cada punto de la línea y de sus vecinos. Al
                 señalar uno, los demás se apagan para que el ojo no tenga que buscarlo. */}

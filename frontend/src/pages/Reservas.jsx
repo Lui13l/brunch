@@ -5,7 +5,11 @@ import Footer from "../components/Footer";
 import { useAuth } from "../context/AuthContext";
 import { usePantallaCarga } from "../context/CargaContext";
 import { crearReserva } from "../services/reservasService";
+import { useFestivos } from "../hooks/useFestivos";
+import { HORARIO, festivoDe, horarioDelDia } from "../utils/horario";
 import "./Reservas.css";
+
+const dosCifras = (n) => String(n).padStart(2, "0");
 
 const OCASIONES = ["Cumpleaños", "Aniversario", "Reunión de negocios", "Otro"];
 
@@ -23,6 +27,13 @@ const Reservas = () => {
   const [form, setForm] = useState({ dia: "", hora: "", cupo: "2", ocasion: "", detalles: "" });
   const [error, setError] = useState("");
   const [enviando, setEnviando] = useState(false);
+
+  // Un festivo se atiende como fin de semana: el campo de hora y la ayuda
+  // bajo la fecha muestran el horario del día elegido.
+  const anioElegido = Number(form.dia.slice(0, 4)) || new Date().getFullYear();
+  const festivos = useFestivos(anioElegido);
+  const festivo = form.dia ? festivoDe(form.dia, festivos) : null;
+  const horario = form.dia ? horarioDelDia(form.dia, festivos) : HORARIO.semana;
 
   const campo = (nombre) => ({
     value: form[nombre],
@@ -76,11 +87,31 @@ const Reservas = () => {
             <div className="fila-campos">
               <div className="campo">
                 <label htmlFor="reserva-dia">Fecha</label>
-                <input id="reserva-dia" type="date" min={hoyLocal()} required {...campo("dia")} />
+                <input
+                  id="reserva-dia"
+                  type="date"
+                  min={hoyLocal()}
+                  required
+                  aria-describedby={form.dia ? "reserva-dia-horario" : undefined}
+                  {...campo("dia")}
+                />
+                {form.dia && (
+                  <small id="reserva-dia-horario" className="campo-ayuda">
+                    {festivo ? `Es festivo (${festivo}): ` : "Ese día "}
+                    atendemos de {horario.horas.replace(" – ", " a ")}.
+                  </small>
+                )}
               </div>
               <div className="campo">
                 <label htmlFor="reserva-hora">Hora</label>
-                <input id="reserva-hora" type="time" min="08:00" max="17:00" required {...campo("hora")} />
+                <input
+                  id="reserva-hora"
+                  type="time"
+                  min={`${dosCifras(horario.abre)}:00`}
+                  max={`${dosCifras(horario.cierra - 1)}:59`}
+                  required
+                  {...campo("hora")}
+                />
               </div>
             </div>
 

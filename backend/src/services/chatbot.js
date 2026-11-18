@@ -1,6 +1,8 @@
 const { ChatIntent, MenuItem, Order, Reservation, Comanda } = require("../models");
 const { diaCalendarioHoy, hoyLocal, rangoLocal } = require("../utils/tiempo");
 const { ROL } = require("../utils/roles");
+const { horarioDelDia } = require("../utils/horarioReservas");
+const festivos = require("./festivos");
 const { PREGUNTAS_SEGURAS, PREGUNTAS_DUDOSAS, RELLENO, FAMILIAS, NOMBRE_FAMILIA, SINONIMOS } = require("../data/carta");
 
 // Intención que se usa cuando ninguna otra coincide.
@@ -158,6 +160,15 @@ const VARIABLES = {
       .sort(([, a], [, b]) => a.orden - b.orden)
       .map(([categoria, { lineas }]) => `${categoria}:\n${lineas.join("\n")}`);
     return `Este es nuestro menú:\n\n${secciones.join("\n\n")}`;
+  },
+
+  // El horario de hoy, sabiendo si es festivo (se atiende como fin de semana).
+  horario_hoy: async () => {
+    const { dia, festivo } = await festivos.hoy();
+    const { apertura, cierre } = horarioDelDia(dia, festivo);
+    const hora = (h) => h.replace(/^0/, "");
+    if (festivo) return `Hoy es festivo (${festivo}): abrimos de ${hora(apertura)} a ${hora(cierre)}.`;
+    return `Hoy abrimos de ${hora(apertura)} a ${hora(cierre)}.`;
   },
 
   // Un plato cualquiera de la carta de la web, para "¿qué me recomiendas?".

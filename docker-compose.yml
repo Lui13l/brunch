@@ -1,0 +1,44 @@
+# Las tres apps en contenedores. La base sigue siendo la de MongoDB Atlas
+# (compartida y con datos reales): no hay contenedor de MongoDB porque las
+# transacciones necesitan un replica set.
+#
+#   docker compose up --build
+#
+# Web en http://localhost:5173, app del personal en http://localhost:5174.
+services:
+  backend:
+    build: ./backend
+    # Los secretos (MONGO_URI, JWT_SECRET, correo…) salen de backend/.env.
+    env_file: ./backend/.env
+    environment:
+      PORT: "3000"
+      # Los navegadores entran por los puertos de nginx; el WebSocket compara
+      # su Origin con esta lista.
+      CORS_ORIGIN: http://localhost:5173,http://localhost:5174
+      # nginx es un salto: así el límite de intentos ve la IP real.
+      TRUST_PROXY: "1"
+    # Solo desde este computador, para probar la API a mano.
+    ports:
+      - "127.0.0.1:3000:3000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_GOOGLE_CLIENT_ID: ${VITE_GOOGLE_CLIENT_ID:-}
+    ports:
+      - "5173:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  personal:
+    build: ./personal
+    ports:
+      - "5174:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

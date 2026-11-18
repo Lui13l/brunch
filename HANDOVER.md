@@ -95,6 +95,20 @@ Nueve puntos que el equipo encontró probando, más la pantalla de carga en coma
 
 Decisiones que tomó el asistente sin preguntar (la persona puede cambiarlas): los pedidos web cuentan en caja al **aprobar el pago** y no al entregar; un pedido cancelado deja de contar (la devolución no se registra aparte); las opciones de tarjeta y transferencia en los movimientos manuales se dejaron, con explicación.
 
+## Sexta ronda (2026-11-16, en curso): APIs gratuitas
+
+Plan aprobado por la persona: `C:\Users\HP\.claude\plans\segun-el-trabajo-que-fuzzy-reef.md` (copia del resumen aquí por si no está). Cuatro fases, sin commit hasta que la persona lo pida:
+
+| # | Fase | Estado |
+|---|---|---|
+| 1 | Clima desde el backend (`GET /api/clima`, `services/clima.js`, `utils/cache.js`, `utils/local.js`; web: `hooks/useClima.js`) | Código y pruebas hechos (`tests/externas.test.js`) |
+| 2 | Festivos de Colombia (Nager.Date): festivo = horario de fin de semana en reservas, chat y web; marcados en reportes | Código hecho: `services/festivos.js` (si Nager.Date no responde calcula con la Ley Emiliani), `revisarHorarioReserva` en los 8 sitios que validaban la hora, `GET /api/festivos`, `{horario_hoy}` en el chat, `hooks/useFestivos.js` en la web, aro en `SerieTiempo`. `tests/helpers.js` ahora bloquea `fetch`: ninguna prueba sale a internet |
+| — | **Pausa pedida por la persona (2026-11-16).** Fases 1 y 2: probadas solo con `externas`, `horarioReservas`, `chat` y `reservas` (todo en verde) y con lint de las tres apps; falta la suite completa (`npm test`), el build de la web y de comandas, la revisión en pantalla y poner las rutas nuevas (`/api/clima`, `/api/festivos`) y las variables (`OPENWEATHER_API_KEY`, `LOCAL_LAT`, `LOCAL_LON`) en `backend/README.md` y AGENTS.md. Hay que quitar la clave de OpenWeather de "Problemas conocidos" y avisar que las respuestas viejas del tema `horario` en la base no mencionan festivos (borrarlas desde el panel después de sincronizar). Sin commit | |
+| 3 | Avisos por Telegram: pedido web nuevo, reserva nueva o cancelada, insumo bajo el mínimo (una vez, campo `alerta_minimo_en`), pago por aprobar | Pendiente |
+| 4 | Domicilio por distancia (Nominatim + OpenRouteService, tramos 3/6/8 km a $4.000/$7.000/$10.000, fuera de zona más de 8 km), mapa con Leaflet en el checkout | Pendiente |
+
+Decisiones de la persona: festivo como fin de semana; cobro por tramos; ubicación provisional del local 2.9420, -75.2998 (`LOCAL_LAT`, `LOCAL_LON`); los cuatro avisos de Telegram.
+
 ## Despliegue (2026-11-17, preparado, sin desplegar)
 
 La persona pidió dejarlo listo para Vercel. La web y la app del personal van en Vercel, en dos proyectos del mismo repo. El backend va en Render, porque el WebSocket no funciona en las funciones de Vercel. Los pasos están en [DESPLIEGUE.md](DESPLIEGUE.md).
@@ -113,6 +127,7 @@ Todo lo que queda necesita a la persona:
 2. **Correo de facturas:** hecho el 2026-11-15. `GMAIL_USUARIO` y `GMAIL_CLAVE_APP` están en `backend/.env` (cuenta institucional de Google, no `@gmail.com`); Gmail aceptó la clave y un comprobante de prueba enviado a la misma cuenta. Falta probarlo desde el panel con un pedido `[E2E]` y que la persona cambie la contraseña de aplicación (quedó escrita en una conversación).
 3. **Palabras clave del menú:** hecho el 2026-11-15 ("que venden", "que ofrecen" y "que sirven" ya están en la base).
 4. **Commit:** hecho en `main` el 2026-11-15, con permiso y sin línea de coautoría. No se hizo `git push`: subirlo lo decide la persona. Cuando ya no quede nada pendiente de esta lista, borrar este archivo.
+5. **Docker (2026-11-18):** `Dockerfile` y `.dockerignore` en `backend/`, `frontend/` y `personal/`; `nginx.conf` en las dos apps web; `docker-compose.yml` en la raíz. Probado: las tres imágenes compilan, el backend queda *healthy*, `/api` responde por los puertos 5173 y 5174 y `/ws` hace el *upgrade* (101). Falta mirarlo en el navegador. Sin commit.
 
 `AGENTS.md` y `backend/README.md` ya están al día con las 7 fases.
 

@@ -1,0 +1,8 @@
+# Los secretos llegan por variables del contenedor, nunca dentro de la imagen.
+.env
+.env.*
+!.env.example
+node_modules
+tests
+Dockerfile
+.dockerignore

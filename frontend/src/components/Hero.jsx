@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import gsap from "gsap";
 import WeatherBadge from "./WeatherBadge";
+import { useFestivos } from "../hooks/useFestivos";
 import { LOCAL, estadoDelLocal } from "../utils/horario";
 import "./Hero.css";
 
@@ -15,7 +16,11 @@ const PANTALLA_GRANDE = "(min-width: 769px)";
 const Hero = () => {
   const heroRef = useRef(null);
   const [conVideo, setConVideo] = useState(() => globalThis.matchMedia(PANTALLA_GRANDE).matches);
-  const [estado, setEstado] = useState(estadoDelLocal);
+  // Hoy y mañana pueden caer en años distintos (31 de diciembre).
+  const anio = new Date().getFullYear();
+  const festivos = useFestivos(anio, anio + 1);
+  const [ahora, setAhora] = useState(() => new Date());
+  const estado = estadoDelLocal(ahora, festivos);
 
   useEffect(() => {
     const consulta = globalThis.matchMedia(PANTALLA_GRANDE);
@@ -26,7 +31,7 @@ const Hero = () => {
 
   // "Abierto hasta las 18:00" se actualiza solo si la página queda abierta.
   useEffect(() => {
-    const reloj = setInterval(() => setEstado(estadoDelLocal()), 60_000);
+    const reloj = setInterval(() => setAhora(new Date()), 60_000);
     return () => clearInterval(reloj);
   }, []);
 

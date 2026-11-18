@@ -84,6 +84,8 @@ La lista completa de endpoints está en [backend/README.md](backend/README.md). 
 
 **Despliegue:** web y app del personal en Vercel (`vercel.json` en cada carpeta, Root Directory `frontend` o `personal`); backend en Render con [render.yaml](render.yaml), una sola instancia por el WebSocket. Los pasos están en [DESPLIEGUE.md](DESPLIEGUE.md).
 
+**Docker:** `docker compose up --build` en la raíz levanta las tres apps ([docker-compose.yml](docker-compose.yml)). El backend lee `backend/.env`; la web y la app del personal se compilan y las sirve nginx (`nginx.conf` en cada carpeta), que pasa `/api` y `/ws` al backend. No hay MongoDB en contenedor: se usa Atlas. En el `nginx.conf`, el respaldo de rutas es `try_files $uri /index.html` sin `$uri/`, porque `/menu` chocaría con `public/menu/`.
+
 ## Frontend (web de clientes)
 
 - **Tema:** los colores, las fuentes y las piezas compartidas viven en [frontend/src/index.css](frontend/src/index.css).

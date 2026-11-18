@@ -1,0 +1,8 @@
+# Las variables de Vite llegan como argumentos de build, no desde el .env local.
+.env
+.env.*
+!.env.example
+node_modules
+dist
+Dockerfile
+.dockerignore

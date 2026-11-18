@@ -9,6 +9,13 @@ process.env.ZONA_HORARIA = "America/Bogota";
 process.env.RATE_LIMIT_AUTH_MAX ??= "1000";
 process.env.RATE_LIMIT_CHAT_MAX ??= "1000";
 
+// Nada sale a internet desde las pruebas. Las APIs externas (festivos, clima,
+// Telegram, mapas, correo) fallan aquí a propósito y cada servicio sigue sin
+// ellas; la prueba que quiera una respuesta reemplaza global.fetch.
+global.fetch = async (url) => {
+  throw new Error(`Sin red en las pruebas: ${url}`);
+};
+
 const app = require("../src/app");
 const { Role, User, Category, MenuItem } = require("../src/models");
 

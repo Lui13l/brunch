@@ -1,6 +1,6 @@
 // Intenciones iniciales del chatbot que carga "npm run seed".
-// Las respuestas pueden usar {nombre}, {menu}, {recomendacion}, {ultimo_pedido}
-// y {mis_reservas}.
+// Las respuestas pueden usar {nombre}, {menu}, {recomendacion}, {ultimo_pedido},
+// {mis_reservas} y {horario_hoy} (el horario de hoy, avisando si es festivo).
 // {reservas_hoy}, {pedidos_pendientes} y {ventas_hoy} son consultas del negocio:
 // solo un admin con sesión recibe esos datos (ver services/chatbot.js).
 // Se pueden editar después desde /api/chat/intenciones sin tocar código.
@@ -148,8 +148,8 @@ module.exports = [
     descripcion: "Pregunta por el horario de atención",
     palabras_clave: ["horario", "hora abren", "a que hora", "abierto", "abren", "cierran", "atienden"],
     respuestas: [
-      texto("Nuestro horario es de lunes a viernes de 8:00 a 18:00, y sábados y domingos de 9:00 a 17:00. ¡Te esperamos!"),
-      texto("Abrimos de lunes a viernes de 8:00 a 18:00. Los sábados y domingos, de 9:00 a 17:00."),
+      texto("{horario_hoy} En general, de lunes a viernes de 8:00 a 18:00, y sábados, domingos y festivos de 9:00 a 17:00. ¡Te esperamos!"),
+      texto("{horario_hoy} Entre semana abrimos de 8:00 a 18:00; los sábados, domingos y festivos, de 9:00 a 17:00."),
     ],
     sugerencias: ["Quiero hacer una reserva", "¿Dónde quedan?"],
   },

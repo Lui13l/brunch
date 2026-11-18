@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const { Reservation, ReservationSlot } = require("../models");
 const { conTransaccion } = require("../utils/transaccion");
 const { HttpError } = require("../utils/http");
-const { errorHorarioReserva } = require("../utils/horarioReservas");
+const { revisarHorarioReserva } = require("./festivos");
 
 const MAX_PERSONAS_POR_HORARIO = 30;
 const ESTADOS_QUE_OCUPAN_CUPO = ["pendiente", "confirmada"];
@@ -47,7 +47,7 @@ const asegurarBloqueoHorario = async (dia, hora) => {
 };
 
 const crearConCapacidad = async ({ dia, hora, cupo, ...datos }, usuarioId) => {
-  const errorHorario = errorHorarioReserva(dia, hora);
+  const errorHorario = await revisarHorarioReserva(dia, hora);
   if (errorHorario) throw new HttpError(400, errorHorario);
   await asegurarBloqueoHorario(dia, hora);
 
@@ -84,7 +84,7 @@ const cancelarPropia = async (reservaId, usuarioId) =>
   );
 
 const actualizarConCapacidad = async (reservaId, usuarioId, datos) => {
-  const errorHorario = errorHorarioReserva(datos.dia, datos.hora);
+  const errorHorario = await revisarHorarioReserva(datos.dia, datos.hora);
   if (errorHorario) throw new HttpError(400, errorHorario);
   await asegurarBloqueoHorario(datos.dia, datos.hora);
 

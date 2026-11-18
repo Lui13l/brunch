@@ -1,7 +1,7 @@
 const { Reservation } = require("../models");
 const { HttpError, pick } = require("../utils/http");
 const { verificarDueno } = require("../middleware/auth");
-const { errorHorarioReserva } = require("../utils/horarioReservas");
+const { revisarHorarioReserva } = require("../services/festivos");
 const {
   MAX_PERSONAS_POR_HORARIO,
   crearConCapacidad,
@@ -34,7 +34,7 @@ const aplicarEstado = async (reserva, estado) => {
 const crear = async (req, res) => {
   const datos = pick(req.body, ["dia", "hora", "ocasion", "detalles", "cupo"]);
 
-  const errorHorario = errorHorarioReserva(datos.dia, datos.hora);
+  const errorHorario = await revisarHorarioReserva(datos.dia, datos.hora);
   if (errorHorario) throw new HttpError(400, errorHorario);
   if (!Number.isInteger(datos.cupo) || datos.cupo < 1) {
     throw new HttpError(400, "El cupo debe ser un número entero mayor que cero");
@@ -50,7 +50,7 @@ const crear = async (req, res) => {
 
 const actualizar = async (req, res) => {
   const datos = pick(req.body, ["dia", "hora", "cupo"]);
-  const errorHorario = errorHorarioReserva(datos.dia, datos.hora);
+  const errorHorario = await revisarHorarioReserva(datos.dia, datos.hora);
   if (errorHorario) throw new HttpError(400, errorHorario);
   if (!Number.isInteger(datos.cupo) || datos.cupo < 1) {
     throw new HttpError(400, "El cupo debe ser un número entero mayor que cero");

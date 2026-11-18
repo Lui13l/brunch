@@ -236,6 +236,23 @@ function VentasEnElTiempo({ datos, analisis, onAnalisis }) {
   const desdeC = rango?.desde;
   const hastaC = rango?.hasta;
 
+  // Festivos de los años que cubre la serie: se marcan con un aro en la gráfica.
+  const primerDia = desde ?? porDia[0]?.fecha;
+  const ultimoDia = hasta ?? porDia.at(-1)?.fecha;
+  const [festivos, setFestivos] = useState(() => new Map());
+  useEffect(() => {
+    if (!primerDia || !ultimoDia) return undefined;
+    let vigente = true;
+    const anios = [];
+    for (let a = Number(primerDia.slice(0, 4)); a <= Number(ultimoDia.slice(0, 4)); a++) anios.push(a);
+    // Sin festivos la gráfica se ve igual, solo sin marcas: un error aquí no se muestra.
+    Promise.all(anios.map((a) => pedir(`/api/festivos?anio=${a}`).catch(() => [])))
+      .then((listas) => vigente && setFestivos(new Map(listas.flat().map((f) => [f.fecha, f.nombre]))));
+    return () => {
+      vigente = false;
+    };
+  }, [pedir, primerDia, ultimoDia]);
+
   useEffect(() => {
     if (!desdeC) return undefined;
     let vigente = true;
@@ -298,7 +315,9 @@ function VentasEnElTiempo({ datos, analisis, onAnalisis }) {
   const suma = (lista) => lista.reduce((total, valor) => total + valor, 0);
 
   const puntos = serie.map((d, i) => {
+    const festivo = festivos.get(d.fecha);
     const extra = [acumulado ? `Ese día: ${pesos(d.total)}` : cuentas(d.comandas)];
+    if (festivo) extra.unshift(`Festivo: ${festivo}`);
     if (media) extra.push(`Media de 7 días: ${pesos(Math.round(media[i]))}`);
     if (valoresC) {
       extra.push(`${nombreC}, ${diaCorto(diasC[i])}: ${pesos(valoresC[i])}`);
@@ -311,6 +330,7 @@ function VentasEnElTiempo({ datos, analisis, onAnalisis }) {
       valor: valores[i],
       texto: pesos(valores[i]),
       extra,
+      marca: Boolean(festivo),
     };
   });
 
@@ -371,6 +391,7 @@ function VentasEnElTiempo({ datos, analisis, onAnalisis }) {
             puntos: acumulado ? "Vendido hasta ese día" : "Venta de cada día",
             linea: media ? "Media de 7 días" : undefined,
             comparada: `${nombreC}${tendencia ? ", media de 7 días" : ""} (${rango ? `${diaCorto(desdeC)} – ${diaCorto(hastaC)}` : ""})`,
+            marca: "Festivo",
           }}
           rotular={acumulado ? "ultimo" : "mayor"}
           conPromedio={!acumulado && !valoresC}

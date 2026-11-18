@@ -1,8 +1,6 @@
-import { useEffect, useState } from "react";
 import { ArrowDown, Cloud, CloudRain, Sun } from "lucide-react";
+import { useClima } from "../hooks/useClima";
 import "./WeatherRecommendation.css";
-
-const API_KEY = "ad91376c322b5e62d181a5ecdf79b8ee";
 
 const recommendations = {
   hot: {
@@ -23,33 +21,21 @@ const recommendations = {
 };
 
 // Sugerencia según el clima de hoy. El botón baja hasta las bebidas de la carta.
+const elegir = (temp) => {
+  if (temp >= 28) return recommendations.hot;
+  if (temp <= 20) return recommendations.cold;
+  return recommendations.rain;
+};
+
 const WeatherRecommendation = () => {
-  const [weather, setWeather] = useState(null);
+  const clima = useClima();
 
   const handleViewRecommended = () => {
     document.getElementById("bebidas")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  useEffect(() => {
-    fetch(
-      `https://api.openweathermap.org/data/2.5/weather?q=Neiva,CO&appid=${API_KEY}&units=metric&lang=es`
-    )
-      .then((res) => (res.ok ? res.json() : Promise.reject(res)))
-      .then((data) => {
-        const temp = data.main.temp;
-
-        if (temp >= 28) {
-          setWeather(recommendations.hot);
-        } else if (temp <= 20) {
-          setWeather(recommendations.cold);
-        } else {
-          setWeather(recommendations.rain);
-        }
-      })
-      .catch(() => setWeather(null)); // Sin clima no se muestra nada
-  }, []);
-
-  if (!weather) return null;
+  if (!clima) return null; // Sin clima no se muestra nada
+  const weather = elegir(clima.temperatura);
 
   return (
     <div className="weather-card">

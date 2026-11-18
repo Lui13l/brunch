@@ -306,6 +306,8 @@ describe("Chatbot: conversaciones", () => {
 
     const horario = await visitante("a que hora abren");
     expect(horario.body.intencion).toBe("horario");
+    // {horario_hoy} dice el horario de hoy (sin red, con los festivos calculados).
+    expect(horario.body.respuesta).toMatch(/^Hoy (es festivo \(.+\): )?abrimos de \d+:00 a \d+:00\./);
 
     const despedida = await visitante("chao");
     // Hay varias despedidas; sin sesión, ninguna lleva nombre ni la coma que lo precede.

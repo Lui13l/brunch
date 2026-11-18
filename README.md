@@ -44,6 +44,20 @@ El frontend usa `http://localhost:3000/api` por defecto. Para otra dirección, c
 
 Para habilitar el login con Google, crea un cliente OAuth 2.0 de tipo aplicación web en Google Cloud, agrega el origen del frontend como origen autorizado y configura el mismo `GOOGLE_CLIENT_ID` en `backend/.env` y `VITE_GOOGLE_CLIENT_ID` en `frontend/.env`.
 
+### Con Docker
+
+Si tienes Docker (Docker Desktop en Windows o Mac), las tres apps arrancan con un solo comando. Necesitas igual `backend/.env` con `MONGO_URI` y `JWT_SECRET`: la base sigue siendo la de Atlas, no hay MongoDB en contenedor.
+
+```bash
+docker compose up --build     # web en :5173, personal en :5174, API en :3000
+docker compose down           # para apagarlas
+```
+
+- Cada app web se compila y la sirve nginx, que pasa `/api` (y `/ws` en la app del personal) al backend. Por eso no hacen falta `frontend/.env` ni `personal/.env`.
+- Las variables `VITE_*` quedan escritas al compilar: si cambias una, vuelve a correr con `--build`. Para el login con Google, define `VITE_GOOGLE_CLIENT_ID` en tu terminal o en un `.env` en la raíz del repo antes de compilar.
+- `CORS_ORIGIN` y `TRUST_PROXY` los fija [docker-compose.yml](docker-compose.yml); lo demás sale de `backend/.env`.
+- Es para correr el proyecto, no para programar: no recarga al guardar. Para desarrollar usa `npm run dev`.
+
 ## Pruebas del backend
 
 ```bash

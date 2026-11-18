@@ -6,39 +6,60 @@ export const LOCAL = {
   ciudad: "Neiva",
 };
 
-// Horas en formato 24 h, hora de Colombia.
+// Horas en formato 24 h, hora de Colombia. Los festivos se atienden con el
+// horario del fin de semana (el backend aplica la misma regla a las reservas).
 export const HORARIO = {
   semana: { abre: 8, cierra: 18, texto: "Lunes a viernes", horas: "8:00 – 18:00" },
-  finde: { abre: 9, cierra: 17, texto: "Sábados y domingos", horas: "9:00 – 17:00" },
+  finde: { abre: 9, cierra: 17, texto: "Sábados, domingos y festivos", horas: "9:00 – 17:00" },
 };
 
 const ZONA = "America/Bogota";
 
-const tramoDe = (diaSemana) => (diaSemana === "sáb" || diaSemana === "dom" ? HORARIO.finde : HORARIO.semana);
-
-// Dice si el local está abierto ahora mismo y hasta (o desde) qué hora.
-export const estadoDelLocal = (ahora = new Date()) => {
+// Día ("AAAA-MM-DD"), día de la semana ("lun", "sáb"...) y hora decimal en Colombia.
+const enColombia = (fecha) => {
   const partes = new Intl.DateTimeFormat("es-CO", {
     timeZone: ZONA,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
     weekday: "short",
     hour: "numeric",
     minute: "numeric",
     hour12: false,
-  }).formatToParts(ahora);
-
+  }).formatToParts(fecha);
   const valor = (tipo) => partes.find((p) => p.type === tipo)?.value ?? "";
-  const dia = valor("weekday").replace(".", "").toLowerCase();
-  const hora = (Number(valor("hour")) % 24) + Number(valor("minute")) / 60;
-  const hoy = tramoDe(dia);
+  return {
+    dia: `${valor("year")}-${valor("month")}-${valor("day")}`,
+    semana: valor("weekday").replace(".", "").toLowerCase(),
+    hora: (Number(valor("hour")) % 24) + Number(valor("minute")) / 60,
+  };
+};
+
+/** Nombre del festivo de ese día ("AAAA-MM-DD"), o null. */
+export const festivoDe = (dia, festivos = []) => festivos.find((f) => f.fecha === dia)?.nombre ?? null;
+
+/** El tramo de horario de un día: fin de semana o festivo, o entre semana. */
+export const horarioDelDia = (dia, festivos = []) => {
+  const semana = new Date(`${dia}T12:00:00Z`).getUTCDay();
+  return semana === 0 || semana === 6 || festivoDe(dia, festivos) ? HORARIO.finde : HORARIO.semana;
+};
+
+// Dice si el local está abierto ahora mismo y hasta (o desde) qué hora.
+// `festivos`: [{ fecha, nombre }] de GET /api/festivos; sin ellos, el día es común.
+export const estadoDelLocal = (ahora = new Date(), festivos = []) => {
+  const { dia, hora } = enColombia(ahora);
+  const hoy = horarioDelDia(dia, festivos);
+  const festivo = festivoDe(dia, festivos);
+  const prefijo = festivo ? "Hoy es festivo. " : "";
 
   if (hora >= hoy.abre && hora < hoy.cierra) {
-    return { abierto: true, texto: `Abierto hasta las ${hoy.cierra}:00` };
+    return { abierto: true, texto: `${prefijo}Abierto hasta las ${hoy.cierra}:00` };
   }
   if (hora < hoy.abre) {
-    return { abierto: false, texto: `Abrimos hoy a las ${hoy.abre}:00` };
+    return { abierto: false, texto: `${prefijo}Abrimos hoy a las ${hoy.abre}:00` };
   }
 
-  // Ya cerró: mañana es fin de semana si hoy es viernes o sábado.
-  const manana = dia === "vie" || dia === "sáb" ? HORARIO.finde : HORARIO.semana;
-  return { abierto: false, texto: `Abrimos mañana a las ${manana.abre}:00` };
+  // Ya cerró: el horario de mañana depende de qué día (o festivo) es.
+  const manana = enColombia(new Date(ahora.getTime() + 24 * 60 * 60_000)).dia;
+  return { abierto: false, texto: `Abrimos mañana a las ${horarioDelDia(manana, festivos).abre}:00` };
 };

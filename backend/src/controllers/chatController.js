@@ -3,7 +3,7 @@ const { HttpError, pick } = require("../utils/http");
 const { esAdmin, verificarDueno } = require("../middleware/auth");
 const chatbot = require("../services/chatbot");
 const { hoyLocal, sumarDias, parseFecha, diaCalendarioHoy } = require("../utils/tiempo");
-const { errorHorarioReserva } = require("../utils/horarioReservas");
+const { revisarHorarioReserva } = require("../services/festivos");
 const {
   MAX_PERSONAS_POR_HORARIO,
   consultarDisponibilidad,
@@ -111,7 +111,7 @@ const procesarReservaChat = async (mensaje, usuario, datosContexto) => {
   const texto = chatbot.normalizar(mensaje);
 
   if (reserva.confirmando && esConfirmacion(texto)) {
-    const errorHorario = errorHorarioReserva(reserva.dia, reserva.hora);
+    const errorHorario = await revisarHorarioReserva(reserva.dia, reserva.hora);
     if (errorHorario) {
       return {
         intencion,
@@ -195,7 +195,7 @@ const procesarReservaChat = async (mensaje, usuario, datosContexto) => {
   }
 
   if (reserva.dia && reserva.hora) {
-    const errorHorario = errorHorarioReserva(reserva.dia, reserva.hora);
+    const errorHorario = await revisarHorarioReserva(reserva.dia, reserva.hora);
     if (errorHorario) {
       reserva.hora = null;
       return {
@@ -444,7 +444,7 @@ const procesarEdicionChat = async (mensaje, usuario, datosContexto) => {
 
   if (edicion.confirmando) {
     if (esConfirmacion(texto)) {
-      const errorHorario = errorHorarioReserva(edicion.dia, edicion.hora);
+      const errorHorario = await revisarHorarioReserva(edicion.dia, edicion.hora);
       if (errorHorario) {
         return {
           intencion: "editar_reserva",
@@ -552,7 +552,7 @@ const procesarEdicionChat = async (mensaje, usuario, datosContexto) => {
     };
   }
 
-  const errorHorario = errorHorarioReserva(edicion.dia, edicion.hora);
+  const errorHorario = await revisarHorarioReserva(edicion.dia, edicion.hora);
   if (errorHorario) {
     return {
       intencion: "editar_reserva",
